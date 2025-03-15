@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>可移动播放器</title>
+    <title>可移动播放器 with 歌词</title>
 </head>
 <body>
     <button id="openWindowBtn">打开播放器</button>
@@ -18,7 +18,8 @@
 
         createWindowElement(title, contentHTML) {
             this.modal = document.createElement('div');
-            this.modal.id = 'movableWindow';
+            this.modal.id = `window-${Math.random().toString(36).substr(2, 9)}`;
+            this.modal.className = 'movable-window';
             this.modal.innerHTML = `
                 <div class="window-header">
                     <span>${title}</span>
@@ -37,7 +38,7 @@
             const style = document.createElement('style');
             style.id = 'movable-window-styles';
             style.textContent = `
-                #movableWindow {
+                .movable-window {
                     display: none;
                     position: fixed;
                     width: 350px;
@@ -76,11 +77,10 @@
                 .window-content {
                     padding: 15px;
                     height: calc(100% - 45px);
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
+                    overflow-y: auto;
                 }
 
+                /* 播放器样式 */
                 .playlist-container {
                     max-height: 120px;
                     overflow-y: auto;
@@ -144,7 +144,7 @@
                     display: flex;
                     justify-content: center;
                     gap: 10px;
-                    margin-top: auto;
+                    margin-top: 10px;
                 }
 
                 .player-controls button {
@@ -167,6 +167,43 @@
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
+                }
+
+                /* 歌词窗口样式 */
+                .lyrics-container {
+                    height: 250px;
+                    overflow-y: auto;
+                    padding: 10px;
+                }
+
+                #lyricsDisplay {
+                    line-height: 1.5;
+                    min-height: 180px;
+                }
+
+                .lyric-line {
+                    padding: 5px 0;
+                    transition: all 0.3s;
+                }
+
+                .current-lyric {
+                    color: #ff4444;
+                    font-weight: bold;
+                    transform: scale(1.05);
+                }
+
+                #srtFileInput {
+                    margin-top: 10px;
+                }
+
+                #loadDefaultSrt {
+                    background: #28a745;
+                    color: white;
+                    border: none;
+                    padding: 5px 10px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    margin-left: 10px;
                 }
             `;
             document.head.appendChild(style);
@@ -353,11 +390,29 @@
         }
     }
 
+    class SrtParser {
+        static parse(srtText) {
+            const blocks = srtText.split('\n\n');
+            return blocks.filter(b => b.trim()).map(block => {
+                const [index, timecode, ...textLines] = block.split('\n');
+                const [start, end] = timecode.split(' --> ').map(t => {
+                    const parts = t.split(/[:,]/).map(Number);
+                    return parts[0] * 3600 + parts[1] * 60 + parts[2] + parts[3] / 1000;
+                });
+                return {
+                    start: start,
+                    end: end,
+                    text: textLines.join('\n').trim()
+                };
+            });
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+        // 初始化播放器窗口
         const playerWindow = new MovableWindow(
             '音乐播放器',
-            `
-            <p>当前播放：<span id="currentSong">-</span></p>
+            `<p>当前播放：<span id="currentSong">-</span></p>
             <div class="playlist-container">
                 <ul id="playlist"></ul>
                 <div class="add-track-form">
@@ -371,15 +426,30 @@
                 <button id="prevBtn">◄◄</button>
                 <button id="playPauseBtn">▶</button>
                 <button id="nextBtn">►►</button>
-            </div>
-            `
+                <button id="toggleLyricsBtn">歌词</button>
+            </div>`
         );
 
-        const playlist = new C4Playlist();
-        ['p3.mp3', 'p6.mp3', 'p6c.mp3'].forEach(track => playlist.addTrack(track));
-        const player = new C4Player(playlist);
-        player.loadTrack();
+        // 初始化歌词窗口
+        const lyricsWindow = new MovableWindow(
+            '歌词',
+            `<div class="lyrics-container">
+                <div id="lyricsDisplay"></div>
+                <div style="margin-top: 10px;">
+                    <input type="file" id="srtFileInput" accept=".srt">
+                    <button id="loadDefaultSrt">加载默认歌词</button>
+                </div>
+            </div>`
+        );
+        lyricsWindow.hide();
 
+        // 初始化播放列表和播放器
+        const playlist = new C4Playlist();
+        const player = new C4Player(playlist);
+        let currentLyrics = [];
+        let currentLyricIndex = -1;
+
+        // 播放列表渲染
         function renderPlaylist() {
             const playlistElement = document.getElementById('playlist');
             playlistElement.innerHTML = '';
@@ -394,15 +464,65 @@
             });
         }
 
-        playlist.onUpdate(() => {
-            renderPlaylist();
-            document.getElementById('currentSong').textContent = player.getCurrentSongName();
+        // 歌词同步
+        function updateLyricsDisplay(time) {
+            const lyric = currentLyrics.find(l => time >= l.start && time < l.end);
+            const display = document.getElementById('lyricsDisplay');
+            
+            if (lyric) {
+                const index = currentLyrics.indexOf(lyric);
+                if (index !== currentLyricIndex) {
+                    display.innerHTML = currentLyrics.map((l, i) => `
+                        <div class="lyric-line ${i === index ? 'current-lyric' : ''}">${l.text}</div>
+                    `).join('');
+                    currentLyricIndex = index;
+                    
+                    // 自动滚动到当前歌词
+                    const currentLine = display.children[index];
+                    if (currentLine) {
+                        currentLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            } else {
+                display.innerHTML = '';
+                currentLyricIndex = -1;
+            }
+        }
+
+        // 事件绑定
+        player.audio.addEventListener('timeupdate', () => {
+            updateLyricsDisplay(player.audio.currentTime);
         });
 
-        const contentContainer = playerWindow.getContentContainer();
-        
-        // 事件绑定
         document.getElementById('openWindowBtn').addEventListener('click', () => playerWindow.show());
+        
+        document.getElementById('toggleLyricsBtn').addEventListener('click', () => {
+            lyricsWindow.modal.style.display === 'none' ? lyricsWindow.show() : lyricsWindow.hide();
+        });
+
+        document.getElementById('loadDefaultSrt').addEventListener('click', () => {
+            fetch('https://littleflute.github.io/Games/Spring/script/1.srt')
+                .then(r => r.text())
+                .then(text => {
+                    currentLyrics = SrtParser.parse(text);
+                    updateLyricsDisplay(0);
+                });
+        });
+
+        document.getElementById('srtFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    currentLyrics = SrtParser.parse(e.target.result);
+                    updateLyricsDisplay(0);
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // 原有播放器功能
+        const contentContainer = playerWindow.getContentContainer();
         
         contentContainer.querySelector('#playPauseBtn').addEventListener('click', () => {
             player.toggle();
@@ -412,7 +532,6 @@
         contentContainer.querySelector('#prevBtn').addEventListener('click', () => player.prev());
         contentContainer.querySelector('#nextBtn').addEventListener('click', () => player.next());
 
-        // 播放列表点击事件
         document.getElementById('playlist').addEventListener('click', (e) => {
             if (e.target.classList.contains('delete-track')) {
                 const index = parseInt(e.target.dataset.index);
@@ -430,7 +549,6 @@
             }
         });
 
-        // 添加URL
         document.getElementById('addTrackBtn').addEventListener('click', () => {
             const url = document.getElementById('newTrackUrl').value.trim();
             if (url) {
@@ -439,7 +557,6 @@
             }
         });
 
-        // 添加文件
         document.getElementById('fileInput').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
@@ -448,7 +565,9 @@
             }
         });
 
-        // 初始化渲染
+        // 初始化数据
+        ['p3.mp3', 'p6.mp3', 'p6c.mp3'].forEach(track => playlist.addTrack(track));
+        player.loadTrack();
         renderPlaylist();
     });
     </script>
