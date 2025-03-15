@@ -1,15 +1,17 @@
+ 
 // main.js
 const style = document.createElement('style');
 style.textContent = `
     #movableWindow {
         display: none;
         position: fixed;
-        width: 300px;
-        height: 200px;
+        width: 320px;
+        height: 220px;
         background: white;
         border: 1px solid #ccc;
         box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         z-index: 1000;
+        font-family: Arial, sans-serif;
     }
 
     .window-header {
@@ -20,6 +22,7 @@ style.textContent = `
         display: flex;
         justify-content: space-between;
         align-items: center;
+        user-select: none;
     }
 
     .close-btn {
@@ -28,6 +31,7 @@ style.textContent = `
         font-size: 1.2em;
         cursor: pointer;
         padding: 0 5px;
+        transition: color 0.2s;
     }
 
     .close-btn:hover {
@@ -36,92 +40,210 @@ style.textContent = `
 
     .window-content {
         padding: 15px;
+        height: calc(100% - 45px);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .player-controls {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-top: auto;
+    }
+
+    .player-controls button {
+        padding: 8px 16px;
+        cursor: pointer;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        transition: opacity 0.2s;
+    }
+
+    .player-controls button:hover {
+        opacity: 0.9;
+    }
+
+    #currentSong {
+        font-weight: bold;
+        color: #333;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 `;
 document.head.appendChild(style);
 
-document.addEventListener('DOMContentLoaded', function() {
+// 主程序
+document.addEventListener('DOMContentLoaded', () => {
+    // 创建窗口
     const modal = document.createElement('div');
     modal.id = 'movableWindow';
     modal.innerHTML = `
         <div class="window-header">
-            <span>可移动窗口</span>
+            <span>音乐播放器</span>
             <button class="close-btn">&times;</button>
         </div>
         <div class="window-content">
-            <p>这是一个可移动的窗口！</p>
-            <p>可以拖拽标题栏移动位置</p>
+            <p>当前播放：<span id="currentSong">-</span></p>
+            <div class="player-controls">
+                <button id="prevBtn">◄◄</button>
+                <button id="playPauseBtn">▶</button>
+                <button id="nextBtn">►►</button>
+            </div>
         </div>
     `;
-
     document.body.appendChild(modal);
+
+    // 播放器逻辑
+    const mp3s = ["p3.mp3", "p6.mp3", "p6c.mp3"];
     
+    class C4Player {
+        constructor() {
+            this.playlist = mp3s;
+            this.currentIndex = 0;
+            this.audio = new Audio();
+            this.isPlaying = false;
+            
+            this.audio.addEventListener('ended', () => this.next());
+            this.audio.addEventListener('timeupdate', this.updateProgress);
+        }
+
+        loadTrack() {
+            this.audio.src = this.playlist[this.currentIndex];
+            document.getElementById('currentSong').textContent = 
+                this.getCurrentSongName();
+        }
+
+        getCurrentSongName() {
+            return this.playlist[this.currentIndex].split('/').pop().replace(/\.[^/.]+$/, "");
+        }
+
+        play() {
+            return new Promise((resolve, reject) => {
+                this.audio.play()
+                    .then(() => {
+                        this.isPlaying = true;
+                        resolve();
+                    })
+                    .catch(error => reject(error));
+            });
+        }
+
+        pause() {
+            this.audio.pause();
+            this.isPlaying = false;
+        }
+
+        toggle() {
+            if (this.isPlaying) {
+                this.pause();
+            } else {
+                this.play();
+            }
+        }
+
+        next() {
+            this.currentIndex = (this.currentIndex + 1) % this.playlist.length;
+            this.loadTrack();
+            if (this.isPlaying) this.play();
+        }
+
+        prev() {
+            this.currentIndex = (this.currentIndex - 1 + this.playlist.length) % this.playlist.length;
+            this.loadTrack();
+            if (this.isPlaying) this.play();
+        }
+
+        updateProgress = () => {
+            // 可以在此处添加进度条更新逻辑
+        }
+    }
+
+    // 初始化播放器
+    const player = new C4Player();
+    player.loadTrack();
+
+    // 窗口控制
     const openBtn = document.getElementById('openWindowBtn');
     const closeBtn = modal.querySelector('.close-btn');
     const header = modal.querySelector('.window-header');
-    
-    let isDragging = false;
-    let currentX = 0;
-    let currentY = 0;
-    let initialX = 0;
-    let initialY = 0;
-    
+    const playPauseBtn = modal.querySelector('#playPauseBtn');
+
+    // 窗口显示/隐藏
     openBtn.addEventListener('click', () => {
         const isVisible = modal.style.display === 'block';
+        modal.style.display = isVisible ? 'none' : 'block';
         
-        if (!isVisible) {
-            modal.style.display = 'block';
-            if (!modal.dataset.positioned) {
-                modal.style.left = '50%';
-                modal.style.top = '50%';
-                modal.style.transform = 'translate(-50%, -50%)';
-                modal.dataset.positioned = true;
-            }
-        } else {
-            modal.style.display = 'none';
+        if (!modal.dataset.positioned) {
+            modal.style.left = '50%';
+            modal.style.top = '50%';
+            modal.style.transform = 'translate(-50%, -50%)';
+            modal.dataset.positioned = true;
         }
     });
 
     closeBtn.addEventListener('click', () => {
         modal.style.display = 'none';
+        player.pause();
     });
 
-    header.addEventListener('mousedown', startDragging);
-    document.addEventListener('mousemove', drag);
-    document.addEventListener('mouseup', stopDragging);
+    // 播放控制
+    playPauseBtn.addEventListener('click', () => {
+        player.toggle();
+        playPauseBtn.textContent = player.isPlaying ? '❚❚' : '▶';
+    });
 
-    function startDragging(e) {
+    modal.querySelector('#prevBtn').addEventListener('click', () => {
+        player.prev();
+        playPauseBtn.textContent = '❚❚';
+    });
+
+    modal.querySelector('#nextBtn').addEventListener('click', () => {
+        player.next();
+        playPauseBtn.textContent = '❚❚';
+    });
+
+    // 拖动功能
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let initialX = 0;
+    let initialY = 0;
+
+    header.addEventListener('mousedown', (e) => {
         isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
         const rect = modal.getBoundingClientRect();
-        initialX = e.clientX - rect.left;
-        initialY = e.clientY - rect.top;
-    }
+        initialX = rect.left;
+        initialY = rect.top;
+        
+        document.body.style.userSelect = 'none';
+    });
 
-    function drag(e) {
-        if (isDragging) {
-            e.preventDefault();
-            const maxX = window.innerWidth - modal.offsetWidth;
-            const maxY = window.innerHeight - modal.offsetHeight;
-            
-            currentX = e.clientX - initialX;
-            currentY = e.clientY - initialY;
-            
-            currentX = Math.min(Math.max(0, currentX), maxX);
-            currentY = Math.min(Math.max(0, currentY), maxY);
-            
-            modal.style.transform = 'none';
-            modal.style.left = `${currentX}px`;
-            modal.style.top = `${currentY}px`;
-        }
-    }
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+        
+        const newX = initialX + deltaX;
+        const newY = initialY + deltaY;
+        
+        const maxX = window.innerWidth - modal.offsetWidth;
+        const maxY = window.innerHeight - modal.offsetHeight;
+        
+        modal.style.transform = 'none';
+        modal.style.left = `${Math.min(Math.max(0, newX), maxX)}px`;
+        modal.style.top = `${Math.min(Math.max(0, newY), maxY)}px`;
+    });
 
-    function stopDragging() {
+    document.addEventListener('mouseup', () => {
         isDragging = false;
-    }
-});
-
-const mp3s = ["p3.mp3","p6.mp3","p6c.mp3"];
-class C4Player{
-}
-
-//实现 C4Player, 在 移动窗口中实现mp3播放器，播放列表初始为 mp3s
+        document.body.style.userSelect = '';
+    });
+}); 
