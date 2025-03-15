@@ -1,3 +1,4 @@
+// main.js
 const style = document.createElement('style');
 style.textContent = `
     #movableWindow {
@@ -65,17 +66,16 @@ document.addEventListener('DOMContentLoaded', function() {
     let initialX = 0;
     let initialY = 0;
     
-    // 切换窗口显示状态
     openBtn.addEventListener('click', () => {
         const isVisible = modal.style.display === 'block';
         
         if (!isVisible) {
             modal.style.display = 'block';
-            // 仅当窗口未移动过时居中
-            if (modal.style.transform !== 'none') {
+            if (!modal.dataset.positioned) {
                 modal.style.left = '50%';
                 modal.style.top = '50%';
                 modal.style.transform = 'translate(-50%, -50%)';
+                modal.dataset.positioned = true;
             }
         } else {
             modal.style.display = 'none';
@@ -92,18 +92,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function startDragging(e) {
         isDragging = true;
-        initialX = e.clientX - currentX;
-        initialY = e.clientY - currentY;
+        const rect = modal.getBoundingClientRect();
+        initialX = e.clientX - rect.left;
+        initialY = e.clientY - rect.top;
     }
 
     function drag(e) {
         if (isDragging) {
             e.preventDefault();
-            currentX = e.clientX - initialX;
-            currentY = e.clientY - initialY;
-            
             const maxX = window.innerWidth - modal.offsetWidth;
             const maxY = window.innerHeight - modal.offsetHeight;
+            
+            currentX = e.clientX - initialX;
+            currentY = e.clientY - initialY;
             
             currentX = Math.min(Math.max(0, currentX), maxX);
             currentY = Math.min(Math.max(0, currentY), maxY);
@@ -118,3 +119,9 @@ document.addEventListener('DOMContentLoaded', function() {
         isDragging = false;
     }
 });
+
+const mp3s = ["p3.mp3","p6.mp3","p6c.mp3"];
+class C4Player{
+}
+
+//实现 C4Player, 在 移动窗口中实现mp3播放器，播放列表初始为 mp3s
