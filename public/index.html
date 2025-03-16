@@ -410,7 +410,6 @@
             this.audio.addEventListener('ended', () => this.next());
             this.audio.addEventListener('timeupdate', () => this.updateLyrics());
         }
-
         loadTrack() {
             const track = this.playlist.getCurrentTrack();
             if (track) {
@@ -423,8 +422,10 @@
         }
 
         play() {
-            return this.audio.play().then(() => {
-                this.isPlaying = true;
+            this.isPlaying = true;  // 立即更新状态
+            return this.audio.play().catch((error) => {
+                this.isPlaying = false; // 播放失败时回滚状态
+                console.error('播放失败:', error);
             });
         }
 
