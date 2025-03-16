@@ -293,14 +293,19 @@
         }
 
         centerPosition() {
-            // 改用像素值定位，移除transform
-            const left = (window.innerWidth - this.modal.offsetWidth) / 2;
-            const top = (window.innerHeight - this.modal.offsetHeight) / 2;
-            this.modal.style.left = `${left}px`;
-            this.modal.style.top = `${top}px`;
+            // 设置距左上角的固定偏移量
+            const leftMargin = 20;
+            const topMargin = 20;
+            
+            // 计算最大允许位置
+            const maxLeft = window.innerWidth - this.modal.offsetWidth;
+            const maxTop = window.innerHeight - this.modal.offsetHeight;
+            
+            // 应用偏移并确保不超出边界
+            this.modal.style.left = `${Math.min(leftMargin, maxLeft)}px`;
+            this.modal.style.top = `${Math.min(topMargin, maxTop)}px`;
             this.modal.style.transform = 'none';
         }
-
         getContentContainer() {
             return this.modal.querySelector('.window-content');
         }
@@ -423,6 +428,7 @@
 
     class C4Player {
         constructor(playlist) {
+            this.scrollTimeout = null;
             this.playlist = playlist;
             this.audio = new Audio();
             this.isPlaying = false;
@@ -460,7 +466,7 @@
                 this.audio.src = track.src;
                 document.getElementById('currentSong').textContent = track.name;
                 
-                // 新增：自动加载歌词
+                // 自动加载歌词
                 if (track.srt) {
                     fetch(track.srt)
                         .then(response => {
@@ -473,6 +479,7 @@
                                 `<div class="lyric-line" data-start="${l.start}" data-end="${l.end}">${l.text}</div>`
                             ).join('');
                             document.getElementById('lyricsDisplay').innerHTML = lyricsHTML;
+                            this.updateLyrics(); // 新增：触发歌词更新
                         })
                         .catch(error => {
                             console.error('歌词加载失败:', error);
@@ -487,10 +494,10 @@
                 document.getElementById('lyricsDisplay').innerHTML = '';
             }
             
-            // 切换歌曲时重置滚动状态
             this.userScrolled = false;
+            clearTimeout(this.scrollTimeout);
             const container = document.querySelector('.lyrics-container');
-            container.scrollTo(0, 0);
+            container.scrollTo(0, 0); 
         }
 
         play() {
@@ -542,39 +549,32 @@
             if (activeIndex > -1 && !this.userScrolled) {
                 const lyricElement = lyrics[activeIndex];
                 const container = document.querySelector('.lyrics-container');
+                const currentScrollTop = container.scrollTop;
+                const elementTop = lyricElement.offsetTop;
+                const elementHeight = lyricElement.offsetHeight;
+                const containerHeight = container.offsetHeight;
                 
-                // 仅当歌词超过5行时执行滚动逻辑
-                if (lyrics.length > 5) {
-                    // 自动居中滚动
-                    const elementTop = lyricElement.offsetTop;
-                    const elementHeight = lyricElement.offsetHeight;
-                    const containerHeight = container.offsetHeight;
-                    
+                // 计算相对位置和阈值
+                const lineHeight = elementHeight;
+                const threshold = 5 * lineHeight;
+                const relativeTop = elementTop - currentScrollTop;
+
+                // 仅在超出阈值范围时滚动
+                if (relativeTop > threshold || relativeTop < 0) {
+                    const targetPosition = elementTop - (containerHeight - elementHeight)/2;
                     container.scrollTo({
-                        top: elementTop - (containerHeight/2) + (elementHeight/2),
+                        top: targetPosition,
                         behavior: 'smooth'
                     });
-
-                    // 保持当前歌词可见（但不强制居中）
-                    const containerTop = container.scrollTop;
-                    const containerBottom = containerTop + container.offsetHeight;
-                    const elementBottom = lyricElement.offsetTop + lyricElement.offsetHeight;
-                    
-                    if (lyricElement.offsetTop < containerTop) {
-                        container.scrollTo({
-                            top: lyricElement.offsetTop,
-                            behavior: 'smooth'
-                        });
-                    } else if (elementBottom > containerBottom) {
-                        container.scrollTo({
-                            top: elementBottom - container.offsetHeight,
-                            behavior: 'smooth'
-                        });
-                    }
                 }
+
+                clearTimeout(this.scrollTimeout);
+                this.scrollTimeout = setTimeout(() => {
+                    this.userScrolled = false;
+                }, 3000);
             }
         }
-
+        //end
     }
 
     class SrtParser {
@@ -670,15 +670,16 @@
             fetch(srtUrl)
                 .then(response => response.text())
                 .then(text => {
-                    currentLyrics = SrtParser.parse(text);
-                    document.getElementById('lyricsDisplay').innerHTML = currentLyrics
+                    const lyrics = SrtParser.parse(text);
+                    document.getElementById('lyricsDisplay').innerHTML = lyrics
                         .map(l => `<div class="lyric-line" data-start="${l.start}" data-end="${l.end}">${l.text}</div>`)
                         .join('');
-                    // 新增：加载后滚动到顶部
+                    player.updateLyrics(); // 新增：触发歌词更新
                     const container = document.querySelector('.lyrics-container');
                     container.scrollTo(0, 0);
                 });
         });
+
         document.getElementById('openWindowBtn').addEventListener('click', () => playerWindow.show());
         document.getElementById('toggleLyricsBtn').addEventListener('click', () => lyricsWindow.show());
 
@@ -767,5 +768,5 @@
 </body>
 </html>
 <!--
-修正：歌词一开始播放就滚动，不应该这样
+修正： 切换歌曲后，歌词不再滚动
 -->
