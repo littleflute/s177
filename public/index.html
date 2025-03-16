@@ -226,23 +226,21 @@
 
         handleStart(e) {
             this.isDragging = true;
-            this.startX = e.clientX;
-            this.startY = e.clientY;
             const rect = this.modal.getBoundingClientRect();
-            this.initialX = rect.left;
-            this.initialY = rect.top;
+            // 计算鼠标点击位置相对于窗口左上角的偏移
+            this.offsetX = e.clientX - rect.left;
+            this.offsetY = e.clientY - rect.top;
             this.modal.style.transition = 'none';
         }
 
         handleMove(e) {
             if (!this.isDragging) return;
             
-            const deltaX = e.clientX - this.startX;
-            const deltaY = e.clientY - this.startY;
+            // 根据偏移量计算新位置
+            const newX = e.clientX - this.offsetX;
+            const newY = e.clientY - this.offsetY;
             
-            const newX = this.initialX + deltaX;
-            const newY = this.initialY + deltaY;
-            
+            // 边界限制
             const maxX = window.innerWidth - this.modal.offsetWidth;
             const maxY = window.innerHeight - this.modal.offsetHeight;
             
@@ -268,9 +266,12 @@
         }
 
         centerPosition() {
-            this.modal.style.left = '50%';
-            this.modal.style.top = '50%';
-            this.modal.style.transform = 'translate(-50%, -50%)';
+            // 改用像素值定位，移除transform
+            const left = (window.innerWidth - this.modal.offsetWidth) / 2;
+            const top = (window.innerHeight - this.modal.offsetHeight) / 2;
+            this.modal.style.left = `${left}px`;
+            this.modal.style.top = `${top}px`;
+            this.modal.style.transform = 'none';
         }
 
         getContentContainer() {
@@ -521,7 +522,7 @@
                     <label for="fileInput" class="file-upload-btn">添加本地音乐</label>
                 </div>
             </div>
-            <button id="toggleLyricsBtn">显示歌词</button>
+            <button id="toggleLyricsBtn">showLyrics</button>
         `);
 
         // 创建歌词窗口
