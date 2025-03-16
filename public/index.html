@@ -38,6 +38,27 @@
             const style = document.createElement('style');
             style.id = 'movable-window-styles';
             style.textContent = ` 
+            .lyrics-toolbar {
+                padding: 12px;
+                background: #f8f9fa;
+                border-bottom: 1px solid #dee2e6;
+                display: flex;
+                gap: 10px;
+            }
+
+            .toolbar-btn {
+                padding: 8px 16px;
+                background: #17a2b8;
+                color: white;
+                border: none;
+                border-radius: 20px;
+                font-size: 0.9rem;
+                touch-action: manipulation;
+                transition: transform 0.1s;
+            }
+            .toolbar-btn:active {
+                transform: scale(0.95);
+            }
                 #toggleLyricsBtn {
                     background: #17a2b8;
                     width: auto;
@@ -534,11 +555,14 @@
 
         // 创建歌词窗口
         const lyricsWindow = new MovableWindow('歌词', `
+            <div class="lyrics-toolbar">
+                <button id="loadPresetLyricBtn" class="toolbar-btn">预置歌词</button>
+            </div>
             <div class="lyrics-container">
                 <div id="lyricsDisplay"></div>
                 <div class="file-upload-wrapper" style="margin-top:20px">
                     <input type="file" id="srtFileInput" accept=".srt" hidden>
-                    <label for="srtFileInput" class="file-upload-btn">加载歌词文件</label>
+                    <label for="srtFileInput" class="file-upload-btn">加载本地歌词</label>
                 </div>
             </div>
         `);
@@ -560,7 +584,22 @@
             `).join('');
         }
 
-        // 事件绑定
+        document.getElementById('loadPresetLyricBtn').addEventListener('click', () => {
+            const srtUrl = 'https://littleflute.github.io/s177/public/p.srt';
+            
+            fetch(srtUrl)
+                .then(response => response.text())
+                .then(text => {
+                    currentLyrics = SrtParser.parse(text);
+                    document.getElementById('lyricsDisplay').innerHTML = currentLyrics
+                        .map(l => `<div class="lyric-line" data-start="${l.start}" data-end="${l.end}">${l.text}</div>`)
+                        .join('');
+                })
+                .catch(error => {
+                    console.error('歌词加载失败:', error);
+                    alert('预置歌词加载失败，请检查网络连接');
+                });
+        });
         document.getElementById('openWindowBtn').addEventListener('click', () => playerWindow.show());
         document.getElementById('toggleLyricsBtn').addEventListener('click', () => lyricsWindow.show());
 
