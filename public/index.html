@@ -479,22 +479,41 @@
 
     class SrtParser {
         static parse(srtText) {
-            const blocks = srtText.split('\n\n');
+            // 统一换行符并分割块
+            const blocks = srtText
+                .replace(/\r\n/g, '\n')  // 将CRLF转换为LF
+                .replace(/\r/g, '\n')    // 处理旧的Mac换行符
+                .split(/\n\s*\n/);       // 更灵活的空行分割
+
             return blocks.filter(b => b.trim()).map(block => {
-                const [index, timecode, ...textLines] = block.split('\n');
+                // 分割块内容并去除空白
+                const lines = block.split(/\n/).map(line => line.trim()).filter(line => line);
+                
+                if (lines.length < 2) return null; // 无效块
+                
+                const index = parseInt(lines[0]);
+                if (isNaN(index)) return null; // 无效索引
+
+                const timecode = lines[1];
+                const text = lines.slice(2).join('\n');
+
+                // 解析时间码（支持逗号和句点作为毫秒分隔符）
                 const [start, end] = timecode.split(' --> ').map(t => {
-                    const parts = t.split(/[:,]/).map(Number);
-                    return parts[0] * 3600 + parts[1] * 60 + parts[2] + parts[3] / 1000;
+                    // 分割各部分时间
+                    const timeParts = t.trim().split(/[:]/);
+                    const h = parseInt(timeParts[0]) || 0;
+                    const m = parseInt(timeParts[1]) || 0;
+                    const sParts = (timeParts[2] || "0").split(/[,.]/);
+                    const s = parseInt(sParts[0]) || 0;
+                    const ms = parseInt(sParts[1]) || 0;
+                    
+                    return h * 3600 + m * 60 + s + ms / 1000;
                 });
-                return {
-                    start: start,
-                    end: end,
-                    text: textLines.join('\n').trim()
-                };
-            });
+
+                return { start, end, text };
+            }).filter(Boolean); // 过滤无效块
         }
     }
-
     document.addEventListener('DOMContentLoaded', () => {
         // 初始化播放器窗口
         const playerWindow = new MovableWindow(
@@ -596,7 +615,7 @@
         });
 
         document.getElementById('loadDefaultSrt').addEventListener('click', () => {
-            fetch('p.srt')
+            fetch('https://littleflute.github.io/s177/public/p.srt')
                 .then(r => r.text())
                 .then(text => {
                     currentLyrics = SrtParser.parse(text);
