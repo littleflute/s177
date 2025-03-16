@@ -430,7 +430,25 @@
             
             this.audio.addEventListener('ended', () => this.next());
             this.audio.addEventListener('timeupdate', () => this.updateLyrics());
+            this.bindLyricEvents();
         }
+        bindLyricEvents() {
+            const lyricsContainer = document.getElementById('lyricsDisplay');
+            lyricsContainer.addEventListener('click', (e) => {
+                const lyricLine = e.target.closest('.lyric-line');
+                if (lyricLine && this.audio) {
+                    const startTime = parseFloat(lyricLine.dataset.start);
+                    this.audio.currentTime = startTime;
+                    
+                    // 如果当前是暂停状态则自动播放
+                    if (!this.isPlaying) {
+                        this.play();
+                        document.getElementById('playPauseBtn').textContent = '❚❚';
+                    }
+                }
+            });
+        }
+        
         loadTrack() {
             const track = this.playlist.getCurrentTrack();
             if (track) {
@@ -512,9 +530,15 @@
             });
 
             if (activeIndex > -1) {
-                lyrics[activeIndex].scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center'
+                const lyricElement = lyrics[activeIndex];
+                const container = document.querySelector('.lyrics-container');
+                const elementTop = lyricElement.offsetTop;
+                const elementHeight = lyricElement.offsetHeight;
+                const containerHeight = container.offsetHeight;
+                
+                container.scrollTo({
+                    top: elementTop - (containerHeight/2) + (elementHeight/2),
+                    behavior: 'smooth'
                 });
             }
         }
@@ -684,6 +708,9 @@
             }
         });
 
+        // 在初始化代码中添加歌词容器样式优化（阻止长按菜单）
+        document.getElementById('lyricsDisplay').style.webkitTouchCallout = 'none';
+        document.getElementById('lyricsDisplay').style.userSelect = 'none';
         // 初始化示例音乐
         playlist.addTrack({ name: "程序员之歌v0.3", src: "https://littleflute.github.io/s177/public/p3.mp3",srt:"p.srt" });
         playlist.addTrack({ name: "程序员之歌v0.6", src: "https://littleflute.github.io/s177/public/p6.mp3",srt:"p.srt" });
