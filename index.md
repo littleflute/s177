@@ -1,5 +1,7 @@
  
+v0.11
 <button id="openWindowBtn" style="padding: 10px 20px; margin: 20px 0;">打开可移动窗口</button>
+[public](public)
 
 ## 2025.3.15 test
 <script src="js/main.js"></script>
