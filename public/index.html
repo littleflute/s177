@@ -60,13 +60,23 @@
                 transform: scale(0.95);
             }
                 #toggleLyricsBtn {
-                    background: #17a2b8;
-                    width: auto;
-                    padding: 0 20px;
-                    border-radius: 30px;
-                    font-size: 1rem;
+    background: #007bff;  /* 默认蓝色 */
+    width: auto;
+    padding: 0 20px;
+    border-radius: 30px;
+    font-size: 1rem;
+    transition: background 0.2s, transform 0.1s;  /* 增加transform过渡 */
+}
+
+                #toggleLyricsBtn:active {
+                    background: #0056b3;  /* 更深的品牌蓝色 */
+                    transform: scale(0.95); 
                 }
 
+                #toggleLyricsBtn.active {
+                    background: #6610f2;  /* 激活状态紫色 */
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);  /* 增加层次感 */
+                }
                 .movable-window {
                     display: none;
                     position: fixed;
@@ -680,14 +690,14 @@
                 });
         });
 
-        document.getElementById('openWindowBtn').addEventListener('click', () => playerWindow.show());
-        document.getElementById('toggleLyricsBtn').addEventListener('click', () => lyricsWindow.show());
+        document.getElementById('openWindowBtn').addEventListener('click', () => playerWindow.show());  
 
         // 播放控制
         playerWindow.getContentContainer().addEventListener('click', (e) => {
             const target = e.target;
-            if (target.id === 'toggleLyricsBtn') {
-                lyricsWindow.show();
+            if (target.closest('#toggleLyricsBtn')) {
+                lyricsWindow.modal.style.display === 'block' ? lyricsWindow.hide() : lyricsWindow.show();
+                document.getElementById('toggleLyricsBtn').classList.toggle('active');
                 return;
             }
             if (target.id === 'playPauseBtn') {
@@ -768,5 +778,6 @@
 </body>
 </html>
 <!--
-修正： 切换歌曲后，歌词不再滚动
+修正： let toggleLyricsBtn  toggle color
+
 -->
