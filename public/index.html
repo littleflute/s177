@@ -436,9 +436,32 @@
             if (track) {
                 this.audio.src = track.src;
                 document.getElementById('currentSong').textContent = track.name;
+                
+                // 新增：自动加载歌词
+                if (track.srt) {
+                    fetch(track.srt)
+                        .then(response => {
+                            if (!response.ok) throw new Error('歌词加载失败');
+                            return response.text();
+                        })
+                        .then(text => {
+                            const lyrics = SrtParser.parse(text);
+                            const lyricsHTML = lyrics.map(l => 
+                                `<div class="lyric-line" data-start="${l.start}" data-end="${l.end}">${l.text}</div>`
+                            ).join('');
+                            document.getElementById('lyricsDisplay').innerHTML = lyricsHTML;
+                        })
+                        .catch(error => {
+                            console.error('歌词加载失败:', error);
+                            document.getElementById('lyricsDisplay').innerHTML = '歌词加载失败';
+                        });
+                } else {
+                    document.getElementById('lyricsDisplay').innerHTML = '';
+                }
             } else {
                 this.audio.src = '';
                 document.getElementById('currentSong').textContent = '-- 没有正在播放的歌曲 --';
+                document.getElementById('lyricsDisplay').innerHTML = '';
             }
         }
 
@@ -662,8 +685,10 @@
         });
 
         // 初始化示例音乐
-        playlist.addTrack({ name: "示例音乐1", src: "https://littleflute.github.io/s177/public/p3.mp3" });
-        playlist.addTrack({ name: "示例音乐2", src: "https://littleflute.github.io/s177/public/p6.mp3" });
+        playlist.addTrack({ name: "程序员之歌v0.3", src: "https://littleflute.github.io/s177/public/p3.mp3" });
+        playlist.addTrack({ name: "程序员之歌v0.6", src: "https://littleflute.github.io/s177/public/p6.mp3" });
+        playlist.addTrack({ name: "程序员之歌伴奏1", src: "https://littleflute.github.io/s177/public/p6c.mp3" });
+        playlist.addTrack({ name: "程序员之歌伴奏2", src: "pc2.mp3" ,srt:"p.srt"});
         playlist.onUpdate(renderPlaylist);
         player.loadTrack();
         renderPlaylist();
