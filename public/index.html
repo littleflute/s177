@@ -502,7 +502,7 @@
         });
 
         document.getElementById('loadDefaultSrt').addEventListener('click', () => {
-            fetch('https://littleflute.github.io/Games/Spring/script/1.srt')
+            fetch('p.srt')
                 .then(r => r.text())
                 .then(text => {
                     currentLyrics = SrtParser.parse(text);
