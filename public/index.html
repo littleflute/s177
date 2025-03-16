@@ -37,7 +37,15 @@
             
             const style = document.createElement('style');
             style.id = 'movable-window-styles';
-            style.textContent = `
+            style.textContent = ` 
+                #toggleLyricsBtn {
+                    background: #17a2b8;
+                    width: auto;
+                    padding: 0 20px;
+                    border-radius: 30px;
+                    font-size: 1rem;
+                }
+
                 .movable-window {
                     display: none;
                     position: fixed;
@@ -97,10 +105,8 @@
 
                 /* 播放控制 */
                 .player-controls {
-                    display: flex;
-                    justify-content: center;
-                    gap: 15px;
-                    margin: 20px 0;
+                    gap: 10px;
+                    margin: 15px 0;
                 }
 
                 .player-controls button {
@@ -121,9 +127,9 @@
 
                 /* 播放列表 */
                 .playlist-container {
-                    max-height: 30vh;
+                    flex-grow: 1;
+                    max-height: 40vh;
                     overflow-y: auto;
-                    -webkit-overflow-scrolling: touch;
                 }
 
                 #playlist {
@@ -502,28 +508,28 @@
     document.addEventListener('DOMContentLoaded', () => {
         // 创建播放器窗口
         const playerWindow = new MovableWindow('音乐播放器', `
-            <div id="currentSong">-- 没有正在播放的歌曲 --</div>
-            <div class="progress-container">
-                <div class="progress-bar"></div>
+        <div id="currentSong">-- 没有正在播放的歌曲 --</div>
+        <div class="progress-container">
+            <div class="progress-bar"></div>
+        </div>
+        <div class="time-display">
+            <span id="currentTime">00:00</span> / 
+            <span id="duration">00:00</span>
+        </div>
+        <div class="player-controls">
+            <button id="prevBtn">◀◀</button>
+            <button id="playPauseBtn">▶</button>
+            <button id="nextBtn">▶▶</button>
+            <button id="toggleLyricsBtn">🎵 歌词</button>
+        </div>
+        <div class="playlist-container">
+            <ul id="playlist"></ul>
+            <div class="file-upload-wrapper">
+                <input type="file" id="fileInput" accept="audio/*" hidden>
+                <label for="fileInput" class="file-upload-btn">添加本地音乐</label>
             </div>
-            <div class="time-display">
-                <span id="currentTime">00:00</span> / 
-                <span id="duration">00:00</span>
-            </div>
-            <div class="player-controls">
-                <button id="prevBtn">◀◀</button>
-                <button id="playPauseBtn">▶</button>
-                <button id="nextBtn">▶▶</button>
-            </div>
-            <div class="playlist-container">
-                <ul id="playlist"></ul>
-                <div class="file-upload-wrapper">
-                    <input type="file" id="fileInput" accept="audio/*" hidden>
-                    <label for="fileInput" class="file-upload-btn">添加本地音乐</label>
-                </div>
-            </div>
-            <button id="toggleLyricsBtn">showLyrics</button>
-        `);
+        </div>
+    `);
 
         // 创建歌词窗口
         const lyricsWindow = new MovableWindow('歌词', `
@@ -560,6 +566,10 @@
         // 播放控制
         playerWindow.getContentContainer().addEventListener('click', (e) => {
             const target = e.target;
+            if (target.id === 'toggleLyricsBtn') {
+                lyricsWindow.show();
+                return;
+            }
             if (target.id === 'playPauseBtn') {
                 player.toggle();
                 target.textContent = player.isPlaying ? '❚❚' : '▶';
