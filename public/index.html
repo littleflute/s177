@@ -80,6 +80,31 @@
                     overflow-y: auto;
                 }
 
+                /* 新增进度条样式 */
+                .progress-container {
+                    height: 5px;
+                    background: #ddd;
+                    border-radius: 3px;
+                    margin: 10px 0;
+                    cursor: pointer;
+                    position: relative;
+                }
+
+                .progress-bar {
+                    height: 100%;
+                    background: #007bff;
+                    border-radius: 3px;
+                    width: 0%;
+                    transition: width 0.1s linear;
+                }
+
+                .time-display {
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 0.8em;
+                    color: #666;
+                }
+
                 /* 播放器样式 */
                 .playlist-container {
                     max-height: 120px;
@@ -337,11 +362,73 @@
         }
     }
 
+    class C4ProgressBar {
+        constructor(containerSelector, audioElement) {
+            this.container = document.querySelector(containerSelector);
+            this.progressBar = this.container.querySelector('.progress-bar');
+            this.audio = audioElement;
+            this.isSeeking = false;
+            
+            this.init();
+        }
+
+        init() {
+            this.container.addEventListener('mousedown', this.startSeeking.bind(this));
+            document.addEventListener('mousemove', this.handleSeeking.bind(this));
+            document.addEventListener('mouseup', this.stopSeeking.bind(this));
+            
+            this.audio.addEventListener('timeupdate', this.updateProgress.bind(this));
+            this.audio.addEventListener('loadedmetadata', this.updateDuration.bind(this));
+        }
+
+        startSeeking(e) {
+            this.isSeeking = true;
+            this.seek(e);
+        }
+
+        handleSeeking(e) {
+            if (this.isSeeking) {
+                this.seek(e);
+            }
+        }
+
+        stopSeeking() {
+            this.isSeeking = false;
+        }
+
+        seek(e) {
+            const rect = this.container.getBoundingClientRect();
+            const position = (e.clientX - rect.left) / rect.width;
+            const time = position * this.audio.duration;
+            this.audio.currentTime = time;
+        }
+
+        updateProgress() {
+            if (this.isSeeking) return;
+            const progress = (this.audio.currentTime / this.audio.duration) * 100;
+            this.progressBar.style.width = `${progress}%`;
+            document.getElementById('currentTime').textContent = this.formatTime(this.audio.currentTime);
+        }
+
+        updateDuration() {
+            document.getElementById('duration').textContent = this.formatTime(this.audio.duration);
+        }
+
+        formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+    }
+
     class C4Player {
         constructor(playlist) {
             this.playlist = playlist;
             this.audio = new Audio();
             this.isPlaying = false;
+            
+            // 初始化进度条
+            this.progressBar = new C4ProgressBar('.progress-container', this.audio);
             
             this.audio.addEventListener('ended', () => this.next());
         }
@@ -413,6 +500,13 @@
         const playerWindow = new MovableWindow(
             '音乐播放器',
             `<p>当前播放：<span id="currentSong">-</span></p>
+            <div class="progress-container">
+                <div class="progress-bar"></div>
+            </div>
+            <div class="time-display">
+                <span id="currentTime">00:00</span>
+                <span id="duration">00:00</span>
+            </div>
             <div class="playlist-container">
                 <ul id="playlist"></ul>
                 <div class="add-track-form">
@@ -448,8 +542,7 @@
         const player = new C4Player(playlist);
         let currentLyrics = [];
         let currentLyricIndex = -1;
-        // 新增：注册播放列表更新回调
-        playlist.onUpdate(renderPlaylist);  // 添加这行
+        playlist.onUpdate(renderPlaylist);
 
         // 播放列表渲染
         function renderPlaylist() {
@@ -465,6 +558,7 @@
                 playlistElement.appendChild(li);
             });
         }
+
         // 歌词同步
         function updateLyricsDisplay(time) {
             const lyric = currentLyrics.find(l => time >= l.start && time < l.end);
@@ -522,7 +616,7 @@
             }
         });
 
-        // 原有播放器功能
+        // 播放器功能
         const contentContainer = playerWindow.getContentContainer();
         
         contentContainer.querySelector('#playPauseBtn').addEventListener('click', () => {
@@ -537,7 +631,7 @@
             if (e.target.classList.contains('delete-track')) {
                 const index = parseInt(e.target.dataset.index);
                 playlist.removeTrack(index);
-                e.stopPropagation(); // 新增：阻止事件冒泡
+                e.stopPropagation();
                 return;
             }
             
