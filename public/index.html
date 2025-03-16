@@ -431,6 +431,11 @@
             this.audio.addEventListener('ended', () => this.next());
             this.audio.addEventListener('timeupdate', () => this.updateLyrics());
             this.bindLyricEvents();
+            this.userScrolled = false;
+            // 监听歌词容器滚动事件
+            document.querySelector('.lyrics-container').addEventListener('scroll', () => {
+                this.userScrolled = true;
+            });
         }
         bindLyricEvents() {
             const lyricsContainer = document.getElementById('lyricsDisplay');
@@ -481,6 +486,11 @@
                 document.getElementById('currentSong').textContent = '-- 没有正在播放的歌曲 --';
                 document.getElementById('lyricsDisplay').innerHTML = '';
             }
+            
+            // 切换歌曲时重置滚动状态
+            this.userScrolled = false;
+            const container = document.querySelector('.lyrics-container');
+            container.scrollTo(0, 0);
         }
 
         play() {
@@ -529,19 +539,42 @@
                 }
             });
 
-            if (activeIndex > -1) {
+            if (activeIndex > -1 && !this.userScrolled) {
                 const lyricElement = lyrics[activeIndex];
                 const container = document.querySelector('.lyrics-container');
-                const elementTop = lyricElement.offsetTop;
-                const elementHeight = lyricElement.offsetHeight;
-                const containerHeight = container.offsetHeight;
                 
-                container.scrollTo({
-                    top: elementTop - (containerHeight/2) + (elementHeight/2),
-                    behavior: 'smooth'
-                });
+                // 仅当歌词超过5行时执行滚动逻辑
+                if (lyrics.length > 5) {
+                    // 自动居中滚动
+                    const elementTop = lyricElement.offsetTop;
+                    const elementHeight = lyricElement.offsetHeight;
+                    const containerHeight = container.offsetHeight;
+                    
+                    container.scrollTo({
+                        top: elementTop - (containerHeight/2) + (elementHeight/2),
+                        behavior: 'smooth'
+                    });
+
+                    // 保持当前歌词可见（但不强制居中）
+                    const containerTop = container.scrollTop;
+                    const containerBottom = containerTop + container.offsetHeight;
+                    const elementBottom = lyricElement.offsetTop + lyricElement.offsetHeight;
+                    
+                    if (lyricElement.offsetTop < containerTop) {
+                        container.scrollTo({
+                            top: lyricElement.offsetTop,
+                            behavior: 'smooth'
+                        });
+                    } else if (elementBottom > containerBottom) {
+                        container.scrollTo({
+                            top: elementBottom - container.offsetHeight,
+                            behavior: 'smooth'
+                        });
+                    }
+                }
             }
         }
+
     }
 
     class SrtParser {
@@ -641,10 +674,9 @@
                     document.getElementById('lyricsDisplay').innerHTML = currentLyrics
                         .map(l => `<div class="lyric-line" data-start="${l.start}" data-end="${l.end}">${l.text}</div>`)
                         .join('');
-                })
-                .catch(error => {
-                    console.error('歌词加载失败:', error);
-                    alert('预置歌词加载失败，请检查网络连接');
+                    // 新增：加载后滚动到顶部
+                    const container = document.querySelector('.lyrics-container');
+                    container.scrollTo(0, 0);
                 });
         });
         document.getElementById('openWindowBtn').addEventListener('click', () => playerWindow.show());
@@ -703,6 +735,9 @@
                     document.getElementById('lyricsDisplay').innerHTML = currentLyrics
                         .map(l => `<div class="lyric-line" data-start="${l.start}" data-end="${l.end}">${l.text}</div>`)
                         .join('');
+                    // 新增：上传后滚动到顶部
+                    const container = document.querySelector('.lyrics-container');
+                    container.scrollTo(0, 0);
                 };
                 reader.readAsText(file);
             }
@@ -731,3 +766,6 @@
     </script>
 </body>
 </html>
+<!--
+修正：歌词一开始播放就滚动，不应该这样
+-->
