@@ -423,30 +423,26 @@
 
     class C4Player {
         constructor(playlist) {
-            this.playlist = playlist;
-            this.audio = new Audio();
-            this.isPlaying = false;
-            
-            // 初始化进度条
-            this.progressBar = new C4ProgressBar('.progress-container', this.audio);
-            
-            this.audio.addEventListener('ended', () => this.next());
+                this.playlist = playlist;
+                this.audio = new Audio();
+                this.isPlaying = false;
+                
+                this.progressBar = new C4ProgressBar('.progress-container', this.audio);
+                this.audio.addEventListener('ended', () => this.next());
         }
-
         loadTrack() {
-            const track = this.playlist.getCurrentTrack();
-            if (track) {
-                this.audio.src = track;
-                document.getElementById('currentSong').textContent = this.getCurrentSongName();
-            } else {
-                this.audio.src = '';
-                document.getElementById('currentSong').textContent = '-';
-            }
+                const track = this.playlist.getCurrentTrack();
+                if (track) {
+                    this.audio.src = track.src;
+                    document.getElementById('currentSong').textContent = this.getCurrentSongName();
+                } else {
+                    this.audio.src = '';
+                    document.getElementById('currentSong').textContent = '-';
+                }
         }
-
         getCurrentSongName() {
-            const track = this.playlist.getCurrentTrack();
-            return track ? track.split('/').pop().replace(/\.[^/.]+$/, "") : '-';
+                const track = this.playlist.getCurrentTrack();
+                return track ? track.name : '-';
         }
 
         play() {
@@ -571,13 +567,12 @@
                 const li = document.createElement('li');
                 li.className = index === playlist.currentIndex ? 'current-track' : '';
                 li.innerHTML = `
-                    <span>${track.split('/').pop().replace(/\.[^/.]+$/, "")}</span>
+                    <span>${track.name}</span>
                     <button class="delete-track" data-index="${index}">×</button>
                 `;
                 playlistElement.appendChild(li);
             });
         }
-
         // 歌词同步
         function updateLyricsDisplay(time) {
             const lyric = currentLyrics.find(l => time >= l.start && time < l.end);
@@ -666,23 +661,34 @@
         document.getElementById('addTrackBtn').addEventListener('click', () => {
             const url = document.getElementById('newTrackUrl').value.trim();
             if (url) {
-                playlist.addTrack(url);
+                const name = url.split('/').pop().replace(/\.[^/.]+$/, "");
+                playlist.addTrack({ name, src: url });
                 document.getElementById('newTrackUrl').value = '';
             }
         });
 
+
         document.getElementById('fileInput').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
-                playlist.addTrack(URL.createObjectURL(file));
+                const name = file.name.replace(/\.[^/.]+$/, "");
+                playlist.addTrack({ 
+                    name,
+                    src: URL.createObjectURL(file)
+                });
                 e.target.value = '';
             }
         });
 
         // 初始化数据
-        ['p3.mp3', 'p6.mp3', 'p6c.mp3'].forEach(track => playlist.addTrack(track));
+        ['p3.mp3', 'p6.mp3', 'p6c.mp3'].forEach(src => {
+            const name = src.split('/').pop().replace(/\.[^/.]+$/, "");
+            playlist.addTrack({ name, src });
+        });
         player.loadTrack();
         renderPlaylist();
+        
+        
     });
     </script>
 </body>
