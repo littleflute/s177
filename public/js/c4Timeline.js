@@ -7,7 +7,15 @@ class C4Timeline {
         this.timeMarkers = [];  // 存储时间标记
         this.#createUI();
         this.#animate();
+
+        // 拖动状态
+        this.isDragging = false;
+        this.currentMarker = null;
+        this.dragStartY = 0;
+        this.originalStart = 0;
+        this.originalEnd = 0;
     }
+
     #createUI() {
         const uiDiv = document.createElement('div');
         uiDiv.style.position = 'fixed';
@@ -33,15 +41,92 @@ class C4Timeline {
         updateCanvasSize();
         window.addEventListener('resize', updateCanvasSize);
     
-        // 添加点击事件监听
-        canvas.addEventListener('click', (event) => {
-            this.#handleCanvasClick(event);
-        });
+        // 事件监听
+        canvas.addEventListener('click', (event) => this.#handleCanvasClick(event));
+        canvas.addEventListener('mousedown', (event) => this.#handleMouseDown(event));
+        canvas.addEventListener('mousemove', (event) => this.#handleMouseMove(event));
+        canvas.addEventListener('mouseup', (event) => this.#handleMouseUp(event));
     
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
     }
-    
+
+    #handleMouseDown(event) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseY = event.clientY - rect.top;
+        const clickTime = this.#convertYToTime(mouseY);
+        
+        // 查找点击的矩形
+        const currentWindowStart = Math.floor((this.audio?.currentTime || 0) / 10) * 10;
+        this.timeMarkers.forEach(marker => {
+            if (clickTime >= marker.start && clickTime <= marker.end && 
+                marker.start < currentWindowStart + 10 && 
+                marker.end > currentWindowStart) {
+                this.isDragging = true;
+                this.currentMarker = marker;
+                this.dragStartY = mouseY;
+                this.originalStart = marker.start;
+                this.originalEnd = marker.end;
+            }
+        });
+    }
+
+    #handleMouseMove(event) {
+        if (!this.isDragging || !this.currentMarker) return;
+        
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseY = event.clientY - rect.top;
+        const deltaY = mouseY - this.dragStartY;
+        
+        // 计算时间变化量
+        const paddingTop = 20;
+        const paddingBottom = 20;
+        const effectiveHeight = this.canvas.height - paddingTop - paddingBottom;
+        const deltaTime = (deltaY / effectiveHeight) * 10;
+
+        // 计算新位置
+        const newStart = this.originalStart + deltaTime;
+        const newEnd = this.originalEnd + deltaTime;
+
+        // 边界检查
+        if (newStart >= newEnd) return;
+        if (newStart < 0) return;
+
+        // 重叠检查（排除自己）
+        const hasOverlap = this.timeMarkers.some(marker => {
+            return marker !== this.currentMarker && 
+                   newStart < marker.end && 
+                   newEnd > marker.start;
+        });
+
+        if (!hasOverlap) {
+            this.currentMarker.start = newStart;
+            this.currentMarker.end = newEnd;
+        }
+    }
+
+    #handleMouseUp() {
+        this.isDragging = false;
+        this.currentMarker = null;
+        this.dragStartY = 0;
+        this.originalStart = 0;
+        this.originalEnd = 0;
+    }
+
+    #convertYToTime(y) {
+        const paddingTop = 20;
+        const paddingBottom = 20;
+        const effectiveHeight = this.canvas.height - paddingTop - paddingBottom;
+        let relativeY = y - paddingTop;
+        
+        relativeY = Math.max(0, Math.min(relativeY, effectiveHeight));
+        
+        const currentTime = this.audio?.currentTime || 0;
+        const timeWindowStart = Math.floor(currentTime / 10) * 10;
+        return timeWindowStart + (relativeY / effectiveHeight) * 10;
+    }
+
+
     #hasOverlap(newStart, newEnd) {
         return this.timeMarkers.some(marker => {
             return marker.start < newEnd && marker.end > newStart;
@@ -183,3 +268,6 @@ class C4Timeline {
         loop();
     }
 }
+//    升级: 
+// 已经加上的矩形可以移动底部改变时间跨度
+// give me all new code，
