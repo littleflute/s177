@@ -36,7 +36,8 @@ class C4Timeline {
             if (!this.#hasOverlap(l.start, l.end)) {
                 this.timeMarkers.push({
                     start: l.start,
-                    end: l.end
+                    end: l.end,
+                    text: l.text // 新增保存歌词文本
                 });
             }
         });
@@ -433,6 +434,38 @@ class C4Timeline {
             // 调整句柄
             ctx.fillStyle = '#ff0000';
             ctx.fillRect(canvas.width * 0.8, yEnd - 2, canvas.width * 0.2, 4);
+
+            // 新增：绘制歌词文本
+            if (marker.text) {
+                ctx.fillStyle = 'white';
+                ctx.font = '12px Arial';
+                ctx.textBaseline = 'top';
+                
+                // 计算可用文本区域（避开删除按钮）
+                const textMaxWidth = canvas.width * 0.7;
+                const textX = 5;
+                const textY = yStart + 2;
+                
+                // 自动调整字体大小
+                let fontSize = 12;
+                let text = marker.text;
+                while (ctx.measureText(text).width > textMaxWidth && fontSize > 8) {
+                    fontSize -= 1;
+                    ctx.font = `${fontSize}px Arial`;
+                }
+                
+                // 如果仍然过长则截断
+                if (ctx.measureText(text).width > textMaxWidth) {
+                    const ellipsis = '...';
+                    let maxLength = Math.floor(text.length * textMaxWidth / ctx.measureText(text).width);
+                    while (ctx.measureText(text.slice(0, maxLength) + ellipsis).width > textMaxWidth && maxLength > 0) {
+                        maxLength--;
+                    }
+                    text = text.slice(0, maxLength) + ellipsis;
+                }
+                
+                ctx.fillText(text, textX, textY);
+            }
         });
     }
 
