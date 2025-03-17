@@ -242,6 +242,12 @@
                     overflow: hidden;
                     text-overflow: ellipsis;
                 }
+                    canvas {
+                        cursor: pointer;
+                    }
+                    canvas.resize-vertical {
+                        cursor: ns-resize;
+                    }
             `;
             document.head.appendChild(style);
         }

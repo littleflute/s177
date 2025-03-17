@@ -10,10 +10,12 @@ class C4Timeline {
 
         // 拖动状态
         this.isDragging = false;
+        this.isResizing = false; // 新增调整大小状态
         this.currentMarker = null;
         this.dragStartY = 0;
         this.originalStart = 0;
         this.originalEnd = 0;
+        this.resizeThreshold = 8; // 底部边缘检测阈值（像素）
     }
 
     #createUI() {
@@ -56,22 +58,73 @@ class C4Timeline {
         const mouseY = event.clientY - rect.top;
         const clickTime = this.#convertYToTime(mouseY);
         
-        // 查找点击的矩形
+        // 先检查是否点击在底部边缘
         const currentWindowStart = Math.floor((this.audio?.currentTime || 0) / 10) * 10;
         this.timeMarkers.forEach(marker => {
-            if (clickTime >= marker.start && clickTime <= marker.end && 
-                marker.start < currentWindowStart + 10 && 
-                marker.end > currentWindowStart) {
-                this.isDragging = true;
+            if (this.#isNearMarkerBottom(marker, mouseY)) {
+                this.isResizing = true;
                 this.currentMarker = marker;
                 this.dragStartY = mouseY;
-                this.originalStart = marker.start;
                 this.originalEnd = marker.end;
+                return;
             }
         });
+
+        // 如果没有触发调整大小，检查常规拖动
+        if (!this.isResizing) {
+            this.timeMarkers.forEach(marker => {
+                if (clickTime >= marker.start && clickTime <= marker.end && 
+                    marker.start < currentWindowStart + 10 && 
+                    marker.end > currentWindowStart) {
+                    this.isDragging = true;
+                    this.currentMarker = marker;
+                    this.dragStartY = mouseY;
+                    this.originalStart = marker.start;
+                    this.originalEnd = marker.end;
+                }
+            });
+        }
     }
 
     #handleMouseMove(event) {
+        if (this.isResizing) {
+            this.#handleResize(event);
+        } else if (this.isDragging) {
+            this.#handleDrag(event);
+        }
+    }
+
+    #handleResize(event) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseY = event.clientY - rect.top;
+        const deltaY = mouseY - this.dragStartY;
+        
+        // 计算时间变化量
+        const paddingTop = 20;
+        const paddingBottom = 20;
+        const effectiveHeight = this.canvas.height - paddingTop - paddingBottom;
+        const deltaTime = (deltaY / effectiveHeight) * 10;
+
+        // 计算新结束时间
+        const newEnd = this.originalEnd + deltaTime;
+
+        // 边界检查
+        if (newEnd <= this.currentMarker.start) return;
+        if (newEnd > this.currentMarker.start + 10) return; // 最大跨度10秒
+
+        // 重叠检查（排除自己）
+        const hasOverlap = this.timeMarkers.some(marker => {
+            return marker !== this.currentMarker && 
+                   this.currentMarker.start < marker.end && 
+                   newEnd > marker.start;
+        });
+
+        if (!hasOverlap) {
+            this.currentMarker.end = newEnd;
+        }
+    }
+
+#handleDrag(event) { // 将原来的拖动逻辑提取到单独方法
         if (!this.isDragging || !this.currentMarker) return;
         
         const rect = this.canvas.getBoundingClientRect();
@@ -105,13 +158,33 @@ class C4Timeline {
         }
     }
 
-    #handleMouseUp() {
+    #isNearMarkerBottom(marker, mouseY) {
+        const currentWindowStart = Math.floor((this.audio?.currentTime || 0) / 10) * 10;
+        if (marker.end <= currentWindowStart || marker.start >= currentWindowStart + 10) return false;
+
+        // 转换时间到Y坐标
+        const paddingTop = 20;
+        const paddingBottom = 20;
+        const effectiveHeight = this.canvas.height - paddingTop - paddingBottom;
+        const perSecondHeight = effectiveHeight / 10;
+
+        const visibleEnd = Math.min(marker.end, currentWindowStart + 10);
+        const endY = paddingTop + (visibleEnd - currentWindowStart) * perSecondHeight;
+
+        // 检查鼠标是否在底部边缘附近
+        return Math.abs(mouseY - endY) < this.resizeThreshold;
+    }
+
+
+   #handleMouseUp() {
         this.isDragging = false;
+        this.isResizing = false;
         this.currentMarker = null;
         this.dragStartY = 0;
         this.originalStart = 0;
         this.originalEnd = 0;
     }
+
 
     #convertYToTime(y) {
         const paddingTop = 20;
@@ -212,8 +285,6 @@ class C4Timeline {
         const effectiveHeight = canvas.height - paddingTop - paddingBottom;
         const perSecondHeight = effectiveHeight / 10;
     
-        ctx.fillStyle = 'rgba(128, 128, 128, 0.5)';
-    
         this.timeMarkers.forEach(marker => {
             if (marker.end <= timeWindowStart || marker.start >= timeWindowEnd) return;
     
@@ -222,13 +293,25 @@ class C4Timeline {
             const startOffset = visibleStart - timeWindowStart;
             const endOffset = visibleEnd - timeWindowStart;
     
-            const yStart = paddingTop + (startOffset / 10) * effectiveHeight;
-            const yEnd = paddingTop + (endOffset / 10) * effectiveHeight;
+            const yStart = paddingTop + startOffset * perSecondHeight;
+            const yEnd = paddingTop + endOffset * perSecondHeight;
             
+            // 绘制主矩形
+            ctx.fillStyle = 'rgba(128, 128, 128, 0.5)';
             ctx.fillRect(0, yStart, canvas.width, yEnd - yStart);
+            
+            // 绘制底部可调整句柄
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(
+                canvas.width * 0.8, 
+                yEnd - 2, // 向上偏移2像素
+                canvas.width * 0.2, 
+                4 // 4像素高的句柄
+            );
         });
     }
-    
+
+
     #drawProgressLine() {
         const ctx = this.ctx;
         const canvas = this.canvas;
@@ -268,6 +351,3 @@ class C4Timeline {
         loop();
     }
 }
-//    升级: 
-// 已经加上的矩形可以移动底部改变时间跨度
-// give me all new code，
