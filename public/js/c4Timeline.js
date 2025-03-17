@@ -309,7 +309,7 @@ class C4Timeline {
         }
         return false;
     }
-    
+
     #drawTimeMarkers() {
         const ctx = this.ctx;
         const canvas = this.canvas;
@@ -445,7 +445,7 @@ class C4Timeline {
         };
         loop();
     }
-}
+} 
 //    修正: 
-// 删除矩形 ，马上又生成了一个
+// can't move rect on cell phone  
 // give me all new code，
