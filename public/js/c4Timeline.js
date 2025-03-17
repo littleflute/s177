@@ -27,6 +27,7 @@ class C4Timeline {
         this.touchStartY = 0;
     }
 
+    
     #createUI() {
         const uiDiv = document.createElement('div');
         uiDiv.style.position = 'fixed';
@@ -163,6 +164,7 @@ class C4Timeline {
 
     #handleClick(event) {
         if (this.isDragging || this.isResizing) return;
+        if (Date.now() - this.lastDeleteTime < 200) return; // 新增防误触检查
         
         const rect = this.canvas.getBoundingClientRect();
         const clientX = event.clientX || event.x;
@@ -446,6 +448,6 @@ class C4Timeline {
         loop();
     }
 }
-//    修正: 
-//  移动矩形过程中，矩形消失， 鼠标刚点下时还在，抬起后在新位置出现，移动过程中看不见
+// 修正: 
+//  矩形删除后，不应该马上在原地生成新的矩形
 // give me all new code，
