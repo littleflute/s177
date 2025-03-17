@@ -16,8 +16,12 @@ class C4Timeline {
         this.originalStart = 0;
         this.originalEnd = 0;
         this.resizeThreshold = 8;
-        this.deleteButtonSize = 12;
-        this.lastDeleteTime = 0; // 新增：防止快速双击
+        this.deleteButtonSize = 16;  // 增大删除按钮尺寸
+        this.lastDeleteTime = 0;
+
+        // 触摸状态
+        this.touchStartX = 0;
+        this.touchStartY = 0;
     }
 
 
@@ -29,32 +33,160 @@ class C4Timeline {
         uiDiv.style.width = '50%';
         uiDiv.style.height = '100%';
         uiDiv.style.overflow = 'hidden';
+        uiDiv.style.touchAction = 'none';  // 禁用默认触摸行为
         this.body.appendChild(uiDiv);
-    
+
         const canvas = document.createElement('canvas');
         canvas.style.width = '100%';
         canvas.style.height = '100%';
         canvas.style.display = 'block';
         canvas.style.backgroundColor = 'black';
         uiDiv.appendChild(canvas);
-    
+
         const updateCanvasSize = () => {
             canvas.width = uiDiv.clientWidth;
             canvas.height = uiDiv.clientHeight;
         };
-    
+
         updateCanvasSize();
         window.addEventListener('resize', updateCanvasSize);
-    
+
         // 事件监听
-        canvas.addEventListener('click', (event) => this.#handleCanvasClick(event));
-        canvas.addEventListener('mousedown', (event) => this.#handleMouseDown(event));
-        canvas.addEventListener('mousemove', (event) => this.#handleMouseMove(event));
-        canvas.addEventListener('mouseup', (event) => this.#handleMouseUp(event));
-    
+        const handleMove = (event) => {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (event.clientX || event.touches[0].clientX) - rect.left,
+                y: (event.clientY || event.touches[0].clientY) - rect.top
+            };
+        };
+
+        // 鼠标事件
+        canvas.addEventListener('mousedown', (e) => this.#handleStart(e.clientX, e.clientY));
+        canvas.addEventListener('mousemove', (e) => this.#handleMove(e.clientX, e.clientY));
+        canvas.addEventListener('mouseup', () => this.#handleEnd());
+        canvas.addEventListener('click', (e) => this.#handleClick(e));
+
+        // 触摸事件
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            this.touchStartX = touch.clientX;
+            this.touchStartY = touch.clientY;
+            this.#handleStart(touch.clientX, touch.clientY);
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            this.#handleMove(touch.clientX, touch.clientY);
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            // 检测点击事件（移动距离小于5px）
+            const touch = e.changedTouches[0];
+            const dx = touch.clientX - this.touchStartX;
+            const dy = touch.clientY - this.touchStartY;
+            if (Math.sqrt(dx*dx + dy*dy) < 5) {
+                this.#handleClick(touch);
+            }
+            this.#handleEnd();
+        }, { passive: false });
+
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
     }
+
+    #handleStart(clientX, clientY) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = clientX - rect.left;
+        const mouseY = clientY - rect.top;
+        const clickTime = this.#convertYToTime(mouseY);
+
+        if (Date.now() - this.lastDeleteTime < 200) return;
+
+        // 检查删除按钮
+        const clickedDelete = this.#checkDeleteButtonClick(mouseX, mouseY);
+        if (clickedDelete) {
+            this.timeMarkers = this.timeMarkers.filter(m => m !== clickedDelete);
+            this.lastDeleteTime = Date.now();
+            return;
+        }
+
+        // 检查调整大小
+        this.timeMarkers.forEach(marker => {
+            if (this.#isNearMarkerBottom(marker, mouseY)) {
+                this.isResizing = true;
+                this.currentMarker = marker;
+                this.dragStartY = mouseY;
+                this.originalEnd = marker.end;
+                return;
+            }
+        });
+
+        // 检查拖动
+        if (!this.isResizing) {
+            const currentWindowStart = Math.floor((this.audio?.currentTime || 0) / 10) * 10;
+            this.timeMarkers.forEach(marker => {
+                if (clickTime >= marker.start && clickTime <= marker.end && 
+                    marker.start < currentWindowStart + 10 && 
+                    marker.end > currentWindowStart) {
+                    this.isDragging = true;
+                    this.currentMarker = marker;
+                    this.dragStartY = mouseY;
+                    this.originalStart = marker.start;
+                    this.originalEnd = marker.end;
+                }
+            });
+        }
+    }
+    #handleMove(clientX, clientY) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = clientX - rect.left;
+        const mouseY = clientY - rect.top;
+        
+        if (this.isResizing) {
+            this.#handleResize(mouseY);
+        } else if (this.isDragging) {
+            this.#handleDrag(mouseY);
+        }
+    }
+
+    #handleEnd() {
+        this.isDragging = false;
+        this.isResizing = false;
+        this.currentMarker = null;
+    }
+
+    #handleClick(event) {
+        if (this.isDragging || this.isResizing) return;
+        
+        const rect = this.canvas.getBoundingClientRect();
+        const clientX = event.clientX || event.x;
+        const clientY = event.clientY || event.y;
+        const mouseX = clientX - rect.left;
+        const mouseY = clientY - rect.top;
+
+        if (this.#isClickOnExistingMarker(mouseX, mouseY)) return;
+
+        const paddingTop = 20;
+        const effectiveHeight = this.canvas.height - paddingTop - 20;
+        const relativeY = mouseY - paddingTop;
+
+        if (relativeY < 0 || relativeY > effectiveHeight) return;
+
+        const currentTime = this.audio?.currentTime || 0;
+        const timeWindowStart = Math.floor(currentTime / 10) * 10;
+        const absoluteTime = timeWindowStart + (relativeY / effectiveHeight) * 10;
+
+        const newStart = absoluteTime;
+        const newEnd = newStart + 1;
+
+        if (!this.#hasOverlap(newStart, newEnd)) {
+            this.timeMarkers.push({ start: newStart, end: newEnd });
+        }
+    }
+
 
     #handleMouseDown(event) {
         const rect = this.canvas.getBoundingClientRect();
@@ -447,5 +579,5 @@ class C4Timeline {
     }
 } 
 //    修正: 
-// can't move rect on cell phone  
+// 让手机运行时，可以移动矩形
 // give me all new code，
