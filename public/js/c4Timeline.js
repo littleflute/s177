@@ -4,6 +4,7 @@ class C4Timeline {
     constructor(document, player) {
         this.body = document.body;
         this.audio = player.audio;
+        this.timeMarkers = [];  // 存储时间标记
         this.#createUI();
         this.#animate();
     }
@@ -33,8 +34,34 @@ class C4Timeline {
         updateCanvasSize();
         window.addEventListener('resize', updateCanvasSize);
 
+        // 添加点击事件监听
+        canvas.addEventListener('click', (event) => {
+            this.#handleCanvasClick(event);
+        });
+
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
+    }
+
+    #handleCanvasClick(event) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseY = event.clientY - rect.top;
+        
+        const paddingTop = 20;
+        const paddingBottom = 20;
+        const effectiveHeight = this.canvas.height - paddingTop - paddingBottom;
+        const relativeY = mouseY - paddingTop;
+
+        if (relativeY < 0 || relativeY > effectiveHeight) return;
+
+        const currentTime = this.audio?.currentTime || 0;
+        const timeWindowStart = Math.floor(currentTime / 10) * 10;
+        const absoluteTime = timeWindowStart + (relativeY / effectiveHeight) * 10;
+
+        this.timeMarkers.push({
+            start: absoluteTime,
+            end: absoluteTime + 1
+        });
     }
 
     #drawTimeMarkers() {
@@ -53,7 +80,6 @@ class C4Timeline {
         ctx.textAlign = 'left';
         ctx.lineWidth = 1;
 
-        // 获取当前时间和当前时间区间
         const currentTime = this.audio?.currentTime || 0;
         const timeWindowStart = Math.floor(currentTime / 10) * 10;
 
@@ -61,13 +87,11 @@ class C4Timeline {
             const absoluteTime = timeWindowStart + i;
             const y = paddingTop + (i / 10) * effectiveHeight;
 
-            // 绘制刻度线
             ctx.beginPath();
             ctx.moveTo(0, y);
             ctx.lineTo(width * 0.1, y);
             ctx.stroke();
 
-            // 设置文字对齐方式
             if (i === 0) {
                 ctx.textBaseline = 'top';
             } else if (i === 10) {
@@ -76,9 +100,37 @@ class C4Timeline {
                 ctx.textBaseline = 'middle';
             }
 
-            // 绘制时间文字
             ctx.fillText(`${absoluteTime}s`, width * 0.1 + 5, y);
         }
+    }
+
+    #drawTimeMarkersRectangles() {
+        const ctx = this.ctx;
+        const canvas = this.canvas;
+        const currentTime = this.audio?.currentTime || 0;
+        const timeWindowStart = Math.floor(currentTime / 10) * 10;
+        const timeWindowEnd = timeWindowStart + 10;
+
+        const paddingTop = 20;
+        const paddingBottom = 20;
+        const effectiveHeight = canvas.height - paddingTop - paddingBottom;
+        const perSecondHeight = effectiveHeight / 10;
+
+        ctx.fillStyle = 'rgba(128, 128, 128, 0.5)';
+
+        this.timeMarkers.forEach(marker => {
+            if (marker.end <= timeWindowStart || marker.start >= timeWindowEnd) return;
+
+            const visibleStart = Math.max(marker.start, timeWindowStart);
+            const visibleEnd = Math.min(marker.end, timeWindowEnd);
+            const startOffset = visibleStart - timeWindowStart;
+            const endOffset = visibleEnd - timeWindowStart;
+
+            const yStart = paddingTop + (startOffset / 10) * effectiveHeight;
+            const yEnd = paddingTop + (endOffset / 10) * effectiveHeight;
+            
+            ctx.fillRect(0, yStart, canvas.width, yEnd - yStart);
+        });
     }
 
     #drawProgressLine() {
@@ -108,6 +160,7 @@ class C4Timeline {
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         this.#drawTimeMarkers();
+        this.#drawTimeMarkersRectangles();
         this.#drawProgressLine();
     }
 
