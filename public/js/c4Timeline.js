@@ -10,12 +10,13 @@ class C4Timeline {
 
         // 拖动状态
         this.isDragging = false;
-        this.isResizing = false; // 新增调整大小状态
+        this.isResizing = false;
         this.currentMarker = null;
         this.dragStartY = 0;
         this.originalStart = 0;
         this.originalEnd = 0;
-        this.resizeThreshold = 8; // 底部边缘检测阈值（像素）
+        this.resizeThreshold = 8;
+        this.deleteButtonSize = 12; // 删除按钮尺寸
     }
 
     #createUI() {
@@ -56,8 +57,15 @@ class C4Timeline {
     #handleMouseDown(event) {
         const rect = this.canvas.getBoundingClientRect();
         const mouseY = event.clientY - rect.top;
+        const mouseX = event.clientX - rect.left; // 新增X坐标检测
         const clickTime = this.#convertYToTime(mouseY);
         
+        // 先检查删除按钮点击
+        const clickedDeleteButton = this.#checkDeleteButtonClick(mouseX, mouseY);
+        if (clickedDeleteButton) {
+            this.timeMarkers = this.timeMarkers.filter(marker => marker !== clickedDeleteButton);
+            return;
+        }
         // 先检查是否点击在底部边缘
         const currentWindowStart = Math.floor((this.audio?.currentTime || 0) / 10) * 10;
         this.timeMarkers.forEach(marker => {
@@ -84,6 +92,36 @@ class C4Timeline {
                 }
             });
         }
+    }
+
+    #checkDeleteButtonClick(mouseX, mouseY) {
+        const currentWindowStart = Math.floor((this.audio?.currentTime || 0) / 10) * 10;
+        const paddingTop = 20;
+        const effectiveHeight = this.canvas.height - paddingTop - 20;
+        const perSecondHeight = effectiveHeight / 10;
+
+        for (const marker of this.timeMarkers) {
+            if (marker.end <= currentWindowStart || marker.start >= currentWindowStart + 10) continue;
+
+            // 计算可见部分坐标
+            const visibleStart = Math.max(marker.start, currentWindowStart);
+            const visibleEnd = Math.min(marker.end, currentWindowStart + 10);
+            const startY = paddingTop + (visibleStart - currentWindowStart) * perSecondHeight;
+            const endY = paddingTop + (visibleEnd - currentWindowStart) * perSecondHeight;
+
+            // 计算删除按钮位置（右上角）
+            const deleteButtonX = this.canvas.width * 0.8 - this.deleteButtonSize;
+            const deleteButtonY = startY;
+
+            // 检查点击是否在删除按钮区域内
+            if (mouseX >= deleteButtonX && 
+                mouseX <= deleteButtonX + this.deleteButtonSize &&
+                mouseY >= deleteButtonY &&
+                mouseY <= deleteButtonY + this.deleteButtonSize) {
+                return marker;
+            }
+        }
+        return null;
     }
 
     #handleMouseMove(event) {
@@ -279,20 +317,19 @@ class C4Timeline {
         const currentTime = this.audio?.currentTime || 0;
         const timeWindowStart = Math.floor(currentTime / 10) * 10;
         const timeWindowEnd = timeWindowStart + 10;
-    
+
         const paddingTop = 20;
-        const paddingBottom = 20;
-        const effectiveHeight = canvas.height - paddingTop - paddingBottom;
+        const effectiveHeight = canvas.height - paddingTop - 20;
         const perSecondHeight = effectiveHeight / 10;
-    
+
         this.timeMarkers.forEach(marker => {
             if (marker.end <= timeWindowStart || marker.start >= timeWindowEnd) return;
-    
+
             const visibleStart = Math.max(marker.start, timeWindowStart);
             const visibleEnd = Math.min(marker.end, timeWindowEnd);
             const startOffset = visibleStart - timeWindowStart;
             const endOffset = visibleEnd - timeWindowStart;
-    
+
             const yStart = paddingTop + startOffset * perSecondHeight;
             const yEnd = paddingTop + endOffset * perSecondHeight;
             
@@ -300,17 +337,36 @@ class C4Timeline {
             ctx.fillStyle = 'rgba(128, 128, 128, 0.5)';
             ctx.fillRect(0, yStart, canvas.width, yEnd - yStart);
             
-            // 绘制底部可调整句柄
+            // 绘制删除按钮
+            ctx.fillStyle = '#ff0000';
+            const deleteButtonX = canvas.width * 0.8 - this.deleteButtonSize;
+            ctx.fillRect(
+                deleteButtonX,
+                yStart,
+                this.deleteButtonSize,
+                this.deleteButtonSize
+            );
+            
+            // 绘制删除按钮的X
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(deleteButtonX + 2, yStart + 2);
+            ctx.lineTo(deleteButtonX + this.deleteButtonSize - 2, yStart + this.deleteButtonSize - 2);
+            ctx.moveTo(deleteButtonX + this.deleteButtonSize - 2, yStart + 2);
+            ctx.lineTo(deleteButtonX + 2, yStart + this.deleteButtonSize - 2);
+            ctx.stroke();
+
+            // 绘制底部调整句柄（保持原有代码）
             ctx.fillStyle = '#ff0000';
             ctx.fillRect(
                 canvas.width * 0.8, 
-                yEnd - 2, // 向上偏移2像素
+                yEnd - 2,
                 canvas.width * 0.2, 
-                4 // 4像素高的句柄
+                4
             );
         });
     }
-
 
     #drawProgressLine() {
         const ctx = this.ctx;
@@ -351,3 +407,6 @@ class C4Timeline {
         loop();
     }
 }
+//    升级: 
+// 在矩形右上角添加一个小区域，点击时可删除本矩形
+// give me all new code，
