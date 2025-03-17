@@ -27,6 +27,33 @@ class C4Timeline {
         this.touchStartY = 0;
     }
 
+    loadLyricsMarkers(lyrics) {
+        // 清除现有标记
+        this.timeMarkers = [];
+        
+        // 添加新的歌词标记（带重叠检查）
+        lyrics.forEach(l => {
+            if (!this.#hasOverlap(l.start, l.end)) {
+                this.timeMarkers.push({
+                    start: l.start,
+                    end: l.end
+                });
+            }
+        });
+        
+        // 对标记按开始时间排序
+        this.timeMarkers.sort((a, b) => a.start - b.start);
+        
+        // 合并连续的时间段
+        for (let i = this.timeMarkers.length - 1; i > 0; i--) {
+            const prev = this.timeMarkers[i - 1];
+            const current = this.timeMarkers[i];
+            if (prev.end >= current.start) {
+                prev.end = Math.max(prev.end, current.end);
+                this.timeMarkers.splice(i, 1);
+            }
+        }
+    }
     
     #createUI() {
         const uiDiv = document.createElement('div');
@@ -448,6 +475,4 @@ class C4Timeline {
         loop();
     }
 }
-// 修正: 
-//  矩形删除后，不应该马上在原地生成新的矩形
-// give me all new code，
+ 
