@@ -3,6 +3,7 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>移动端音乐播放器</title>
+    <script src="js/c4Timeline.js"></script>
 </head>
 <body>
     <button id="openWindowBtn">🎵 打开播放器</button>
@@ -661,6 +662,7 @@
         // 初始化播放列表和播放器
         const playlist = new C4Playlist();
         const player = new C4Player(playlist);
+        const oTimeline = new C4Timeline(document,player);
         let currentLyrics = [];
 
         // 播放列表渲染
