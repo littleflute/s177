@@ -395,20 +395,20 @@ class C4Timeline {
         const canvas = this.canvas;
         const timeWindowStart = this.fixedTimeWindowStart ?? Math.floor((this.audio?.currentTime || 0) / 10) * 10;
         const timeWindowEnd = timeWindowStart + 10;
-
+    
         const paddingTop = 20;
         const paddingBottom = 20;
         const effectiveHeight = canvas.height - paddingTop - paddingBottom;
         const perSecondHeight = effectiveHeight / 10;
-
+    
         this.timeMarkers.forEach(marker => {
             if (marker.end <= timeWindowStart || marker.start >= timeWindowEnd) return;
-
+    
             const visibleStart = Math.max(marker.start, timeWindowStart);
             const visibleEnd = Math.min(marker.end, timeWindowEnd);
             const startOffset = visibleStart - timeWindowStart;
             const endOffset = visibleEnd - timeWindowStart;
-
+    
             const yStart = paddingTop + startOffset * perSecondHeight;
             const yEnd = paddingTop + endOffset * perSecondHeight;
             
@@ -430,45 +430,75 @@ class C4Timeline {
             ctx.moveTo(deleteButtonX + this.deleteButtonSize - 2, yStart + 2);
             ctx.lineTo(deleteButtonX + 2, yStart + this.deleteButtonSize - 2);
             ctx.stroke();
-
+    
             // 调整句柄
             ctx.fillStyle = '#ff0000';
             ctx.fillRect(canvas.width * 0.8, yEnd - 2, canvas.width * 0.2, 4);
-
-            // 新增：绘制歌词文本
+    
+            // 绘制歌词文本
             if (marker.text) {
+                ctx.save();
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                ctx.shadowBlur = 2;
+                ctx.shadowOffsetX = 1;
+                ctx.shadowOffsetY = 1;
+                
                 ctx.fillStyle = 'white';
                 ctx.font = '12px Arial';
                 ctx.textBaseline = 'top';
                 
-                // 计算可用文本区域（避开删除按钮）
                 const textMaxWidth = canvas.width * 0.7;
                 const textX = 5;
                 const textY = yStart + 2;
+                const availableHeight = yEnd - yStart - 4;
+                
+                let fontSize = 12;
+                let measuredWidth = ctx.measureText(marker.text).width;
                 
                 // 自动调整字体大小
-                let fontSize = 12;
-                let text = marker.text;
-                while (ctx.measureText(text).width > textMaxWidth && fontSize > 8) {
+                while (measuredWidth > textMaxWidth && fontSize > 8) {
                     fontSize -= 1;
                     ctx.font = `${fontSize}px Arial`;
+                    measuredWidth = ctx.measureText(marker.text).width;
                 }
                 
-                // 如果仍然过长则截断
-                if (ctx.measureText(text).width > textMaxWidth) {
-                    const ellipsis = '...';
-                    let maxLength = Math.floor(text.length * textMaxWidth / ctx.measureText(text).width);
-                    while (ctx.measureText(text.slice(0, maxLength) + ellipsis).width > textMaxWidth && maxLength > 0) {
-                        maxLength--;
+                // 计算最大行数
+                const lineHeight = fontSize + 2;
+                const maxLines = Math.floor(availableHeight / lineHeight);
+                
+                if (maxLines > 0) {
+                    let lines = [];
+                    let currentLine = '';
+                    
+                    // 分词处理
+                    marker.text.split('').forEach(char => {
+                        if (ctx.measureText(currentLine + char).width <= textMaxWidth) {
+                            currentLine += char;
+                        } else {
+                            lines.push(currentLine);
+                            currentLine = char;
+                        }
+                    });
+                    if (currentLine) lines.push(currentLine);
+                    
+                    // 截断多余行数
+                    if (lines.length > maxLines) {
+                        lines = lines.slice(0, maxLines);
+                        if (lines.length > 0) {
+                            lines[lines.length - 1] = lines[lines.length - 1].slice(0, -1) + '...';
+                        }
                     }
-                    text = text.slice(0, maxLength) + ellipsis;
+                    
+                    // 绘制每行文本
+                    lines.forEach((line, index) => {
+                        ctx.fillText(line, textX, textY + (index * lineHeight));
+                    });
                 }
                 
-                ctx.fillText(text, textX, textY);
+                ctx.restore();
             }
         });
     }
-
     #drawProgressLine() {
         const ctx = this.ctx;
         const canvas = this.canvas;
