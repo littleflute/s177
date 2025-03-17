@@ -16,8 +16,10 @@ class C4Timeline {
         this.originalStart = 0;
         this.originalEnd = 0;
         this.resizeThreshold = 8;
-        this.deleteButtonSize = 12; // 删除按钮尺寸
+        this.deleteButtonSize = 12;
+        this.lastDeleteTime = 0; // 新增：防止快速双击
     }
+
 
     #createUI() {
         const uiDiv = document.createElement('div');
@@ -57,16 +59,28 @@ class C4Timeline {
     #handleMouseDown(event) {
         const rect = this.canvas.getBoundingClientRect();
         const mouseY = event.clientY - rect.top;
-        const mouseX = event.clientX - rect.left; // 新增X坐标检测
+        const mouseX = event.clientX - rect.left;
         const clickTime = this.#convertYToTime(mouseY);
+
+        // 防止快速双击误操作
+        const now = Date.now();
+        if (now - this.lastDeleteTime < 200) {
+            event.preventDefault();
+            return;
+        }
         
-        // 先检查删除按钮点击
+        // 检查删除按钮点击
         const clickedDeleteButton = this.#checkDeleteButtonClick(mouseX, mouseY);
         if (clickedDeleteButton) {
             this.timeMarkers = this.timeMarkers.filter(marker => marker !== clickedDeleteButton);
+            this.lastDeleteTime = now;
+            event.stopPropagation();
+            event.preventDefault();
             return;
         }
-        // 先检查是否点击在底部边缘
+
+        
+        // 检查底部调整
         const currentWindowStart = Math.floor((this.audio?.currentTime || 0) / 10) * 10;
         this.timeMarkers.forEach(marker => {
             if (this.#isNearMarkerBottom(marker, mouseY)) {
@@ -78,7 +92,7 @@ class C4Timeline {
             }
         });
 
-        // 如果没有触发调整大小，检查常规拖动
+        // 常规拖动检查
         if (!this.isResizing) {
             this.timeMarkers.forEach(marker => {
                 if (clickTime >= marker.start && clickTime <= marker.end && 
@@ -94,6 +108,7 @@ class C4Timeline {
         }
     }
 
+
     #checkDeleteButtonClick(mouseX, mouseY) {
         const currentWindowStart = Math.floor((this.audio?.currentTime || 0) / 10) * 10;
         const paddingTop = 20;
@@ -103,17 +118,14 @@ class C4Timeline {
         for (const marker of this.timeMarkers) {
             if (marker.end <= currentWindowStart || marker.start >= currentWindowStart + 10) continue;
 
-            // 计算可见部分坐标
             const visibleStart = Math.max(marker.start, currentWindowStart);
             const visibleEnd = Math.min(marker.end, currentWindowStart + 10);
             const startY = paddingTop + (visibleStart - currentWindowStart) * perSecondHeight;
-            const endY = paddingTop + (visibleEnd - currentWindowStart) * perSecondHeight;
 
-            // 计算删除按钮位置（右上角）
-            const deleteButtonX = this.canvas.width * 0.8 - this.deleteButtonSize;
-            const deleteButtonY = startY;
+            // 修正：使用更精确的按钮位置计算
+            const deleteButtonX = this.canvas.width * 0.8 - this.deleteButtonSize - 2; // 添加边距
+            const deleteButtonY = startY + 2; // 添加边距
 
-            // 检查点击是否在删除按钮区域内
             if (mouseX >= deleteButtonX && 
                 mouseX <= deleteButtonX + this.deleteButtonSize &&
                 mouseY >= deleteButtonY &&
@@ -245,8 +257,14 @@ class C4Timeline {
     }
     
     #handleCanvasClick(event) {
+        if (this.isDragging || this.isResizing || Date.now() - this.lastDeleteTime < 200) return;
+        
+        
         const rect = this.canvas.getBoundingClientRect();
         const mouseY = event.clientY - rect.top;
+        const mouseX = event.clientX - rect.left;
+        // 新增：检查是否点击在现有标记区域
+        if (this.#isClickOnExistingMarker(mouseX, mouseY)) return;
         
         const paddingTop = 20;
         const paddingBottom = 20;
@@ -262,13 +280,34 @@ class C4Timeline {
         const newStart = absoluteTime;
         const newEnd = newStart + 1;
     
-        // 检查时间重叠
         if (!this.#hasOverlap(newStart, newEnd)) {
             this.timeMarkers.push({
                 start: newStart,
                 end: newEnd
             });
         }
+    }
+
+    #isClickOnExistingMarker(mouseX, mouseY) {
+        const currentWindowStart = Math.floor((this.audio?.currentTime || 0) / 10) * 10;
+        const paddingTop = 20;
+        const effectiveHeight = this.canvas.height - paddingTop - 20;
+        const perSecondHeight = effectiveHeight / 10;
+
+        for (const marker of this.timeMarkers) {
+            if (marker.end <= currentWindowStart || marker.start >= currentWindowStart + 10) continue;
+
+            const visibleStart = Math.max(marker.start, currentWindowStart);
+            const visibleEnd = Math.min(marker.end, currentWindowStart + 10);
+            const startY = paddingTop + (visibleStart - currentWindowStart) * perSecondHeight;
+            const endY = paddingTop + (visibleEnd - currentWindowStart) * perSecondHeight;
+
+            // 检查点击是否在标记区域内
+            if (mouseY >= startY && mouseY <= endY && mouseX <= this.canvas.width * 0.8) {
+                return true;
+            }
+        }
+        return false;
     }
     
     #drawTimeMarkers() {
@@ -407,6 +446,6 @@ class C4Timeline {
         loop();
     }
 }
-//    升级: 
-// 在矩形右上角添加一个小区域，点击时可删除本矩形
+//    修正: 
+// 删除矩形 ，马上又生成了一个
 // give me all new code，
