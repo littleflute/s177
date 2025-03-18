@@ -14,7 +14,7 @@ class c4MusicScript {
         this.initialMouseX = null; // 新增：拖动初始鼠标位置
         this.initialMouseY = null;
         this.initialCircles = null; // 新增：拖动初始圆形位置
-        this.BPM = 104;//每分钟104拍
+        this.BPM = 114;//每分钟 114 拍
         this.beatType = "4/4";//4分音符为一拍，每小节4拍
         this.currentBar = 0;//当前小节
     }
@@ -76,12 +76,47 @@ class c4MusicScript {
             y + height/2                             // 垂直居中
         );
     
-        // 可选：绘制小节持续时间进度条
+        // 绘制小节持续时间进度条
         const barProgress = (currentTime % secondsPerBar) / secondsPerBar;
         ctx.fillStyle = "rgba(255, 255, 0, 0.4)";
         ctx.fillRect(x, y, width * barProgress, height);
-    }
     
+        // 在小节下方绘制拍子指示“V”
+        ctx.save(); // 保存画布状态
+        const vSize = 10; // V形的高度
+        const vSpacing = 15; // 每个V之间的间距
+        const totalVWidth = beatsPerBar * vSize + (beatsPerBar - 1) * vSpacing;
+        const startX = x + (width - totalVWidth) / 2; // 水平居中
+        const startY = y + height + 15; // 矩形下方15px
+    
+        const currentBarTime = currentTime % secondsPerBar;
+        const currentBeat = Math.floor(currentBarTime / secondsPerBeat);
+    
+        ctx.lineWidth = 2; // 设置V形的边框宽度
+    
+        for (let i = 0; i < beatsPerBar; i++) {
+            const vX = startX + i * (vSize + vSpacing);
+            const vCenterX = vX + vSize / 2;
+    
+            // 绘制V形路径
+            ctx.beginPath();
+            ctx.moveTo(vCenterX - vSize/2, startY);
+            ctx.lineTo(vCenterX, startY + vSize);
+            ctx.lineTo(vCenterX + vSize/2, startY);
+            ctx.closePath();
+    
+            // 根据拍子状态设置样式
+            if (i < currentBeat) {
+                ctx.fillStyle = "rgba(255, 255, 0, 0.8)"; // 已完成的拍子填充黄色
+                ctx.fill();
+            } else {
+                ctx.strokeStyle = i === currentBeat ? "rgba(255, 255, 0, 0.8)" : "rgba(128, 128, 128, 0.8)"; // 当前拍子高亮，未完成的灰色
+                ctx.stroke();
+            }
+        }
+        ctx.restore(); // 恢复画布状态
+    }
+
     #drawCircles(ctx, currentTime, x, y) {
         this.lsCircle.forEach(circle => {
             ctx.beginPath();
