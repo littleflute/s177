@@ -2,6 +2,7 @@
 //c4Timeline.js
 class C4Timeline {
     constructor(document, player) {
+        this.musicScript = new c4MusicScript();
         this.body = document.body;
         this.audio = player.audio;
         this.timeMarkers = [];  
@@ -93,7 +94,7 @@ class C4Timeline {
         // 事件监听
         canvas.addEventListener('mousedown', (e) => this.#handleStart(e.clientX, e.clientY));
         canvas.addEventListener('mousemove', (e) => this.#handleMove(e.clientX, e.clientY));
-        canvas.addEventListener('mouseup', () => this.#handleEnd());
+        canvas.addEventListener('mouseup', (e) => this.#handleEnd(e.clientX, e.clientY));
         canvas.addEventListener('click', (e) => this.#handleClick(e));
 
         // 触摸事件
@@ -127,6 +128,7 @@ class C4Timeline {
     }
 
     #handleStart(clientX, clientY) {
+        this.musicScript.onMouseDown(clientX, clientY);
         this.fixedTimeWindowStart = Math.floor((this.audio?.currentTime || 0) / 10) * 10;
         const rect = this.canvas.getBoundingClientRect();
         const mouseX = clientX - rect.left;
@@ -172,6 +174,7 @@ class C4Timeline {
     }
 
     #handleMove(clientX, clientY) {
+        this.musicScript.onMouseMove(clientX, clientY);
         const rect = this.canvas.getBoundingClientRect();
         const mouseX = clientX - rect.left;
         const mouseY = clientY - rect.top;
@@ -183,7 +186,8 @@ class C4Timeline {
         }
     }
 
-    #handleEnd() {
+    #handleEnd(clientX, clientY) {
+        this.musicScript.onMouseUp(clientX, clientY);
         this.isDragging = false;
         this.isResizing = false;
         this.currentMarker = null;
@@ -525,6 +529,7 @@ class C4Timeline {
         if (!canvas || !ctx) return;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        this.musicScript.onDraw(ctx,this.audio.currentTime,50,50);
         this.#drawTimeMarkers();
         this.#drawTimeMarkersRectangles();
         this.#drawProgressLine();
