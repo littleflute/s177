@@ -17,6 +17,8 @@ class c4MusicScript {
         this.BPM = 114;//每分钟 114 拍
         this.beatType = "4/4";//4分音符为一拍，每小节4拍
         this.currentBar = 0;//当前小节
+        this.settingsWindow = null; // 新增设置窗口
+        this.isSettingsWindowVisible = false;
     }
 
     // 新增：检测是否点击标题栏
@@ -141,16 +143,88 @@ class c4MusicScript {
         ctx.fillRect(this.xAOI, this.yAOI, this.wAOI, this.hHeader);
         ctx.fillStyle = "white";
         ctx.font = "14px Arial";
-        ctx.fillText("AOI Header", this.xAOI + 5, this.yAOI + this.hHeader - 5);
+        ctx.fillText("Music Settings", this.xAOI + 5, this.yAOI + this.hHeader - 5);
+        // 新增设置按钮
+        const btnSize = 20;
+        const btnX = this.xAOI + this.wAOI - btnSize - 5;
+        const btnY = this.yAOI + 2;
         
+        // 按钮背景
+        ctx.fillStyle = this.isSettingsWindowVisible ? "#007bff" : "#6c757d";
+        ctx.beginPath();
+        ctx.arc(btnX + btnSize/2, btnY + btnSize/2, btnSize/2, 0, Math.PI*2);
+        ctx.fill();
+        
+        // 按钮图标
+        ctx.fillStyle = "white";
+        ctx.font = "14px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("⚙", btnX + btnSize/2, btnY + btnSize/2);
+
         ctx.fillStyle = "red";
         ctx.font = "14px Arial";
         ctx.fillText(currentTime.toFixed(2), x, y);
         this.#drawCurrentBar(ctx,currentTime,this.xAOI+20,this.yAOI+20);
         this.#drawCircles(ctx, currentTime, x, y);
     }
+    toggleSettingsWindow() {
+        if (!this.settingsWindow) {
+            this.createSettingsWindow();
+        }
+        
+        this.isSettingsWindowVisible = !this.isSettingsWindowVisible;
+        if (this.isSettingsWindowVisible) {
+            this.settingsWindow.show();
+        } else {
+            this.settingsWindow.hide();
+        }
+    }
+    createSettingsWindow() {
+        this.settingsWindow = new MovableWindow("音乐设置", `
+            <div style="padding:15px">
+                <h3>音乐参数设置</h3>
+                <div class="setting-item">
+                    <label>BPM：</label>
+                    <input type="number" id="bpmInput" value="${this.BPM}" style="width:60px">
+                </div>
+                <div class="setting-item" style="margin-top:10px">
+                    <label>节拍类型：</label>
+                    <select id="beatTypeSelect">
+                        <option ${this.beatType === '4/4' ? 'selected' : ''}>4/4</option>
+                        <option ${this.beatType === '3/4' ? 'selected' : ''}>3/4</option>
+                        <option ${this.beatType === '6/8' ? 'selected' : ''}>6/8</option>
+                    </select>
+                </div>
+                <button id="applySettings" 
+                        style="margin-top:15px; padding:8px 20px;
+                               background:#28a745; color:white; border:none;
+                               border-radius:5px">
+                    应用设置
+                </button>
+            </div>
+        `);
 
+        // 应用设置事件
+        this.settingsWindow.getContentContainer().querySelector('#applySettings').addEventListener('click', () => {
+            this.BPM = parseInt(document.getElementById('bpmInput').value);
+            this.beatType = document.getElementById('beatTypeSelect').value;
+        });
+    }
+    
     onMouseDown(x, y) { 
+
+        // 检查是否点击设置按钮
+        const btnSize = 20;
+        const btnX = this.xAOI + this.wAOI - btnSize - 5;
+        const btnY = this.yAOI + 2;
+        
+        if (x >= btnX && x <= btnX + btnSize &&
+            y >= btnY && y <= btnY + btnSize) {
+            this.toggleSettingsWindow();
+            return;
+        }
+
         // 新增：处理标题栏点击
         if (this.isPointInsideHeader(x, y)) {
             this.isHeaderDragging = true;
