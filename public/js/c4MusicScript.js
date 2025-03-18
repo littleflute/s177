@@ -98,21 +98,21 @@ class c4MusicScript {
             const vX = startX + i * (vSize + vSpacing);
             const vCenterX = vX + vSize / 2;
     
-            // 绘制V形路径
+            // 绘制V形路径（移除closePath避免闭合）
             ctx.beginPath();
             ctx.moveTo(vCenterX - vSize/2, startY);
             ctx.lineTo(vCenterX, startY + vSize);
             ctx.lineTo(vCenterX + vSize/2, startY);
-            ctx.closePath();
     
             // 根据拍子状态设置样式
             if (i < currentBeat) {
-                ctx.fillStyle = "rgba(255, 255, 0, 0.8)"; // 已完成的拍子填充黄色
-                ctx.fill();
+                ctx.strokeStyle = "rgba(255, 255, 0, 0.8)"; // 已完成的拍子黄色
+            } else if (i === currentBeat) {
+                ctx.strokeStyle = "rgba(255, 255, 0, 0.8)"; // 当前拍子高亮
             } else {
-                ctx.strokeStyle = i === currentBeat ? "rgba(255, 255, 0, 0.8)" : "rgba(128, 128, 128, 0.8)"; // 当前拍子高亮，未完成的灰色
-                ctx.stroke();
+                ctx.strokeStyle = "rgba(128, 128, 128, 0.8)"; // 未完成灰色
             }
+            ctx.stroke();
         }
         ctx.restore(); // 恢复画布状态
     }
