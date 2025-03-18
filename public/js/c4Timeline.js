@@ -631,6 +631,74 @@ class C4Timeline {
     
             barTime += secondsPerBar;
         }
+        this.#drawLyrics();
+    }
+    // 在C4Timeline类中添加以下方法
+    #drawLyrics() {
+        const ctx = this.ctx;
+        const canvas = this.canvas;
+        const currentWindowStart = this.fixedTimeWindowStart ?? Math.floor((this.audio?.currentTime || 0) / 10) * 10;
+        const currentWindowEnd = currentWindowStart + 10;
+
+        // 歌词绘制参数
+        const lyricFontSize = 12;
+        const lyricLineHeight = lyricFontSize + 4;
+        const maxLyricWidth = canvas.width * 0.7;
+        const lyricX = canvas.width * 0.15 + 10;
+        
+        ctx.save();
+        ctx.font = `${lyricFontSize}px Arial`;
+        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+        ctx.shadowBlur = 2;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+
+        this.timeMarkers.forEach(marker => {
+            // 只处理包含歌词的标记
+            if (!marker.text || marker.end <= currentWindowStart || marker.start >= currentWindowEnd) return;
+
+            // 计算歌词垂直位置
+            const yPos = this.#convertTimeToY(marker.start);
+            
+            // 自动调整字体大小
+            let fontSize = lyricFontSize;
+            let text = marker.text;
+            let metrics = ctx.measureText(text);
+            
+            // 自动缩小字体以适应宽度
+            while (metrics.width > maxLyricWidth && fontSize > 8) {
+                fontSize--;
+                ctx.font = `${fontSize}px Arial`;
+                metrics = ctx.measureText(text);
+            }
+
+            // 自动换行处理
+            const words = text.split('');
+            let line = '';
+            let lines = [];
+            
+            words.forEach(char => {
+                const testLine = line + char;
+                const testWidth = ctx.measureText(testLine).width;
+                if (testWidth > maxLyricWidth) {
+                    lines.push(line);
+                    line = char;
+                } else {
+                    line = testLine;
+                }
+            });
+            if (line) lines.push(line);
+
+            // 绘制多行歌词
+            lines.forEach((lineText, index) => {
+                const y = yPos + (index * (fontSize + 2)) - (lines.length * fontSize)/2;
+                ctx.fillText(lineText, lyricX, y);
+            });
+        });
+
+        ctx.restore();
     }
     #animate() {
         const loop = () => {
