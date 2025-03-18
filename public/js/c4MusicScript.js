@@ -22,8 +22,15 @@ class c4MusicScript {
         this.isSettingsWindowVisible = false;
         this.timeOffset = 0.5263; // 新增时间偏移属性
         this.barsPerLine = 2; // 新增：每行显示的小节数
+        
+        this.lyrics = []; // 存储歌词数据
+        this.currentLyricIndex = -1; // 当前歌词索引
+        this.lyricFontSize = 34; // 初始歌词字号
     }
 
+    updateLyrics(lyrics) {
+        this.lyrics = lyrics;
+    }
     // 新增：检测是否点击标题栏
     isPointInsideHeader(x, y) {
         return x >= this.xAOI && x <= this.xAOI + this.wAOI &&
@@ -111,8 +118,65 @@ class c4MusicScript {
             ctx.lineWidth = 2;
             ctx.stroke();
         }
+
+        
+        this.#drawLyrics(ctx, currentTime);
     }
-    
+    #drawLyrics(ctx, currentTime) {
+        if (!this.lyrics.length) return;
+ 
+        const adjustedTime = currentTime;
+        
+        // 查找当前歌词
+        const currentLyric = this.lyrics.find((l, index) => {
+            return adjustedTime >= l.start && adjustedTime < l.end;
+        });
+
+        // 设置歌词样式
+        ctx.fillStyle = "rgba(93, 7, 7, 0.9)";
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+        ctx.lineWidth = 2;
+        ctx.font = `${this.lyricFontSize}px Arial`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+
+        // 计算歌词位置（时间线下方）
+        const lyricY = this.yAOI + this.hAOI - 30;  
+        const maxWidth = this.wAOI * 0.8;
+
+        if (currentLyric) {
+            // 动态调整字号
+            let fontSize = this.lyricFontSize;
+            let textWidth = ctx.measureText(currentLyric.text).width;
+            
+            while (textWidth > maxWidth && fontSize > 12) {
+                fontSize--;
+                ctx.font = `${fontSize}px Arial`;
+                textWidth = ctx.measureText(currentLyric.text).width;
+            }
+
+            // 绘制文字描边
+            ctx.strokeText(currentLyric.text, this.xAOI + this.wAOI/2, lyricY);
+            // 绘制填充文字
+            ctx.fillText(currentLyric.text, this.xAOI + this.wAOI/2, lyricY);
+        }
+
+        // 绘制歌词进度条
+        if (currentLyric) {
+            const progress = (adjustedTime - currentLyric.start) / 
+                           (currentLyric.end - currentLyric.start);
+            
+            // 进度条背景
+            ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+            ctx.fillRect(this.xAOI + this.wAOI/2 - maxWidth/2, lyricY + 5, 
+                        maxWidth, 3);
+            
+            // 进度条前景
+            ctx.fillStyle = "#00ff00";
+            ctx.fillRect(this.xAOI + this.wAOI/2 - maxWidth/2, lyricY + 5, 
+                        maxWidth * progress, 3);
+        }
+    }
     // 辅助函数：绘制圆角矩形
     #drawRoundedRect(ctx, x, y, width, height, radius) {
         ctx.beginPath();
@@ -189,17 +253,23 @@ class c4MusicScript {
         this.settingsWindow = new MovableWindow("音乐设置", `
             <div style="padding:15px">
                 <h3>音乐参数设置</h3>
+                <div class="setting-item"> 
+                    <label>歌词字体大小：</label>
+                        <input type="number" id="lyricFontSizeInput" 
+                            value="${this.lyricFontSize}" min="1" 
+                            style="width:60px">
+                    <label>BPM：</label>
+                    <input type="number" id="bpmInput" value="${this.BPM}" style="width:60px">
+                </div>
                 <div class="setting-item">
                     <label>时间偏移（秒）：</label>
                         <input type="number" id="timeOffsetInput" 
                             value="${this.timeOffset}" step="0.1" 
                             style="width:80px">
-                        <label>每行小节数：</label>
+                    <label>每行小节数：</label>
                         <input type="number" id="barsPerLineInput" 
                             value="${this.barsPerLine}" min="1" 
-                            style="width:60px">
-                    <label>BPM：</label>
-                    <input type="number" id="bpmInput" value="${this.BPM}" style="width:60px">
+                            style="width:60px"> 
                 </div>
                 <div class="setting-item" style="margin-top:10px">
                     <label>节拍类型：</label>
@@ -224,6 +294,7 @@ class c4MusicScript {
             this.BPM = parseInt(document.getElementById('bpmInput').value);
             this.beatType = document.getElementById('beatTypeSelect').value;
             this.barsPerLine = parseInt(document.getElementById('barsPerLineInput').value);
+            this.lyricFontSize = parseInt(document.getElementById('lyricFontSizeInput').value);
         });
     }
     

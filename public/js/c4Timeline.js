@@ -55,6 +55,13 @@ class C4Timeline {
                 this.timeMarkers.splice(i, 1);
             }
         }
+
+        this.musicScript.updateLyrics(lyrics.map(l => ({
+            start: l.start,
+            end: l.end,
+            text: l.text
+        })));
+        
     }
     
     #createUI() {
@@ -708,4 +715,4 @@ class C4Timeline {
         loop();
     }
 }
-//升级：让画布布满整个窗口
+ 
