@@ -87,15 +87,20 @@ class c4MusicScript {
         this.selectedCircle = null;
     }
 
-    onDoubleClick(x, y) {
+    onDoubleClick(x, y) {  // 这里使用转换后的canvas坐标
+        // 删除区域检查
         if (!this.isPointInsideAOI(x, y)) return;
+        
+        // 反向遍历找到最上层符合条件的圆
         for (let i = this.lsCircle.length - 1; i >= 0; i--) {
             const circle = this.lsCircle[i];
             const dx = x - circle.x;
             const dy = y - circle.y;
-            if (dx * dx + dy * dy <= circle.r * circle.r) {
+            const distanceSq = dx*dx + dy*dy;
+            
+            if (distanceSq <= circle.r * circle.r) {
                 this.lsCircle.splice(i, 1);
-                return;
+                return; // 删除后立即返回
             }
         }
     }

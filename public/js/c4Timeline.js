@@ -96,6 +96,12 @@ class C4Timeline {
         canvas.addEventListener('mousemove', (e) => this.#handleMove(e.clientX, e.clientY));
         canvas.addEventListener('mouseup', (e) => this.#handleEnd(e.clientX, e.clientY));
         canvas.addEventListener('click', (e) => this.#handleClick(e));
+        canvas.addEventListener('dblclick', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            this.musicScript.onDoubleClick(mouseX, mouseY);
+        });
 
         // 触摸事件
         canvas.addEventListener('touchstart', (e) => {
