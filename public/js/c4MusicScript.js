@@ -19,6 +19,7 @@ class c4MusicScript {
         this.currentBar = 0;//当前小节
         this.settingsWindow = null; // 新增设置窗口
         this.isSettingsWindowVisible = false;
+        this.timeOffset = 0.5263; // 新增时间偏移属性
     }
 
     // 新增：检测是否点击标题栏
@@ -33,6 +34,7 @@ class c4MusicScript {
     }
 
     #drawCurrentBar(ctx, currentTime, x, y) {
+        const adjustedTime = currentTime - this.timeOffset; // 使用调整后时间
         // 解析节拍类型（如"4/4"）
         const beatsPerBar = parseInt(this.beatType.split('/')[0]);
         
@@ -40,8 +42,8 @@ class c4MusicScript {
         const secondsPerBeat = 60 / this.BPM;          // 每拍持续时间（秒）
         const secondsPerBar = beatsPerBar * secondsPerBeat; // 每小节持续时间
         
-        // 计算当前小节编号
-        this.currentBar = Math.floor(currentTime / secondsPerBar);
+        // 当前小节计算应用偏移
+        this.currentBar = Math.floor(adjustedTime / secondsPerBar);
         
         // 绘制当前小节指示条背景
         ctx.fillStyle = "rgba(0, 128, 255, 0.7)";     // 半透明蓝色背景
@@ -73,13 +75,13 @@ class c4MusicScript {
         ctx.font = "bold 16px Arial";                 // 加粗字体
         ctx.textBaseline = "middle";                  // 垂直居中
         ctx.fillText(
-            `Bar: ${this.currentBar + 1}`,            // 显示从1开始的小节编号
+            `Bar: ${this.currentBar + 1} - secondsPerBeat:${secondsPerBeat}`,            // 显示从1开始的小节编号
             x + 15,                                   // 水平偏移15px
             y + height/2                             // 垂直居中
         );
     
         // 绘制小节持续时间进度条
-        const barProgress = (currentTime % secondsPerBar) / secondsPerBar;
+        const barProgress = (adjustedTime % secondsPerBar) / secondsPerBar;
         ctx.fillStyle = "rgba(255, 255, 0, 0.4)";
         ctx.fillRect(x, y, width * barProgress, height);
     
@@ -91,7 +93,8 @@ class c4MusicScript {
         const startX = x + (width - totalVWidth) / 2; // 水平居中
         const startY = y + height + 15; // 矩形下方15px
     
-        const currentBarTime = currentTime % secondsPerBar;
+        // 拍子计算应用偏移
+        const currentBarTime = adjustedTime % secondsPerBar;
         const currentBeat = Math.floor(currentBarTime / secondsPerBeat);
     
         ctx.lineWidth = 2; // 设置V形的边框宽度
@@ -185,6 +188,10 @@ class c4MusicScript {
             <div style="padding:15px">
                 <h3>音乐参数设置</h3>
                 <div class="setting-item">
+                    <label>时间偏移（秒）：</label>
+                        <input type="number" id="timeOffsetInput" 
+                            value="${this.timeOffset}" step="0.1" 
+                            style="width:80px">
                     <label>BPM：</label>
                     <input type="number" id="bpmInput" value="${this.BPM}" style="width:60px">
                 </div>
@@ -207,6 +214,7 @@ class c4MusicScript {
 
         // 应用设置事件
         this.settingsWindow.getContentContainer().querySelector('#applySettings').addEventListener('click', () => {
+            this.timeOffset = parseFloat(document.getElementById('timeOffsetInput').value);
             this.BPM = parseInt(document.getElementById('bpmInput').value);
             this.beatType = document.getElementById('beatTypeSelect').value;
         });
@@ -325,3 +333,4 @@ class c4MusicScript {
         }
     }
 }
+//升级：添加 this.timeOffset = 0.5263;
