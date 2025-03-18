@@ -547,11 +547,11 @@ class C4Timeline {
         if (!canvas || !ctx) return;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        this.musicScript.onDraw(ctx, this.audio.currentTime, 50, 50);
         this.#drawMusicStructure();  // 先画背景音乐结构
         this.#drawTimeMarkers();     // 再画时间刻度
         this.#drawTimeMarkersRectangles();
         this.#drawProgressLine();
+        this.musicScript.onDraw(ctx, this.audio.currentTime, 50, 50);
     }
     // 新增：将时间转换为Y坐标
     #convertTimeToY(time) {
@@ -562,12 +562,12 @@ class C4Timeline {
         const relativeTime = time - baseTime;
         return paddingTop + (relativeTime / 10) * effectiveHeight;
     }
-    // 新增：绘制音乐结构（小节和拍子）
     #drawMusicStructure() {
         const ctx = this.ctx;
         const canvas = this.canvas;
         const BPM = this.musicScript.BPM;
         const beatType = this.musicScript.beatType;
+        const timeOffset = this.musicScript.timeOffset || 0; // 处理timeOffset
     
         // 计算音乐时间参数
         const beatsPerBar = parseInt(beatType.split('/')[0]);
@@ -581,13 +581,13 @@ class C4Timeline {
     
         // 绘制小节背景
         ctx.fillStyle = "rgba(0, 0, 255, 0.05)";
-        let barTime = Math.floor(windowStart / secondsPerBar) * secondsPerBar;
+        let nStart = Math.ceil((windowStart - timeOffset) / secondsPerBar);
+        nStart = Math.max(nStart, 0);
+        let barTime = timeOffset + nStart * secondsPerBar;
         while (barTime < windowEnd) {
-            if (barTime >= windowStart) { // 修正这里
-                const startY = this.#convertTimeToY(barTime);
-                const endY = this.#convertTimeToY(barTime + secondsPerBar);
-                ctx.fillRect(0, startY, canvas.width, endY - startY);
-            }
+            const startY = this.#convertTimeToY(barTime);
+            const endY = this.#convertTimeToY(barTime + secondsPerBar);
+            ctx.fillRect(0, startY, canvas.width, endY - startY);
             barTime += secondsPerBar;
         }
     
@@ -595,41 +595,40 @@ class C4Timeline {
         ctx.strokeStyle = "rgba(128, 128, 128, 0.2)";
         ctx.lineWidth = 1;
         ctx.setLineDash([3, 5]);
-        let beatTime = Math.floor(windowStart / secondsPerBeat) * secondsPerBeat;
+        let mStart = Math.ceil((windowStart - timeOffset) / secondsPerBeat);
+        mStart = Math.max(mStart, 0);
+        let beatTime = timeOffset + mStart * secondsPerBeat;
         while (beatTime < windowEnd) {
-            if (beatTime >= windowStart) {
-                const y = this.#convertTimeToY(beatTime);
-                ctx.beginPath();
-                ctx.moveTo(canvas.width * 0.15, y);
-                ctx.lineTo(canvas.width, y);
-                ctx.stroke();
-            }
+            const y = this.#convertTimeToY(beatTime);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width * 0.15, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
             beatTime += secondsPerBeat;
         }
     
-        // 绘制小节线
+        // 绘制小节线及编号
         ctx.setLineDash([]);
         ctx.strokeStyle = "rgba(0, 128, 255, 0.5)";
         ctx.lineWidth = 2;
-        barTime = Math.floor(windowStart / secondsPerBar) * secondsPerBar;
+        nStart = Math.ceil((windowStart - timeOffset) / secondsPerBar);
+        nStart = Math.max(nStart, 0);
+        barTime = timeOffset + nStart * secondsPerBar;
         while (barTime < windowEnd) {
-            if (barTime >= windowStart) {
-                const y = this.#convertTimeToY(barTime);
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y);
-                ctx.stroke();
+            const y = this.#convertTimeToY(barTime);
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
     
-                // 显示小节编号
-                ctx.fillStyle = "#0080FF";
-                ctx.font = "10px Arial";
-                ctx.textBaseline = "top";
-                ctx.fillText(
-                    `Bar ${Math.floor(barTime / secondsPerBar) + 1}`,
-                    canvas.width - 50,
-                    y + 2
-                );
-            }
+            // 计算正确的小节编号
+            const musicTime = barTime - timeOffset;
+            const barNumber = Math.floor(musicTime / secondsPerBar) + 1;
+            ctx.fillStyle = "#0080FF";
+            ctx.font = "10px Arial";
+            ctx.textBaseline = "top";
+            ctx.fillText(`Bar ${barNumber}`, canvas.width - 50, y + 2);
+    
             barTime += secondsPerBar;
         }
     }

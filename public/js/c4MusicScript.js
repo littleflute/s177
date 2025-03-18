@@ -146,7 +146,7 @@ class c4MusicScript {
         ctx.fillRect(this.xAOI, this.yAOI, this.wAOI, this.hHeader);
         ctx.fillStyle = "white";
         ctx.font = "14px Arial";
-        ctx.fillText("Music Settings", this.xAOI + 5, this.yAOI + this.hHeader - 5);
+        ctx.fillText("MusicScript", this.xAOI + 5, this.yAOI + this.hHeader - 5);
         // 新增设置按钮
         const btnSize = 20;
         const btnX = this.xAOI + this.wAOI - btnSize - 5;
