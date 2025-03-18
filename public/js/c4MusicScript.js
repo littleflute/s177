@@ -75,7 +75,7 @@ class c4MusicScript {
         ctx.font = "bold 16px Arial";                 // 加粗字体
         ctx.textBaseline = "middle";                  // 垂直居中
         ctx.fillText(
-            `Bar: ${this.currentBar + 1} - secondsPerBeat:${secondsPerBeat}`,            // 显示从1开始的小节编号
+            `Bar: ${this.currentBar + 1}`,            // 显示从1开始的小节编号
             x + 15,                                   // 水平偏移15px
             y + height/2                             // 垂直居中
         );
@@ -332,5 +332,4 @@ class c4MusicScript {
             }
         }
     }
-}
-//升级：添加 this.timeOffset = 0.5263;
+} 

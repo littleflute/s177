@@ -62,17 +62,22 @@ class C4Timeline {
         uiDiv.style.position = 'fixed';
         uiDiv.style.left = '0';
         uiDiv.style.top = '0';
-        uiDiv.style.width = '50%';
+        uiDiv.style.width = '100%';
         uiDiv.style.height = '100%';
         uiDiv.style.overflow = 'hidden';
         uiDiv.style.touchAction = 'none';
+        uiDiv.style.zIndex = '999';  // 低于按钮的z-index
         this.body.appendChild(uiDiv);
 
         const canvas = document.createElement('canvas');
+        canvas.style.position = 'absolute'; // 新增定位方式
+        canvas.style.left = '0'; // 新增
+        canvas.style.top = '0'; // 新增
         canvas.style.width = '100%';
         canvas.style.height = '100%';
         canvas.style.display = 'block';
         canvas.style.backgroundColor = 'black';
+        canvas.style.zIndex = '1000';  // 确保低于按钮的z-index
         uiDiv.appendChild(canvas);
 
         const updateCanvasSize = () => {
@@ -368,7 +373,7 @@ class C4Timeline {
             const startY = paddingTop + (visibleStart - currentWindowStart) * perSecondHeight;
             const endY = paddingTop + (visibleEnd - currentWindowStart) * perSecondHeight;
 
-            if (mouseY >= startY && mouseY <= endY && mouseX <= this.canvas.width * 0.8) {
+            if (mouseY >= startY && mouseY <= endY && mouseX <= this.canvas.width * 0.9) {
                 return true;
             }
         }
@@ -403,7 +408,7 @@ class C4Timeline {
             ctx.stroke();
 
             ctx.textBaseline = i === 0 ? 'top' : i === 10 ? 'bottom' : 'middle';
-            ctx.fillText(`${absoluteTime}s`, width * 0.1 + 5, y);
+            ctx.fillText(`${absoluteTime}s`, width * 0.021 + 5, y);
         }
     }
 
@@ -636,4 +641,4 @@ class C4Timeline {
         loop();
     }
 }
- 
+//升级：让画布布满整个窗口

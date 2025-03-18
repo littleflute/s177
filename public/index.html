@@ -10,7 +10,7 @@ index.html
     <script src="js/c4MusicScript.js"></script>
 </head>
 <body>
-    <button id="openWindowBtn" style="float: right;">🎵 打开播放器</button>
+    <button id="openWindowBtn" style="position: fixed; right: 10px; top: 10px; z-index: 1001; padding: 8px 16px; border-radius: 20px; background: #007bff; color: white; border: none;">🎵 打开播放器</button>
 
     <script>
     class MovableWindow {
@@ -43,6 +43,12 @@ index.html
             const style = document.createElement('style');
             style.id = 'movable-window-styles';
             style.textContent = ` 
+            #openWindowBtn {
+                transition: transform 0.1s;
+            }
+            #openWindowBtn:active {
+                transform: scale(0.95);
+            }
             .lyrics-toolbar {
                 padding: 12px;
                 background: #f8f9fa;
