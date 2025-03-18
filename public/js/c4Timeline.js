@@ -128,11 +128,15 @@ class C4Timeline {
     }
 
     #handleStart(clientX, clientY) {
-        this.musicScript.onMouseDown(clientX, clientY);
-        this.fixedTimeWindowStart = Math.floor((this.audio?.currentTime || 0) / 10) * 10;
+        this.musicScript.onMouseDown(clientX, clientY); 
         const rect = this.canvas.getBoundingClientRect();
         const mouseX = clientX - rect.left;
         const mouseY = clientY - rect.top;
+        // 新增：检查是否在音乐脚本AOI区域内
+        if (this.musicScript.isPointInsideAOI(mouseX, mouseY)) {
+            return; // 在AOI内则跳过后续时间轴操作
+        }
+        this.fixedTimeWindowStart = Math.floor((this.audio?.currentTime || 0) / 10) * 10;
         const clickTime = this.#convertYToTime(mouseY);
 
         if (Date.now() - this.lastDeleteTime < 200) return;
@@ -203,7 +207,10 @@ class C4Timeline {
         const clientY = event.clientY || event.y;
         const mouseX = clientX - rect.left;
         const mouseY = clientY - rect.top;
-
+        // 新增：检查是否在音乐脚本AOI区域内
+        if (this.musicScript.isPointInsideAOI(mouseX, mouseY)) {
+            return; // 在AOI内则跳过标记创建
+        }
         if (this.#isClickOnExistingMarker(mouseX, mouseY)) return;
 
         const paddingTop = 20;
