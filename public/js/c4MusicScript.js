@@ -14,6 +14,9 @@ class c4MusicScript {
         this.initialMouseX = null; // 新增：拖动初始鼠标位置
         this.initialMouseY = null;
         this.initialCircles = null; // 新增：拖动初始圆形位置
+        this.BPM = 104;//每分钟104拍
+        this.beatType = "4/4";//4分音符为一拍，每小节4拍
+        this.currentBar = 0;//当前小节
     }
 
     // 新增：检测是否点击标题栏
@@ -27,6 +30,58 @@ class c4MusicScript {
                y >= this.yAOI && y <= this.yAOI + this.hAOI;
     }
 
+    #drawCurrentBar(ctx, currentTime, x, y) {
+        // 解析节拍类型（如"4/4"）
+        const beatsPerBar = parseInt(this.beatType.split('/')[0]);
+        
+        // 计算音乐时间相关参数
+        const secondsPerBeat = 60 / this.BPM;          // 每拍持续时间（秒）
+        const secondsPerBar = beatsPerBar * secondsPerBeat; // 每小节持续时间
+        
+        // 计算当前小节编号
+        this.currentBar = Math.floor(currentTime / secondsPerBar);
+        
+        // 绘制当前小节指示条背景
+        ctx.fillStyle = "rgba(0, 128, 255, 0.7)";     // 半透明蓝色背景
+        ctx.strokeStyle = "navy";                      // 深蓝色边框
+        ctx.lineWidth = 2;
+        
+        // 绘制圆角矩形（宽度120px，高度30px）
+        const width = 120;
+        const height = 30;
+        const radius = 5;
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+        
+        // 填充并描边
+        ctx.fill();
+        ctx.stroke();
+    
+        // 绘制当前小节文本
+        ctx.fillStyle = "white";                      // 白色文字
+        ctx.font = "bold 16px Arial";                 // 加粗字体
+        ctx.textBaseline = "middle";                  // 垂直居中
+        ctx.fillText(
+            `Bar: ${this.currentBar + 1}`,            // 显示从1开始的小节编号
+            x + 15,                                   // 水平偏移15px
+            y + height/2                             // 垂直居中
+        );
+    
+        // 可选：绘制小节持续时间进度条
+        const barProgress = (currentTime % secondsPerBar) / secondsPerBar;
+        ctx.fillStyle = "rgba(255, 255, 0, 0.4)";
+        ctx.fillRect(x, y, width * barProgress, height);
+    }
+    
     #drawCircles(ctx, currentTime, x, y) {
         this.lsCircle.forEach(circle => {
             ctx.beginPath();
@@ -56,6 +111,7 @@ class c4MusicScript {
         ctx.fillStyle = "red";
         ctx.font = "14px Arial";
         ctx.fillText(currentTime.toFixed(2), x, y);
+        this.#drawCurrentBar(ctx,currentTime,this.xAOI+20,this.yAOI+20);
         this.#drawCircles(ctx, currentTime, x, y);
     }
 
