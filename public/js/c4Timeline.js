@@ -2,7 +2,7 @@
 //c4Timeline.js
 class C4Timeline {
     constructor(document, player) {
-        this.musicScript = new c4MusicScript();
+        this.musicScript = new c4MusicScript(document);
         this.body = document.body;
         this.audio = player.audio;
         this.timeMarkers = [];  

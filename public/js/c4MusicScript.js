@@ -1,8 +1,9 @@
 class c4MusicScript {
-    constructor() {
+    constructor(document) {
+        this.body = document.body;
         this.xAOI = 50;
         this.yAOI = 50;
-        this.wAOI = 200;
+        this.wAOI = this.body.clientWidth * 0.8;  
         this.hAOI = 200;
         this.hHeader = 20; // 新增：标题栏高度
         this.lsCircle = [];
@@ -20,6 +21,7 @@ class c4MusicScript {
         this.settingsWindow = null; // 新增设置窗口
         this.isSettingsWindowVisible = false;
         this.timeOffset = 0.5263; // 新增时间偏移属性
+        this.barsPerLine = 2; // 新增：每行显示的小节数
     }
 
     // 新增：检测是否点击标题栏
@@ -33,93 +35,93 @@ class c4MusicScript {
                y >= this.yAOI && y <= this.yAOI + this.hAOI;
     }
 
-    #drawCurrentBar(ctx, currentTime, x, y) {
-        const adjustedTime = currentTime - this.timeOffset; // 使用调整后时间
-        // 解析节拍类型（如"4/4"）
+    #drawCurrentLine(ctx, currentTime, xPos, yPos) {
+        const adjustedTime = currentTime - this.timeOffset;
         const beatsPerBar = parseInt(this.beatType.split('/')[0]);
+        const secondsPerBeat = 60 / this.BPM;
+        const secondsPerBar = beatsPerBar * secondsPerBeat;
         
-        // 计算音乐时间相关参数
-        const secondsPerBeat = 60 / this.BPM;          // 每拍持续时间（秒）
-        const secondsPerBar = beatsPerBar * secondsPerBeat; // 每小节持续时间
-        
-        // 当前小节计算应用偏移
         this.currentBar = Math.floor(adjustedTime / secondsPerBar);
-        
-        // 绘制当前小节指示条背景
-        ctx.fillStyle = "rgba(0, 128, 255, 0.7)";     // 半透明蓝色背景
-        ctx.strokeStyle = "navy";                      // 深蓝色边框
+        const barProgress = (adjustedTime % secondsPerBar) / secondsPerBar;
+
+        // 计算起始小节和布局参数
+        const startBar = Math.floor(this.currentBar / this.barsPerLine) * this.barsPerLine;
+        const margin = 20;
+        const lineY = this.yAOI + 30; // 时间线垂直位置
+        const lineHeight = 30;         // 时间线高度
+        const availableWidth = this.wAOI - 2 * margin;
+        const blockWidth = availableWidth / this.barsPerLine;
+
+        // 绘制时间线背景
+        ctx.fillStyle = "rgba(0, 128, 255, 0.2)";
+        ctx.strokeStyle = "navy";
         ctx.lineWidth = 2;
-        
-        // 绘制圆角矩形（宽度120px，高度30px）
-        const width = 120;
-        const height = 30;
-        const radius = 5;
-        ctx.beginPath();
-        ctx.moveTo(x + radius, y);
-        ctx.lineTo(x + width - radius, y);
-        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-        ctx.lineTo(x + width, y + height - radius);
-        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-        ctx.lineTo(x + radius, y + height);
-        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-        ctx.lineTo(x, y + radius);
-        ctx.quadraticCurveTo(x, y, x + radius, y);
-        ctx.closePath();
-        
-        // 填充并描边
+        this.#drawRoundedRect(ctx, this.xAOI + margin, lineY, availableWidth, lineHeight, 5);
         ctx.fill();
         ctx.stroke();
-    
-        // 绘制当前小节文本
-        ctx.fillStyle = "white";                      // 白色文字
-        ctx.font = "bold 16px Arial";                 // 加粗字体
-        ctx.textBaseline = "middle";                  // 垂直居中
-        ctx.fillText(
-            `Bar: ${this.currentBar + 1}`,            // 显示从1开始的小节编号
-            x + 15,                                   // 水平偏移15px
-            y + height/2                             // 垂直居中
-        );
-    
-        // 绘制小节持续时间进度条
-        const barProgress = (adjustedTime % secondsPerBar) / secondsPerBar;
-        ctx.fillStyle = "rgba(255, 255, 0, 0.4)";
-        ctx.fillRect(x, y, width * barProgress, height);
-    
-        // 在小节下方绘制拍子指示“V”
-        ctx.save(); // 保存画布状态
-        const vSize = 10; // V形的高度
-        const vSpacing = 15; // 每个V之间的间距
-        const totalVWidth = beatsPerBar * vSize + (beatsPerBar - 1) * vSpacing;
-        const startX = x + (width - totalVWidth) / 2; // 水平居中
-        const startY = y + height + 15; // 矩形下方15px
-    
-        // 拍子计算应用偏移
-        const currentBarTime = adjustedTime % secondsPerBar;
-        const currentBeat = Math.floor(currentBarTime / secondsPerBeat);
-    
-        ctx.lineWidth = 2; // 设置V形的边框宽度
-    
-        for (let i = 0; i < beatsPerBar; i++) {
-            const vX = startX + i * (vSize + vSpacing);
-            const vCenterX = vX + vSize / 2;
-    
-            // 绘制V形路径（移除closePath避免闭合）
+
+        // 绘制每个小节块
+        for (let i = 0; i < this.barsPerLine; i++) {
+            const barNumber = startBar + i;
+            const blockX = this.xAOI + margin + i * blockWidth;
+            const isCurrent = barNumber === this.currentBar;
+
+            // 块背景
+            ctx.fillStyle = isCurrent ? "rgba(0, 128, 255, 0.5)" : "rgba(0, 128, 255, 0.2)";
+            ctx.fillRect(blockX, lineY, blockWidth, lineHeight);
+            ctx.strokeStyle = "navy";
+            ctx.strokeRect(blockX, lineY, blockWidth, lineHeight);
+
+            // 小节号
+            ctx.fillStyle = "white";
+            ctx.font = "bold 14px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(`B${barNumber + 1}`, blockX + blockWidth/2, lineY + lineHeight/2);
+
+            // 当前小节进度条
+            if (isCurrent) {
+                ctx.fillStyle = "rgba(255, 255, 0, 0.4)";
+                ctx.fillRect(blockX, lineY, blockWidth * barProgress, lineHeight);
+            }
+
+            // 拍子分隔线
             ctx.beginPath();
-            ctx.moveTo(vCenterX - vSize/2, startY);
-            ctx.lineTo(vCenterX, startY + vSize);
-            ctx.lineTo(vCenterX + vSize/2, startY);
-    
-            // 根据拍子状态设置样式
-            if (i < currentBeat) {
-                ctx.strokeStyle = "rgba(255, 255, 0, 0.8)"; // 已完成的拍子黄色
-            } else if (i === currentBeat) {
-                ctx.strokeStyle = "rgba(255, 255, 0, 0.8)"; // 当前拍子高亮
-            } else {
-                ctx.strokeStyle = "rgba(128, 128, 128, 0.8)"; // 未完成灰色
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+            for (let beat = 1; beat < beatsPerBar; beat++) {
+                const beatX = blockX + (beat / beatsPerBar) * blockWidth;
+                ctx.moveTo(beatX, lineY);
+                ctx.lineTo(beatX, lineY + lineHeight);
             }
             ctx.stroke();
         }
-        ctx.restore(); // 恢复画布状态
+
+        // 动态V形指示器
+        const currentBeat = Math.floor((adjustedTime % secondsPerBar) / secondsPerBeat);
+        const beatProgress = ((adjustedTime % secondsPerBar) % secondsPerBeat) / secondsPerBeat;
+        const currentBlockIdx = this.currentBar - startBar;
+        if (currentBlockIdx >= 0 && currentBlockIdx < this.barsPerLine) {
+            const blockX = this.xAOI + margin + currentBlockIdx * blockWidth;
+            const beatX = blockX + (currentBeat + beatProgress) * (blockWidth / beatsPerBar);
+            
+            ctx.beginPath();
+            ctx.moveTo(beatX - 5, lineY + lineHeight + 5);
+            ctx.lineTo(beatX, lineY + lineHeight + 15);
+            ctx.lineTo(beatX + 5, lineY + lineHeight + 5);
+            ctx.strokeStyle = "rgba(255, 255, 0, 0.8)";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+    }
+    
+    // 辅助函数：绘制圆角矩形
+    #drawRoundedRect(ctx, x, y, width, height, radius) {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.arcTo(x + width, y, x + width, y + height, radius);
+        ctx.arcTo(x + width, y + height, x, y + height, radius);
+        ctx.arcTo(x, y + height, x, y, radius);
+        ctx.arcTo(x, y, x + width, y, radius);
+        ctx.closePath();
     }
 
     #drawCircles(ctx, currentTime, x, y) {
@@ -168,7 +170,7 @@ class c4MusicScript {
         ctx.fillStyle = "red";
         ctx.font = "14px Arial";
         ctx.fillText(currentTime.toFixed(2), x, y);
-        this.#drawCurrentBar(ctx,currentTime,this.xAOI+20,this.yAOI+20);
+        this.#drawCurrentLine(ctx, currentTime, this.xAOI + 20, this.yAOI + 20); 
         this.#drawCircles(ctx, currentTime, x, y);
     }
     toggleSettingsWindow() {
@@ -192,6 +194,10 @@ class c4MusicScript {
                         <input type="number" id="timeOffsetInput" 
                             value="${this.timeOffset}" step="0.1" 
                             style="width:80px">
+                        <label>每行小节数：</label>
+                        <input type="number" id="barsPerLineInput" 
+                            value="${this.barsPerLine}" min="1" 
+                            style="width:60px">
                     <label>BPM：</label>
                     <input type="number" id="bpmInput" value="${this.BPM}" style="width:60px">
                 </div>
@@ -217,6 +223,7 @@ class c4MusicScript {
             this.timeOffset = parseFloat(document.getElementById('timeOffsetInput').value);
             this.BPM = parseInt(document.getElementById('bpmInput').value);
             this.beatType = document.getElementById('beatTypeSelect').value;
+            this.barsPerLine = parseInt(document.getElementById('barsPerLineInput').value);
         });
     }
     
@@ -333,3 +340,4 @@ class c4MusicScript {
         }
     }
 } 
+ 
