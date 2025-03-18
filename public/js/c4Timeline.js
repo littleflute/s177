@@ -542,12 +542,92 @@ class C4Timeline {
         if (!canvas || !ctx) return;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        this.musicScript.onDraw(ctx,this.audio.currentTime,50,50);
-        this.#drawTimeMarkers();
+        this.musicScript.onDraw(ctx, this.audio.currentTime, 50, 50);
+        this.#drawMusicStructure();  // 先画背景音乐结构
+        this.#drawTimeMarkers();     // 再画时间刻度
         this.#drawTimeMarkersRectangles();
         this.#drawProgressLine();
     }
-
+    // 新增：将时间转换为Y坐标
+    #convertTimeToY(time) {
+        const baseTime = this.fixedTimeWindowStart ?? Math.floor((this.audio?.currentTime || 0) / 10) * 10;
+        const paddingTop = 20;
+        const paddingBottom = 20;
+        const effectiveHeight = this.canvas.height - paddingTop - paddingBottom;
+        const relativeTime = time - baseTime;
+        return paddingTop + (relativeTime / 10) * effectiveHeight;
+    }
+    // 新增：绘制音乐结构（小节和拍子）
+    #drawMusicStructure() {
+        const ctx = this.ctx;
+        const canvas = this.canvas;
+        const BPM = this.musicScript.BPM;
+        const beatType = this.musicScript.beatType;
+    
+        // 计算音乐时间参数
+        const beatsPerBar = parseInt(beatType.split('/')[0]);
+        const secondsPerBeat = 60 / BPM;
+        const secondsPerBar = beatsPerBar * secondsPerBeat;
+    
+        // 获取当前时间窗口
+        const baseTime = this.fixedTimeWindowStart ?? Math.floor((this.audio?.currentTime || 0) / 10) * 10;
+        const windowStart = baseTime;
+        const windowEnd = baseTime + 10;
+    
+        // 绘制小节背景
+        ctx.fillStyle = "rgba(0, 0, 255, 0.05)";
+        let barTime = Math.floor(windowStart / secondsPerBar) * secondsPerBar;
+        while (barTime < windowEnd) {
+            if (barTime >= windowStart) { // 修正这里
+                const startY = this.#convertTimeToY(barTime);
+                const endY = this.#convertTimeToY(barTime + secondsPerBar);
+                ctx.fillRect(0, startY, canvas.width, endY - startY);
+            }
+            barTime += secondsPerBar;
+        }
+    
+        // 绘制拍子线
+        ctx.strokeStyle = "rgba(128, 128, 128, 0.2)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 5]);
+        let beatTime = Math.floor(windowStart / secondsPerBeat) * secondsPerBeat;
+        while (beatTime < windowEnd) {
+            if (beatTime >= windowStart) {
+                const y = this.#convertTimeToY(beatTime);
+                ctx.beginPath();
+                ctx.moveTo(canvas.width * 0.15, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            beatTime += secondsPerBeat;
+        }
+    
+        // 绘制小节线
+        ctx.setLineDash([]);
+        ctx.strokeStyle = "rgba(0, 128, 255, 0.5)";
+        ctx.lineWidth = 2;
+        barTime = Math.floor(windowStart / secondsPerBar) * secondsPerBar;
+        while (barTime < windowEnd) {
+            if (barTime >= windowStart) {
+                const y = this.#convertTimeToY(barTime);
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+    
+                // 显示小节编号
+                ctx.fillStyle = "#0080FF";
+                ctx.font = "10px Arial";
+                ctx.textBaseline = "top";
+                ctx.fillText(
+                    `Bar ${Math.floor(barTime / secondsPerBar) + 1}`,
+                    canvas.width - 50,
+                    y + 2
+                );
+            }
+            barTime += secondsPerBar;
+        }
+    }
     #animate() {
         const loop = () => {
             this.#draw();
