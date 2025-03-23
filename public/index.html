@@ -8,9 +8,12 @@ index.html
     <title>移动端音乐播放器</title>
     <script src="js/c4Timeline.js"></script>
     <script src="js/c4MusicScript.js"></script>
+    <script src="js/c4LogWnd.js"></script>
 </head>
 <body>
     <button id="openWindowBtn" style="position: fixed; right: 10px; top: 10px; z-index: 1001; padding: 8px 16px; border-radius: 20px; background: #007bff; color: white; border: none;">🎵 打开播放器</button>
+
+    <button id="btn2ToggleLogWnd" style="position: fixed; right: 10px; top: 60px; z-index: 1001; padding: 8px 16px; border-radius: 20px; background: #007bff; color: white; border: none;"> log</button>
 
     <script>
     class MovableWindow {
@@ -274,6 +277,14 @@ index.html
                         padding: 4px;
                         border-radius: 4px;
                         border: 1px solid #ddd;
+                    }
+                    #btn2ToggleLogWnd.logwnd-active {
+                        background: #6610f2 !important;  /* 使用与歌词按钮相同的紫色 */
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    }
+
+                    #btn2ToggleLogWnd {
+                        transition: background 0.2s, transform 0.1s;
                     }
             `;
             document.head.appendChild(style);
@@ -546,6 +557,7 @@ index.html
 
         play() {
             this.isPlaying = true;  // 立即更新状态
+
             return this.audio.play().catch((error) => {
                 this.isPlaying = false; // 播放失败时回滚状态
                 console.error('播放失败:', error);
@@ -652,6 +664,7 @@ index.html
 
     // 初始化应用
     document.addEventListener('DOMContentLoaded', () => {
+        const oWnd4Log = new C4LogWnd();
         // 创建播放器窗口
         const playerWindow = new MovableWindow('音乐播放器', `
         <div id="currentSong">-- 没有正在播放的歌曲 --</div>
@@ -727,6 +740,7 @@ index.html
         });
 
         document.getElementById('openWindowBtn').addEventListener('click', () => playerWindow.show());  
+        document.getElementById('btn2ToggleLogWnd').addEventListener('click', () => oWnd4Log.toggleWnd());  
 
         // 播放控制
         playerWindow.getContentContainer().addEventListener('click', (e) => {
@@ -737,6 +751,7 @@ index.html
                 return;
             }
             if (target.id === 'playPauseBtn') {
+                oWnd4Log.info("playPauseBtn clicked " + Date());
                 player.toggle();
                 target.textContent = player.isPlaying ? '❚❚' : '▶';
             }
@@ -815,4 +830,66 @@ index.html
     </script>
 </body>
 </html>
- 
+ <!--
+灯熄灭了
+月亮是寂寞的眼
+静静看着谁孤枕难眠
+远处传来那首熟悉的歌
+那些心声为何那样微弱
+很久不见
+你现在都还好吗
+你曾说过你不愿一个人
+我们都活在这个城市里面
+却为何没有再见面
+却只和陌生人擦肩
+有没有那么一首歌
+会让你轻轻跟着和
+牵动我们共同过去
+记忆它不会沉默
+有没有那么一首歌
+会让你心里记着我
+让你欢喜也让你
+忧这么一个我
+最真的梦
+你现在还记得吗
+你如今也是一个有故事的人
+天空下着一样冷冷的雨
+落在同样的世界
+昨天已越来越遥远
+有没有那么一首歌
+会让你轻轻跟着和
+牵动我们共同过去
+记忆从未沉默过
+有没有那么一首歌
+会让你心里记着我
+让你欢喜也让你忧
+这么一个我
+有没有那么一首歌
+会让你轻轻跟着和
+随着我们生命起伏
+一起唱的主题歌
+有没有那么一首歌
+会让你突然想起我
+让你欢喜也让你忧
+这么一个我
+我现在唱的这首歌
+若是让你想起了我
+涌上来的若是寂寞
+我想知道为什么
+有没有那么一首歌
+会让你突然想起我
+让你欢喜也让你忧
+这么一个我
+我现在唱的这首歌
+就代表我对你诉说
+就算日子匆匆过去
+我们曾一起走过
+我现在唱的这首歌
+就代表我对你诉说
+就算日子匆匆过去
+我们曾走过
+就算日子匆匆过去
+我们曾走过
+词：李焯雄/李宗盛
+曲：周传雄
+-->
