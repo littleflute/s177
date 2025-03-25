@@ -1,4 +1,4 @@
- //升级：btn2SaveLog2LocalStorage btn2LoadLogFromLocalStorage
+ //升级：log-toolbar 添加 input 和以个按钮，可手动添加log
 // c4LogWnd.js
 class C4LogWnd {
     constructor() {
@@ -6,8 +6,12 @@ class C4LogWnd {
         this.logWindow = new MovableWindow('Log', `
             <div class="log-toolbar">
                 <button id="clearLogBtn" class="toolbar-btn">Clear</button>
-                <button id="btn2SaveLog2LocalStorage" class="toolbar-btn">save</button>
-                <button id="btn2LoadLogFromLocalStorage" class="toolbar-btn">load</button>
+                <button id="btn2SaveLog2LocalStorage" class="toolbar-btn">Save</button>
+                <button id="btn2LoadLogFromLocalStorage" class="toolbar-btn">Load</button>
+            </div>
+            <div class="log-toolbar">
+                <input type="text" id="manualLogInput" class="log-input" placeholder="Enter log message">
+                <button id="addManualLogBtn" class="toolbar-btn">Add</button>
             </div>
             <div class="log-content"></div>
         `);
@@ -21,6 +25,28 @@ class C4LogWnd {
     addStyles() {
         const style = document.createElement('style');
         style.textContent = `
+            .log-toolbar {
+                    display: flex;
+                    gap: 5px;
+                    padding: 5px;
+                    background: #e9ecef;
+                    border-bottom: 1px solid #dee2e6;
+                }
+
+            .log-input {
+                flex: 1;
+                padding: 4px 8px;
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                font-family: inherit;
+                font-size: 0.9rem;
+            }
+
+            .log-input:focus {
+                outline: none;
+                border-color: #86b7fe;
+                box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+            }
             .log-content {
                 height: calc(100% - 45px);
                 overflow-y: auto;
@@ -68,6 +94,18 @@ class C4LogWnd {
     }
 
     bindEvents() {
+        const container = this.logWindow.getContentContainer();
+        
+        // 新增日志功能
+        container.querySelector('#addManualLogBtn').addEventListener('click', () => {
+            this.handleManualLog();
+        });
+
+        // 回车键支持
+        container.querySelector('#manualLogInput').addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') this.handleManualLog();
+        });
+
         this.logWindow.getContentContainer().querySelector('#clearLogBtn').addEventListener('click', () => {
             this.clear();
         });
@@ -104,7 +142,16 @@ class C4LogWnd {
             logContent.scrollTop = logContent.scrollHeight;
         }
     }
-
+    handleManualLog() {
+        const input = this.logWindow.getContentContainer().querySelector('#manualLogInput');
+        const message = input.value.trim();
+        
+        if (message) {
+            this.log(message, 'info');
+            input.value = '';
+            input.focus();
+        }
+    }
     error(message) {
         this.log(message, 'error');
     }
