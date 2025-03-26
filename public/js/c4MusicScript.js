@@ -233,7 +233,7 @@ class c4MusicScript {
         }
     }
     createSettingsWindow() {
-        this.settingsWindow = new MovableWindow("音乐设置", `
+        this.settingsWindow = new MovableWindow("MusicSetting", `
             <div style="padding:15px">
                 <h3>音乐参数设置</h3>
                 <div class="setting-item"> 
