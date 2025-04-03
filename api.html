@@ -272,7 +272,7 @@
 <body>
     <div class="mobile-container">
         <div class="topnav">
-            <a href="#home" class="active">GithubAPI v1.32</a>
+            <a href="#home" class="active">GithubAPI v1.33</a>
             <div id="myLinks">
                 <a href="https://littleflute.github.io/s177/" target="_blank">s177 Home Page</a>
                 <a href="https://github.com/littleflute/s177" target="_blank">s177 Repo</a>
@@ -394,11 +394,11 @@
                         <div id="issueBody">${issue.body || '暂无详细内容'}</div>
                         <button class="edit-btn" onclick="ghApp.editIssue(${issue.number})">编辑</button>
                         <button class="save-btn" style="display: none;" onclick="ghApp.saveIssue(${issue.number})">保存</button>
-                        <button class="comment-btn" 
-                            onclick="ghApp.getIssueComments(${issue.number})">
-                            查看评论 (${issue.comments})
-                        </button>
                     </div>
+                    <button class="comment-btn" 
+                        onclick="ghApp.getIssueComments(${issue.number})">
+                        查看评论 (${issue.comments})
+                    </button>
                 `;
                 this.currentIssueNumber = issue.number;
             }
@@ -587,7 +587,7 @@
         function toggleContent(btn) {
             const contentDiv = btn.parentElement.querySelector('.issue-body-content');
             const separator = btn.parentElement.querySelector('.content-separator');
-            
+
             if (contentDiv.style.display === 'none') {
                 contentDiv.style.display = 'block';
                 separator.style.display = 'block';
@@ -603,5 +603,4 @@
     </script>
 </body>
 
-</html>
-<!--升级：折叠后，查看评论 按钮依然可见-->
+</html>    
