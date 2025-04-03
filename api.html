@@ -170,7 +170,6 @@
                 cursor: pointer;
             }
 
-            /* New issues toolbar styles */
            .issues-toolbar {
                 background: #444;
                 padding: 5px;
@@ -192,7 +191,6 @@
                 background: #888;
             }
 
-            /* 新增高亮样式 */
            .issues-buttons button.active {
                 background: #4CAF50;
             }
@@ -243,13 +241,29 @@
                 cursor: pointer;
                 margin-left: 5px;
             }
+
+            /* 更新折叠按钮样式 */
+           .toggle-btn {
+                background-color: #4CAF50;
+                padding: 3px 8px;
+                border: none;
+                color: white;
+                cursor: pointer;
+                margin-left: 10px;
+                border-radius: 3px;
+                transition: background-color 0.3s;
+            }
+
+           .toggle-btn.collapsed {
+                background-color: #FF5722;
+            }
         </style>
     </head>
 
     <body>
         <div class="mobile-container">
             <div class="topnav">
-                <a href="#home" class="active">GithubAPI v1.31</a>
+                <a href="#home" class="active">GithubAPI v1.32</a>
                 <div id="myLinks">
                     <a href="https://littleflute.github.io/s177/" target="_blank">s177 Home Page</a>
                     <a href="https://github.com/littleflute/s177" target="_blank">s177 Repo</a>
@@ -259,12 +273,10 @@
                 </a>
             </div>
 
-            <!-- New Issues Toolbar -->
             <div class="issues-toolbar">
                 <div class="issues-buttons" id="issuesButtons"></div>
             </div>
 
-            <!-- Issue Details Display -->
             <div id="issueDetails" class="issue-details"></div>
 
             <div id="id_4_ui"></div>
@@ -275,7 +287,7 @@
                 constructor() {
                     this.container = document.getElementById('id_4_ui');
                     this.initUI();
-                    this.fetchAllIssues(); // Initialize issues list
+                    this.fetchAllIssues();
                 }
 
                 initUI() {
@@ -351,10 +363,8 @@
                             ['issue-btn']);
                         btn.onclick = () => {
                             this.showIssueDetails(issue);
-                            // 移除所有按钮的高亮状态
                             const allButtons = container.querySelectorAll('button');
                             allButtons.forEach(button => button.classList.remove('active'));
-                            // 为当前点击的按钮添加高亮状态
                             btn.classList.add('active');
                         };
                         container.appendChild(btn);
@@ -368,15 +378,18 @@
                         <p>状态: ${issue.state === 'open' ? '🟢 打开' : '🔴 关闭'}</p>
                         <p>创建者: ${issue.user.login}</p>
                         <p>创建时间: ${new Date(issue.created_at).toLocaleString()}</p>
-                        <hr>
-                        <div id="issueBody">${issue.body || '暂无详细内容'}</div>
-                        <button class="edit-btn" onclick="ghApp.editIssue(${issue.number})">编辑</button>
-                        <button class="save-btn" style="display: none;" onclick="ghApp.saveIssue(${issue.number})">保存</button>
-                        <button class="comment-btn" 
-                            onclick="ghApp.getIssueComments(${issue.number})">
-                            查看评论 (${issue.comments})
-                        </button>
-                        <button class="run-issue-code-btn" onclick="ghApp.runIssueCode(${issue.number})">运行 issue 代码</button>
+                        <button class="toggle-btn" onclick="toggleContent(this)">▲ 折叠</button>
+                        <hr class="content-separator">
+                        <div class="issue-body-content">
+                            <div id="issueBody">${issue.body || '暂无详细内容'}</div>
+                            <button class="edit-btn" onclick="ghApp.editIssue(${issue.number})">编辑</button>
+                            <button class="save-btn" style="display: none;" onclick="ghApp.saveIssue(${issue.number})">保存</button>
+                            <button class="comment-btn" 
+                                onclick="ghApp.getIssueComments(${issue.number})">
+                                查看评论 (${issue.comments})
+                            </button>
+                            <button class="run-issue-code-btn" onclick="ghApp.runIssueCode(${issue.number})">运行 issue 代码</button>
+                        </div>
                     `;
                     this.currentIssueNumber = issue.number;
                 }
@@ -461,7 +474,7 @@
                         alert("Issue创建成功！");
                         this.inputIssueTitle.value = '';
                         this.inputIssueBody.value = '';
-                        this.fetchAllIssues(); // Refresh issues list
+                        this.fetchAllIssues();
                     } catch (error) {
                         console.error('创建失败:', error);
                         alert("创建失败，请检查控制台");
@@ -561,7 +574,25 @@
                 const menu = document.getElementById('myLinks');
                 menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
             }
+
+            // 更新折叠函数
+            function toggleContent(btn) {
+                const contentDiv = btn.parentElement.querySelector('.issue-body-content');
+                const separator = btn.parentElement.querySelector('.content-separator');
+                
+                if (contentDiv.style.display === 'none') {
+                    contentDiv.style.display = 'block';
+                    separator.style.display = 'block';
+                    btn.textContent = '▲ 折叠';
+                    btn.classList.remove('collapsed');
+                } else {
+                    contentDiv.style.display = 'none';
+                    separator.style.display = 'none';
+                    btn.textContent = '▼ 展开';
+                    btn.classList.add('collapsed');
+                }
+            }
         </script>
     </body>
 
-</html>    
+</html>
