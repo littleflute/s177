@@ -481,7 +481,7 @@
                     <hr class="content-separator">
                     <div class="issue-body-content">
                         <div id="issueBody">${issue.body || '暂无详细内容'}</div>
-                        <button class="edit-btn" onclick="ghApp.editIssue(${issue.number})">编辑</button>
+                        <button class="edit-btn" onclick="ghApp.editIssue(${issue.number}, event)">编辑</button>
                         <button class="save-btn" style="display: none;" onclick="ghApp.saveIssue(${issue.number})">保存</button>
                     </div>
                     <button class="comment-btn" 
@@ -617,13 +617,19 @@
                 return response.json();
             }
 
-            editIssue(issueNumber) {
+            editIssue(issueNumber, event) {
                 const issueBody = document.getElementById('issueBody');
                 const textarea = this.createElement('textarea', null, issueBody.textContent, ['edit-textarea']);
                 issueBody.innerHTML = '';
                 issueBody.appendChild(textarea);
-                document.querySelector('.edit-btn').style.display = 'none';
-                document.querySelector('.save-btn').style.display = 'inline-block';
+
+                // 通过事件对象找到对应的按钮
+                const editBtn = event.target;
+                const parentContent = editBtn.closest('.issue-body-content');
+                const saveBtn = parentContent.querySelector('.save-btn');
+                
+                editBtn.style.display = 'none';
+                saveBtn.style.display = 'inline-block';
             }
 
             async saveIssue(issueNumber) {
@@ -752,3 +758,6 @@
 
 </html>
     
+<!--
+ issue 编辑后，没有保存按钮
+-->
