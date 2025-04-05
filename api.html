@@ -326,13 +326,31 @@
             padding: 5px;
             margin-right: 5px;
         }
+        #id_4_server_status {
+            font-size: 12px;
+            padding: 2px 16px;
+            margin: 0;
+            transition: color 0.3s ease;
+        }
+
+        .server-online {
+            color: #4CAF50;
+        }
+
+        .server-offline {
+            color: #FF5722;
+        }
     </style>
 </head>
 
 <body>
     <div class="mobile-container">
         <div class="topnav">
-            <a href="#home" class="active">GithubAPI v1.34</a>
+            <div id="id_4_info">
+                <a href="#home" class="active">GithubAPI v1.41</a>
+                <p id="id_4_server_status" class="server-offline">Checking server status...</p>
+            </div>
+            
             <div id="myLinks">
                 <a href="https://littleflute.github.io/s177/" target="_blank">s177 Home Page</a>
                 <a href="https://github.com/littleflute/s177" target="_blank">s177 Repo</a>
@@ -362,6 +380,12 @@
     </div>
 
     <script>
+        window.addEventListener('beforeunload', () => {
+            if (ghApp.serverCheckInterval) {
+                clearInterval(ghApp.serverCheckInterval);
+            }
+        });
+
         class C4GithubAPI {
             constructor() {
                 this.repos = ['s177', 's281', 'Songs', 'cchess', 'voa'];
@@ -375,8 +399,31 @@
                 this.modalBodyInput = document.getElementById('modalIssueBody');
                 this.modalCreateBtn = document.getElementById('modalCreateIssueBtn');
                 this.setupModalEvents();
+                this.serverCheckInterval = null;
+                this.#initServerStatusCheck();
+            }
+            #initServerStatusCheck() {
+                this.#checkServerStatus();
+                this.serverCheckInterval = setInterval(() => this.#checkServerStatus(), 5000);
+            }
+            async #checkServerStatus() {
+                try {
+                    const response = await fetch('http://127.0.0.1:3001', {
+                        method: 'HEAD',
+                        mode: 'no-cors',
+                        cache: 'no-cache'
+                    });
+                    this.#updateServerStatus(true);
+                } catch (error) {
+                    this.#updateServerStatus(false);
+                }
             }
 
+            #updateServerStatus(isOnline) {
+                const statusElement = document.getElementById('id_4_server_status');
+                statusElement.textContent = isOnline ? 'Server: Online' : 'Server: Offline';
+                statusElement.className = isOnline ? 'server-online' : 'server-offline';
+            }
             initUI() {
                 this.appUI = this.createSection('appUI', ['ui-area']);
                 this.messageDisplay = this.createElement('textarea', 'messageDisplay', '', ['message-box']);
@@ -759,5 +806,6 @@
 </html>
     
 <!--
- issue 编辑后，没有保存按钮
+ 升级：实时监听 http://127.0.0.1:3001 是否在线
+ 状态显示在 id_4_server_status
 -->
