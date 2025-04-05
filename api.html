@@ -267,7 +267,6 @@
             transition: all 0.3s ease;
         }
 
-        /* 新增模态框样式 */
         .modal {
             display: none;
             position: fixed;
@@ -302,13 +301,38 @@
             text-decoration: none;
             cursor: pointer;
         }
+
+        /* 新增仓库切换样式 */
+        .repo-btn {
+            background: #666;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            margin: 0 2px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        .repo-btn.active {
+            background: #4CAF50;
+        }
+
+        /* 新增标题编辑样式 */
+        .edit-title-input {
+            width: 80%;
+            background: #444;
+            color: white;
+            border: none;
+            padding: 5px;
+            margin-right: 5px;
+        }
     </style>
 </head>
 
 <body>
     <div class="mobile-container">
         <div class="topnav">
-            <a href="#home" class="active">GithubAPI v1.33</a>
+            <a href="#home" class="active">GithubAPI v1.34</a>
             <div id="myLinks">
                 <a href="https://littleflute.github.io/s177/" target="_blank">s177 Home Page</a>
                 <a href="https://github.com/littleflute/s177" target="_blank">s177 Repo</a>
@@ -319,15 +343,14 @@
         </div>
 
         <div class="issues-toolbar">
+            <div id="repoButtons"></div>
             <div class="issues-buttons" id="issuesButtons"></div>
         </div>
 
         <div id="issueDetails" class="issue-details"></div>
-
         <div id="id_4_ui"></div>
     </div>
 
-    <!-- 新增模态框 -->
     <div id="myModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
@@ -341,8 +364,11 @@
     <script>
         class C4GithubAPI {
             constructor() {
+                this.repos = ['s177', 's281', 'Songs', 'cchess', 'voa'];
+                this.currentRepo = 's177';
                 this.container = document.getElementById('id_4_ui');
                 this.initUI();
+                this.generateRepoButtons();
                 this.fetchAllIssues();
                 this.modal = document.getElementById('myModal');
                 this.modalTitleInput = document.getElementById('modalIssueTitle');
@@ -360,9 +386,6 @@
                 );
 
                 this.toolbarUI = this.createSection('toolbarUI', ['login-area']);
-
-                this.inputIssueTitle = this.createElement('input', 'inputIssueTitle', '', ['issue-input', 'issue-title-input']);
-                this.inputIssueBody = this.createElement('textarea', 'inputIssueBody', '', ['issue-input', 'issue-content-input']);
                 this.btnCreateIssue = this.createElement('button', 'btnCreateIssue', '创建新Issue', ['create-issue-btn']);
 
                 this.commentsContainer = this.createElement('div', 'commentsContainer', '', ['comments-container']);
@@ -373,8 +396,6 @@
                 this.newCommentBtn = this.createElement('button', 'newCommentBtn', '提交新评论', ['new-comment-btn']);
 
                 this.toolbarUI.append(
-                    this.inputIssueTitle,
-                    this.inputIssueBody,
                     this.btnCreateIssue,
                     this.commentsContainer,
                     this.commentContent,
@@ -401,6 +422,19 @@
                 const section = this.createElement('div', id, null, classes);
                 section.style.padding = '10px';
                 return section;
+            }
+
+            generateRepoButtons() {
+                const repoButtonsContainer = document.getElementById('repoButtons');
+                this.repos.forEach(repo => {
+                    const btn = this.createElement('button', null, repo, ['repo-btn']);
+                    btn.dataset.repo = repo;
+                    btn.onclick = () => this.switchRepo(repo);
+                    if (repo === this.currentRepo) {
+                        btn.classList.add('active');
+                    }
+                    repoButtonsContainer.appendChild(btn);
+                });
             }
 
             async fetchAllIssues() {
@@ -433,7 +467,12 @@
             showIssueDetails(issue) {
                 const detailsContainer = document.getElementById('issueDetails');
                 detailsContainer.innerHTML = `
-                    <h3>#${issue.number}: ${issue.title}</h3>
+                    <h3>
+                        <span id="issueTitleSpan">#${issue.number}: ${issue.title}</span>
+                        <input type="text" id="issueTitleInput" class="edit-title-input" value="${issue.title}" style="display: none;">
+                        <button class="edit-btn" onclick="ghApp.editIssueTitle(${issue.number})">编辑标题</button>
+                        <button class="save-btn" style="display: none;" onclick="ghApp.saveIssueTitle(${issue.number})">保存标题</button>
+                    </h3>
                     <p>状态: ${issue.state === 'open' ? '🟢 打开' : '🔴 关闭'}</p>
                     <p>创建者: ${issue.user.login}</p>
                     <p>创建时间: ${new Date(issue.created_at).toLocaleString()}</p>
@@ -562,7 +601,7 @@
 
             async apiRequest(method, endpoint, data) {
                 const xdToken = "ghp_2BF" + "JztcBlHHOkBybs" + "UVJZGHQ4S" + "wvFR0poLqc";
-                const url = `https://api.github.com/repos/littleflute/s177/${endpoint}`;
+                const url = `https://api.github.com/repos/littleflute/${this.currentRepo}/${endpoint}`;
                 const headers = {
                     'Authorization': `token ${xdToken}`,
                     'Content-Type': 'application/json'
@@ -645,6 +684,44 @@
                     alert('运行评论代码时出错，请检查控制台');
                 }
             }
+
+            switchRepo(repoName) {
+                this.currentRepo = repoName;
+                document.querySelectorAll('.repo-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.repo === repoName);
+                });
+                this.fetchAllIssues();
+                document.getElementById('issueDetails').innerHTML = '';
+            }
+
+            editIssueTitle(issueNumber) {
+                const titleSpan = document.getElementById('issueTitleSpan');
+                const titleInput = document.getElementById('issueTitleInput');
+                const editBtn = document.querySelector('h3 .edit-btn');
+                const saveBtn = document.querySelector('h3 .save-btn');
+
+                titleSpan.style.display = 'none';
+                titleInput.style.display = 'inline-block';
+                editBtn.style.display = 'none';
+                saveBtn.style.display = 'inline-block';
+            }
+
+            async saveIssueTitle(issueNumber) {
+                const titleInput = document.getElementById('issueTitleInput');
+                const newTitle = titleInput.value;
+
+                try {
+                    await this.apiRequest('PATCH', `issues/${issueNumber}`, {
+                        title: newTitle
+                    });
+                    alert('Issue 标题更新成功');
+                    this.fetchAllIssues();
+                    this.showIssueDetails(await this.apiRequest('GET', `issues/${issueNumber}`));
+                } catch (error) {
+                    console.error('更新 Issue 标题失败:', error);
+                    alert('更新 Issue 标题失败，请检查控制台');
+                }
+            }
         }
 
         const ghApp = new C4GithubAPI();
@@ -673,4 +750,5 @@
     </script>
 </body>
 
-</html>    
+</html>
+    
