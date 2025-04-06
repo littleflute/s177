@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Jianpu Notation Test</title>
+    <style>
+        .container {
+            margin: 20px auto;
+            max-width: 800px;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            margin: 20px 0;
+        }
+        .controls {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Jianpu Notation Test</h1>
+        <div class="controls">
+            <button onclick="renderSampleScore()">Render Sample Score</button>
+            <button onclick="clearCanvas()">Clear Canvas</button>
+            <button id="settingsBtn">显示设置</button>
+        </div>
+        <canvas id="jianpuCanvas"></canvas>
+    </div>
+
+    <script src="i4.js"></script>
+    <script> 
+
+        const renderer = new JianpuRenderer('jianpuCanvas', {
+                        width: 800,
+                        height: 300,
+                        noteSpacing: 40
+        });
+
+        function renderSampleScore() {
+            
+
+            // Set musical metadata
+            renderer.setKeySignature('1=C');
+            renderer.setTimeSignature('4/4');
+
+            // Add sample notes
+            // Format: addNote(pitch, duration, {octave, dotted})
+            renderer.addNote('1', 1, { octave: 0 });     // Whole note
+            renderer.addNote('2', 0.5, { octave: 0 });   // Half note
+            renderer.addNote('3', 0.25, { octave: 0 });  // Quarter note
+            renderer.addNote('4', 0.125, { octave: 0 }); // Eighth note
+            renderer.addNote('5', 1, { octave: 1, dotted: true }); // High 5 with dot
+            renderer.addNote('6', 2, { octave: -1 });    // Low 6 with overline
+            renderer.addNote('7', 0.5, { octave: 0 });
+            renderer.addNote('1', 0.5, { octave: 1 });
+
+            // Add some rest examples (0 as pitch)
+            renderer.addNote('0', 0.5); // Half rest
+            renderer.addNote('0', 0.25); // Quarter rest
+
+            renderer.render();
+        }
+
+        function clearCanvas() {
+            const canvas = document.getElementById('jianpuCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Render initial sample on load
+        window.onload = renderSampleScore;
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            renderer.toggleSettingWnd();
+        });
+
+    </script>
+</body>
+</html>

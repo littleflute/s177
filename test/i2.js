@@ -218,7 +218,7 @@ class BLC4ObjsInWindow {
     }
 }
 
-/*/ 初始化实例
-const objManager = BLC4ObjsInWindow.getInstance('id_s177_i2c11 _BLC4ObjsInWindow');
+// 初始化实例
+const objManager = BLC4ObjsInWindow.getInstance('id_s177_i2_BLC4ObjsInWindow');
 objManager.toggleUI();
 //*/

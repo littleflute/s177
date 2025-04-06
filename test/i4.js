@@ -1,0 +1,334 @@
+class JianpuRenderer {
+    constructor(canvasId, options = {}) {
+      this.canvas = document.getElementById(canvasId);
+      this.ctx = this.canvas.getContext('2d');
+      this.config = {
+        width: 800,
+        height: 200,
+        margin: 20,
+        noteSpacing: 35,
+        fontSize: 24,
+        lineHeight: 40,
+        dotRadius: 2,
+        ...options
+      };
+      
+      this.canvas.width = this.config.width;
+      this.canvas.height = this.config.height;
+
+      this.notes = [];
+      this.keySignature = '1=C';
+      this.timeSignature = '4/4';
+      this.settingsWnd = null;
+
+      this._injectStyles();
+    }
+
+    _injectStyles() {
+      if (document.getElementById('jianpu-styles')) return;
+
+      const style = document.createElement('style');
+      style.id = 'jianpu-styles';
+      style.textContent = `
+        .jianpu-settings {
+          position: absolute;
+          background: white;
+          border: 2px solid #666;
+          border-radius: 8px;
+          padding: 15px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+          z-index: 1000;
+          font-family: Arial, sans-serif;
+          min-width: 300px;
+        }
+        
+        .settings-row {
+          margin: 8px 0;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        
+        .settings-row label {
+          min-width: 120px;
+          font-size: 14px;
+          color: #333;
+        }
+        
+        .settings-row input,
+        .settings-row select {
+          width: 80px;
+          padding: 4px 8px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          font-size: 14px;
+        }
+        
+        .settings-row select {
+          appearance: none;
+          background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23333' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") no-repeat right 8px center/12px;
+        }
+        
+        .settings-buttons {
+          margin-top: 15px;
+          text-align: right;
+        }
+        
+        .settings-buttons button {
+          padding: 6px 12px;
+          background: #007bff;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+        
+        .settings-buttons button:hover {
+          background: #0056b3;
+        }
+        
+        .hidden {
+          display: none !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    toggleSettingWnd() {
+      if (!this.settingsWnd) {
+        this._createSettingsWindow();
+      }
+      this.settingsWnd.classList.toggle('hidden');
+      this._positionSettingsWindow();
+    }
+
+    _createSettingsWindow() {
+      const wnd = document.createElement('div');
+      wnd.className = 'jianpu-settings hidden';
+      wnd.innerHTML = `
+        <div class="settings-row">
+          <label>调号:</label>
+          <select class="key-sig">
+            ${['C', 'G', 'D', 'A', 'E', 'B', 'F'].map(k => 
+              `<option ${this.keySignature === `1=${k}` ? 'selected' : ''}>1=${k}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div class="settings-row">
+          <label>节拍:</label>
+          <input type="text" class="time-sig" value="${this.timeSignature}">
+        </div>
+        <div class="settings-row">
+          <label>画布宽度:</label>
+          <input type="number" class="canvas-width" value="${this.config.width}" min="100">
+        </div>
+        <div class="settings-row">
+          <label>画布高度:</label>
+          <input type="number" class="canvas-height" value="${this.config.height}" min="100">
+        </div>
+        <div class="settings-row">
+          <label>音符间距:</label>
+          <input type="number" class="note-spacing" value="${this.config.noteSpacing}" min="10">
+        </div>
+        <div class="settings-row">
+          <label>字体大小:</label>
+          <input type="number" class="font-size" value="${this.config.fontSize}" min="10">
+        </div>
+        <div class="settings-buttons">
+          <button class="close-btn">应用并关闭</button>
+        </div>
+      `;
+
+      // 事件绑定
+      wnd.querySelector('.key-sig').addEventListener('change', e => {
+        this.keySignature = e.target.value;
+        this.render();
+      });
+
+      wnd.querySelector('.time-sig').addEventListener('input', e => {
+        this.timeSignature = e.target.value.replace(/[^0-9\/]/g, '');
+        e.target.value = this.timeSignature;
+        this.render();
+      });
+
+      const updateConfig = (key, parseFn = parseInt) => e => {
+        this.config[key] = parseFn(e.target.value);
+        if (['width', 'height'].includes(key)) {
+          this.canvas[key] = this.config[key];
+        }
+        this.render();
+      };
+
+      wnd.querySelector('.canvas-width').addEventListener('input', updateConfig('width'));
+      wnd.querySelector('.canvas-height').addEventListener('input', updateConfig('height'));
+      wnd.querySelector('.note-spacing').addEventListener('input', updateConfig('noteSpacing'));
+      wnd.querySelector('.font-size').addEventListener('input', updateConfig('fontSize'));
+
+      wnd.querySelector('.close-btn').addEventListener('click', () => {
+        wnd.classList.add('hidden');
+      });
+
+      document.body.appendChild(wnd);
+      this.settingsWnd = wnd;
+    }
+
+    _positionSettingsWindow() {
+      if (!this.settingsWnd) return;
+      
+      const rect = this.canvas.getBoundingClientRect();
+      this.settingsWnd.style.left = `${rect.left + window.scrollX}px`;
+      this.settingsWnd.style.top = `${rect.top + rect.height + window.scrollY + 10}px`;
+    }
+
+    setKeySignature(key) {
+      this.keySignature = key;
+    }
+
+    setTimeSignature(time) {
+      this.timeSignature = time;
+    }
+
+    addNote(pitch, duration, { octave = 0, dotted = false } = {}) {
+      this.notes.push({
+        pitch: String(pitch),
+        duration,
+        octave,
+        dotted
+      });
+    }
+
+    render() {
+      this.ctx.clearRect(0, 0, this.config.width, this.config.height);
+      this.ctx.font = `${this.config.fontSize}px Arial`;
+      this.ctx.textBaseline = 'middle';
+
+      // 绘制调号和节拍
+      this._drawHeader();
+
+      // 初始化绘制位置
+      let currentX = this.config.margin;
+      let currentY = this.config.margin + 40;
+      const baseLineY = currentY + this.config.lineHeight / 2;
+
+      this.notes.forEach(note => {
+        // 换行检查
+        if (currentX > this.config.width - this.config.margin - this.config.noteSpacing) {
+          currentX = this.config.margin;
+          currentY += this.config.lineHeight;
+        }
+
+        // 绘制音符主体
+        this._drawNoteBody(currentX, currentY, note);
+        
+        // 计算下一个音符位置
+        currentX += this.config.noteSpacing;
+      });
+    }
+
+    _drawHeader() {
+      this.ctx.fillText(
+        `${this.keySignature}  ${this.timeSignature}`,
+        this.config.margin,
+        this.config.margin + 20
+      );
+    }
+
+    _drawNoteBody(x, baseY, note) {
+      const centerX = x + this.config.fontSize/2;
+      const noteY = baseY - this.config.fontSize/2;
+
+      // 绘制音符数字
+      this.ctx.fillText(note.pitch, x, noteY + this.config.fontSize/2);
+
+      // 绘制高低音点
+      this._drawOctaveDots(centerX, noteY, note.octave);
+
+      // 绘制减时线
+      this._drawUnderLines(x, baseY, note.duration);
+
+      // 绘制附点
+      if (note.dotted) {
+        this._drawDot(x, baseY);
+      }
+
+      // 绘制增时线
+      this._drawOverLines(x, baseY, note.duration);
+    }
+
+    _drawOctaveDots(x, y, octave) {
+      const dotSpacing = 6;
+      const pitchCenterY = y + this.config.fontSize/2;
+
+      // 高音点（上方）
+      for (let i = 0; i < Math.max(0, octave); i++) {
+        this.ctx.beginPath();
+        this.ctx.arc(
+          x,
+          pitchCenterY - this.config.fontSize - i*dotSpacing,
+          this.config.dotRadius,
+          0,
+          Math.PI*2
+        );
+        this.ctx.fill();
+      }
+
+      // 低音点（下方）
+      for (let i = 0; i < Math.max(0, -octave); i++) {
+        this.ctx.beginPath();
+        this.ctx.arc(
+          x,
+          pitchCenterY + this.config.fontSize + i*dotSpacing,
+          this.config.dotRadius,
+          0,
+          Math.PI*2
+        );
+        this.ctx.fill();
+      }
+    }
+
+    _drawUnderLines(x, y, duration) {
+      const lineCount = this._calculateUnderLines(duration);
+      const lineY = y + this.config.fontSize/2 + 4;
+      
+      for (let i = 0; i < lineCount; i++) {
+        this.ctx.fillRect(
+          x - 2,
+          lineY + i*6,
+          this.config.fontSize + 4,
+          2
+        );
+      }
+    }
+
+    _drawOverLines(x, y, duration) {
+      const lineCount = Math.floor(duration) - 1;
+      const lineY = y - this.config.fontSize/2 - 4;
+      
+      for (let i = 0; i < lineCount; i++) {
+        this.ctx.fillRect(
+          x + this.config.fontSize,
+          lineY - i*8,
+          this.config.noteSpacing - this.config.fontSize,
+          2
+        );
+      }
+    }
+
+    _drawDot(x, y) {
+      this.ctx.beginPath();
+      this.ctx.arc(
+        x + this.config.fontSize + 6,
+        y - this.config.fontSize/4,
+        this.config.dotRadius,
+        0,
+        Math.PI*2
+      );
+      this.ctx.fill();
+    }
+
+    _calculateUnderLines(duration) {
+      if (duration >= 1) return 0;
+      return Math.max(0, Math.round(Math.log2(1/duration)) - 1);
+    }
+  }
