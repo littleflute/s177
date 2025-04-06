@@ -198,8 +198,14 @@ class BLC4ObjsInWindow {
         this.window.insertBefore(this.objectToolbar, this.canvas);
     }
 
-    // 新增方法：显示对象信息
     showObjectInfo(id) {
+        // 查找目标对象并触发其UI切换
+        const targetObj = window.blos.find(obj => obj.id === id);
+        if (targetObj) {
+            targetObj.toggleUI();
+        }
+
+        // 原有信息显示逻辑
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.fillStyle = this.currentColor;
         this.ctx.font = '14px Arial';
@@ -213,6 +219,6 @@ class BLC4ObjsInWindow {
 }
 
 /*/ 初始化实例
-const objManager = BLC4ObjsInWindow.getInstance('id_s177_i2 _BLC4ObjsInWindow');
+const objManager = BLC4ObjsInWindow.getInstance('id_s177_i2c11 _BLC4ObjsInWindow');
 objManager.toggleUI();
-*/
+//*/
