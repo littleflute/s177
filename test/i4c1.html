@@ -14,9 +14,26 @@
     }
     drawMe(ctx, x, y, config) {
       let currentX = x;
-      this.notes.forEach(note => {
+      let prevNote = null;
+      this.notes.forEach((note, index) => {
         const noteWidth = this._calculateNoteWidth(note, config);
         note.drawMe(ctx, currentX, y, config);
+        // 检查是否需要连接减时线
+        if (prevNote && note.duration <= 0.125 && prevNote.duration <= 0.125) {
+          const prevLineCount = prevNote._calculateUnderLines(prevNote.duration);
+          const lineCount = note._calculateUnderLines(note.duration);
+          const minLineCount = Math.min(prevLineCount, lineCount);
+          for (let i = 0; i < minLineCount; i++) {
+            const lineY = y + config.fontSize/2 + 4 + i*6;
+            ctx.fillRect(
+              currentX - config.noteSpacing,
+              lineY,
+              config.noteSpacing,
+              2
+            );
+          }
+        }
+        prevNote = note;
         currentX += noteWidth + config.noteSpacing;
       });
     }
@@ -433,8 +450,8 @@
   </script>
 </body>
 </html>
-    
+     
 <!--
 升级：
- 实现 C4Beat ，并改相关代码
+ test10 让两个减值线连起来
 -->
