@@ -1,4 +1,38 @@
-class C4Note {
+class C4Beat {
+    constructor(...notes) {
+      this.notes = notes;
+    }
+    drawMe(ctx, x, y, config) {
+      let currentX = x;
+      let prevNote = null;
+      this.notes.forEach((note, index) => {
+        const noteWidth = this._calculateNoteWidth(note, config);
+        note.drawMe(ctx, currentX, y, config);
+        // 检查是否需要连接减时线
+        if (prevNote && note.duration <= 0.125 && prevNote.duration <= 0.125) {
+          const prevLineCount = prevNote._calculateUnderLines(prevNote.duration);
+          const lineCount = note._calculateUnderLines(note.duration);
+          const minLineCount = Math.min(prevLineCount, lineCount);
+          for (let i = 0; i < minLineCount; i++) {
+            const lineY = y + config.fontSize/2 + 4 + i*6;
+            ctx.fillRect(
+              currentX - config.noteSpacing,
+              lineY,
+              config.noteSpacing,
+              2
+            );
+          }
+        }
+        prevNote = note;
+        currentX += noteWidth + config.noteSpacing;
+      });
+    }
+    _calculateNoteWidth(note, config) {
+      const lineCount = Math.floor(note.duration * 4);
+      return lineCount * config.noteSpacing + config.fontSize;
+    }
+  }
+  class C4Note {
     constructor(pitch, duration, options = {}) {
       this.pitch = pitch;
       this.duration = duration;
@@ -124,6 +158,7 @@ class C4Note {
       this.canvas.height = this.config.height;
 
       this.noteList = []; 
+      this.beatList = []; 
       this.keySignature = '1=C';
       this.timeSignature = '4/4';
       this.settingsWnd = null;
@@ -303,7 +338,10 @@ class C4Note {
         console.error('传入的参数不是 C4Note 类的实例');
       }
     }
-     
+    addBeat(...notes) {
+      const oBeat = new C4Beat(...notes);
+      this.beatList.push(oBeat);
+    } 
     render() {
       this.ctx.clearRect(0, 0, this.config.width, this.config.height);
       this.ctx.font = `${this.config.fontSize}px Arial`;
@@ -325,15 +363,28 @@ class C4Note {
         note.drawMe(this.ctx, currentX, currentY, this.config);
         currentX += noteWidth + this.config.noteSpacing;
       });
-      this._drawBeats(this.ctx,50,50);
+
+      this.beatList.forEach(beat => {
+        const beatWidth = this._calculateBeatWidth(beat);
+
+        if (currentX + beatWidth > this.config.width - this.config.margin) {
+          currentX = this.config.margin;
+          currentY += this.config.lineHeight;
+        }
+
+        beat.drawMe(this.ctx, currentX, currentY, this.config);
+        currentX += beatWidth + this.config.noteSpacing;
+      });
     }
 
-    _drawBeats(ctx,x,y){
-         ctx.fillRect(
-          x,y,10,10,
-          2
-        );
+    _calculateBeatWidth(beat) {
+      let totalWidth = 0;
+      beat.notes.forEach(note => {
+        totalWidth += this._calculateNoteWidth(note) + this.config.noteSpacing;
+      });
+      return totalWidth - this.config.noteSpacing;
     }
+
     _drawHeader() {
       this.ctx.fillText(
         `${this.keySignature}  ${this.timeSignature}`,

@@ -69,6 +69,12 @@
             renderer.addNote(new C4Note(5, 2, { octave: 1 }));
             renderer.addNote(new C4Note(6, 0.5, { octave: -1 }));
 
+            renderer.addBeat(new C4Note(1, 0.0625),new C4Note(0, 0.0625),new C4Note(2, 0.0625),new C4Note(2, 0.0625)); //t11
+            renderer.addBeat(new C4Note(1, 0.0625),new C4Note(2, 0.125),new C4Note(2, 0.0625)); //t12
+            renderer.addBeat(new C4Note(1, 0.0625),new C4Note(2, 0.0625),new C4Note(2, 0.125)); //t13
+            renderer.addBeat(new C4Note(1, 0.125),new C4Note(2, 0.0625),new C4Note(3, 0.0625)); //t14
+            renderer.addBeat(new C4Note(0, 0.125),new C4Note(4, 0.125));  
+            renderer.addBeat(new C4Note(2, 0.125),new C4Note(1, 0.125));  
             renderer.render();
         }
 
