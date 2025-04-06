@@ -32,8 +32,8 @@
 
         const renderer = new JianpuRenderer('jianpuCanvas', {
                         width: 800,
-                        height: 300,
-                        noteSpacing: 40
+                        height: 600,
+                        noteSpacing: 15
         });
 
         function renderSampleScore() {
@@ -45,6 +45,22 @@
 
             // Add sample notes
             // Format: addNote(pitch, duration, {octave, dotted})
+            const scales = [1,2,3,4,5,6,7];
+            for(i in scales){
+                renderer.addNote(scales[i],0.25,{octave:-1});
+            }
+            for(i in scales){
+                renderer.addNote(scales[i],0.25,{octave:0});
+            }
+            for(i in scales){
+                renderer.addNote(scales[i],0.25,{octave:1});
+            }
+            for(i in scales){
+                renderer.addNote(scales[i],0.125,{octave:0});
+            }
+            for(i in scales){
+                renderer.addNote(scales[i],0.0625,{octave:0});
+            }
             renderer.addNote('1', 1, { octave: 0 });     // Whole note
             renderer.addNote('2', 0.5, { octave: 0 });   // Half note
             renderer.addNote('3', 0.25, { octave: 0 });  // Quarter note

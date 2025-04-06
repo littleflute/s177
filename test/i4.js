@@ -4,11 +4,11 @@ class JianpuRenderer {
       this.ctx = this.canvas.getContext('2d');
       this.config = {
         width: 800,
-        height: 200,
+        height: 500,
         margin: 20,
-        noteSpacing: 35,
+        noteSpacing: 15,
         fontSize: 24,
-        lineHeight: 40,
+        lineHeight: 140,
         dotRadius: 2,
         ...options
       };
@@ -203,26 +203,21 @@ class JianpuRenderer {
       this.ctx.font = `${this.config.fontSize}px Arial`;
       this.ctx.textBaseline = 'middle';
 
-      // 绘制调号和节拍
       this._drawHeader();
 
-      // 初始化绘制位置
       let currentX = this.config.margin;
-      let currentY = this.config.margin + 40;
-      const baseLineY = currentY + this.config.lineHeight / 2;
+      let currentY = this.config.margin + 140;
 
       this.notes.forEach(note => {
-        // 换行检查
-        if (currentX > this.config.width - this.config.margin - this.config.noteSpacing) {
+        const noteWidth = this._calculateNoteWidth(note);
+
+        if (currentX + noteWidth > this.config.width - this.config.margin) {
           currentX = this.config.margin;
           currentY += this.config.lineHeight;
         }
 
-        // 绘制音符主体
         this._drawNoteBody(currentX, currentY, note);
-        
-        // 计算下一个音符位置
-        currentX += this.config.noteSpacing;
+        currentX += noteWidth + this.config.noteSpacing;
       });
     }
 
@@ -264,7 +259,7 @@ class JianpuRenderer {
       for (let i = 0; i < Math.max(0, octave); i++) {
         this.ctx.beginPath();
         this.ctx.arc(
-          x,
+          x - this.config.fontSize / 5.5,
           pitchCenterY - this.config.fontSize - i*dotSpacing,
           this.config.dotRadius,
           0,
@@ -277,7 +272,7 @@ class JianpuRenderer {
       for (let i = 0; i < Math.max(0, -octave); i++) {
         this.ctx.beginPath();
         this.ctx.arc(
-          x,
+          x - this.config.fontSize / 5.5, // 调整低音点的 x 坐标，往左移动
           pitchCenterY + this.config.fontSize + i*dotSpacing,
           this.config.dotRadius,
           0,
@@ -302,13 +297,14 @@ class JianpuRenderer {
     }
 
     _drawOverLines(x, y, duration) {
-      const lineCount = Math.floor(duration) - 1;
-      const lineY = y - this.config.fontSize/2 - 4;
-      
+      const lineCount = Math.floor(duration * 4) - 1;
+      // 修改增时线的 Y 位置
+      const lineY = y; 
+
       for (let i = 0; i < lineCount; i++) {
         this.ctx.fillRect(
-          x + this.config.fontSize,
-          lineY - i*8,
+          x + this.config.fontSize + i * this.config.noteSpacing,
+          lineY,
           this.config.noteSpacing - this.config.fontSize,
           2
         );
@@ -328,7 +324,12 @@ class JianpuRenderer {
     }
 
     _calculateUnderLines(duration) {
-      if (duration >= 1) return 0;
-      return Math.max(0, Math.round(Math.log2(1/duration)) - 1);
+      if (duration >= 0.25) return 0;
+      return Math.log2(0.25 / duration);
+    }
+
+    _calculateNoteWidth(note) {
+      const lineCount = Math.floor(note.duration * 4);
+      return lineCount * this.config.noteSpacing + this.config.fontSize;
     }
   }
