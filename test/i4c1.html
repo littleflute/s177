@@ -8,6 +8,23 @@
   <canvas id="jianpuCanvas"></canvas>
 
   <script>
+  class C4Beat {
+    constructor(...notes) {
+      this.notes = notes;
+    }
+    drawMe(ctx, x, y, config) {
+      let currentX = x;
+      this.notes.forEach(note => {
+        const noteWidth = this._calculateNoteWidth(note, config);
+        note.drawMe(ctx, currentX, y, config);
+        currentX += noteWidth + config.noteSpacing;
+      });
+    }
+    _calculateNoteWidth(note, config) {
+      const lineCount = Math.floor(note.duration * 4);
+      return lineCount * config.noteSpacing + config.fontSize;
+    }
+  }
   class C4Note {
     constructor(pitch, duration, options = {}) {
       this.pitch = pitch;
@@ -134,6 +151,7 @@
       this.canvas.height = this.config.height;
 
       this.noteList = []; 
+      this.beatList = []; 
       this.keySignature = '1=C';
       this.timeSignature = '4/4';
       this.settingsWnd = null;
@@ -313,7 +331,10 @@
         console.error('传入的参数不是 C4Note 类的实例');
       }
     }
-     
+    addBeat(...notes) {
+      const oBeat = new C4Beat(...notes);
+      this.beatList.push(oBeat);
+    } 
     render() {
       this.ctx.clearRect(0, 0, this.config.width, this.config.height);
       this.ctx.font = `${this.config.fontSize}px Arial`;
@@ -335,15 +356,28 @@
         note.drawMe(this.ctx, currentX, currentY, this.config);
         currentX += noteWidth + this.config.noteSpacing;
       });
-      this._drawBeats(this.ctx,50,50);
+
+      this.beatList.forEach(beat => {
+        const beatWidth = this._calculateBeatWidth(beat);
+
+        if (currentX + beatWidth > this.config.width - this.config.margin) {
+          currentX = this.config.margin;
+          currentY += this.config.lineHeight;
+        }
+
+        beat.drawMe(this.ctx, currentX, currentY, this.config);
+        currentX += beatWidth + this.config.noteSpacing;
+      });
     }
 
-    _drawBeats(ctx,x,y){
-         ctx.fillRect(
-          x,y,10,10,
-          2
-        );
+    _calculateBeatWidth(beat) {
+      let totalWidth = 0;
+      beat.notes.forEach(note => {
+        totalWidth += this._calculateNoteWidth(note) + this.config.noteSpacing;
+      });
+      return totalWidth - this.config.noteSpacing;
     }
+
     _drawHeader() {
       this.ctx.fillText(
         `${this.keySignature}  ${this.timeSignature}`,
@@ -386,6 +420,10 @@
   renderer.addNote(new C4Note(3, 0.25, { dotted: true }));
   renderer.addNote(new C4Note(5, 2, { octave: 1 }));
   renderer.addNote(new C4Note(6, 0.5, { octave: -1 }));
+
+  renderer.addBeat(new C4Note(1, 0.125),new C4Note(2, 0.125)); //test10
+  renderer.addBeat(new C4Note(3, 0.125),new C4Note(4, 0.125)); //test12
+  renderer.addBeat(new C4Note(2, 0.125),new C4Note(1, 0.125));  
    
   renderer.render();
 
@@ -397,6 +435,6 @@
 </html>
     
 <!--
-重构代码：
- 实现 drawMe，并改相关代码
+升级：
+ 实现 C4Beat ，并改相关代码
 -->
