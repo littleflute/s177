@@ -1,4 +1,111 @@
-class JianpuRenderer {
+class C4Note {
+    constructor(pitch, duration, options = {}) {
+      this.pitch = pitch;
+      this.duration = duration;
+      this.octave = options.octave || 0;
+      this.dotted = options.dotted || false;
+    }
+    drawMe(ctx, x, y, config) {
+      const centerX = x + config.fontSize/2;
+      const noteY = y - config.fontSize/2;
+
+      // 绘制音符数字
+      ctx.fillText(this.pitch, x, noteY + config.fontSize/2);
+
+      // 绘制高低音点
+      this._drawOctaveDots(ctx, centerX, noteY, this.octave, config);
+
+      // 绘制减时线
+      this._drawUnderLines(ctx, x, y, this.duration, config);
+
+      // 绘制附点
+      if (this.dotted) {
+        this._drawDot(ctx, x, y, config);
+      }
+
+      // 绘制增时线
+      this._drawOverLines(ctx, x, y, this.duration, config);
+    }
+
+    _drawOctaveDots(ctx, x, y, octave, config) {
+      const dotSpacing = 6;
+      const pitchCenterY = y + config.fontSize/2;
+
+      // 高音点（上方）
+      for (let i = 0; i < Math.max(0, octave); i++) {
+        ctx.beginPath();
+        ctx.arc(
+          x - config.fontSize / 5.5,
+          pitchCenterY - config.fontSize - i*dotSpacing,
+          config.dotRadius,
+          0,
+          Math.PI*2
+        );
+        ctx.fill();
+      }
+
+      // 低音点（下方）
+      for (let i = 0; i < Math.max(0, -octave); i++) {
+        ctx.beginPath();
+        ctx.arc(
+          x - config.fontSize / 5.5, // 调整低音点的 x 坐标，往左移动
+          pitchCenterY + config.fontSize + i*dotSpacing,
+          config.dotRadius,
+          0,
+          Math.PI*2
+        );
+        ctx.fill();
+      }
+    }
+
+    _drawUnderLines(ctx, x, y, duration, config) {
+      const lineCount = this._calculateUnderLines(duration);
+      const lineY = y + config.fontSize/2 + 4;
+      
+      for (let i = 0; i < lineCount; i++) {
+        ctx.fillRect(
+          x - 2,
+          lineY + i*6,
+          config.fontSize + 4,
+          2
+        );
+      }
+    }
+
+    _drawOverLines(ctx, x, y, duration, config) {
+      const lineCount = Math.floor(duration * 4) - 1;
+      // 修改增时线的 Y 位置
+      const lineY = y; 
+
+      for (let i = 0; i < lineCount; i++) {
+        ctx.fillRect(
+          x + config.fontSize + i * config.noteSpacing,
+          lineY,
+          config.noteSpacing - config.fontSize,
+          2
+        );
+      }
+    }
+
+    _drawDot(ctx, x, y, config) {
+      ctx.beginPath();
+      ctx.arc(
+        x + config.fontSize + 6,
+        y - config.fontSize/4,
+        config.dotRadius,
+        0,
+        Math.PI*2
+      );
+      ctx.fill();
+    }
+
+    _calculateUnderLines(duration) {
+      if (duration >= 0.25) return 0;
+      return Math.log2(0.25 / duration);
+    }
+  }
+
+  class JianpuRenderer {
     constructor(canvasId, options = {}) {
       this.canvas = document.getElementById(canvasId);
       this.ctx = this.canvas.getContext('2d');
@@ -16,7 +123,7 @@ class JianpuRenderer {
       this.canvas.width = this.config.width;
       this.canvas.height = this.config.height;
 
-      this.notes = [];
+      this.noteList = []; 
       this.keySignature = '1=C';
       this.timeSignature = '4/4';
       this.settingsWnd = null;
@@ -189,15 +296,14 @@ class JianpuRenderer {
       this.timeSignature = time;
     }
 
-    addNote(pitch, duration, { octave = 0, dotted = false } = {}) {
-      this.notes.push({
-        pitch: String(pitch),
-        duration,
-        octave,
-        dotted
-      });
+    addNote(note) {
+      if (note instanceof C4Note) {
+        this.noteList.push(note);
+      } else {
+        console.error('传入的参数不是 C4Note 类的实例');
+      }
     }
-
+     
     render() {
       this.ctx.clearRect(0, 0, this.config.width, this.config.height);
       this.ctx.font = `${this.config.fontSize}px Arial`;
@@ -208,7 +314,7 @@ class JianpuRenderer {
       let currentX = this.config.margin;
       let currentY = this.config.margin + 140;
 
-      this.notes.forEach(note => {
+      this.noteList.forEach(note => {
         const noteWidth = this._calculateNoteWidth(note);
 
         if (currentX + noteWidth > this.config.width - this.config.margin) {
@@ -216,116 +322,24 @@ class JianpuRenderer {
           currentY += this.config.lineHeight;
         }
 
-        this._drawNoteBody(currentX, currentY, note);
+        note.drawMe(this.ctx, currentX, currentY, this.config);
         currentX += noteWidth + this.config.noteSpacing;
       });
+      this._drawBeats(this.ctx,50,50);
     }
 
+    _drawBeats(ctx,x,y){
+         ctx.fillRect(
+          x,y,10,10,
+          2
+        );
+    }
     _drawHeader() {
       this.ctx.fillText(
         `${this.keySignature}  ${this.timeSignature}`,
         this.config.margin,
         this.config.margin + 20
       );
-    }
-
-    _drawNoteBody(x, baseY, note) {
-      const centerX = x + this.config.fontSize/2;
-      const noteY = baseY - this.config.fontSize/2;
-
-      // 绘制音符数字
-      this.ctx.fillText(note.pitch, x, noteY + this.config.fontSize/2);
-
-      // 绘制高低音点
-      this._drawOctaveDots(centerX, noteY, note.octave);
-
-      // 绘制减时线
-      this._drawUnderLines(x, baseY, note.duration);
-
-      // 绘制附点
-      if (note.dotted) {
-        this._drawDot(x, baseY);
-      }
-
-      // 绘制增时线
-      this._drawOverLines(x, baseY, note.duration);
-    }
-
-    _drawOctaveDots(x, y, octave) {
-      const dotSpacing = 6;
-      const pitchCenterY = y + this.config.fontSize/2;
-
-      // 高音点（上方）
-      for (let i = 0; i < Math.max(0, octave); i++) {
-        this.ctx.beginPath();
-        this.ctx.arc(
-          x - this.config.fontSize / 5.5,
-          pitchCenterY - this.config.fontSize - i*dotSpacing,
-          this.config.dotRadius,
-          0,
-          Math.PI*2
-        );
-        this.ctx.fill();
-      }
-
-      // 低音点（下方）
-      for (let i = 0; i < Math.max(0, -octave); i++) {
-        this.ctx.beginPath();
-        this.ctx.arc(
-          x - this.config.fontSize / 5.5, // 调整低音点的 x 坐标，往左移动
-          pitchCenterY + this.config.fontSize + i*dotSpacing,
-          this.config.dotRadius,
-          0,
-          Math.PI*2
-        );
-        this.ctx.fill();
-      }
-    }
-
-    _drawUnderLines(x, y, duration) {
-      const lineCount = this._calculateUnderLines(duration);
-      const lineY = y + this.config.fontSize/2 + 4;
-      
-      for (let i = 0; i < lineCount; i++) {
-        this.ctx.fillRect(
-          x - 2,
-          lineY + i*6,
-          this.config.fontSize + 4,
-          2
-        );
-      }
-    }
-
-    _drawOverLines(x, y, duration) {
-      const lineCount = Math.floor(duration * 4) - 1;
-      // 修改增时线的 Y 位置
-      const lineY = y; 
-
-      for (let i = 0; i < lineCount; i++) {
-        this.ctx.fillRect(
-          x + this.config.fontSize + i * this.config.noteSpacing,
-          lineY,
-          this.config.noteSpacing - this.config.fontSize,
-          2
-        );
-      }
-    }
-
-    _drawDot(x, y) {
-      this.ctx.beginPath();
-      this.ctx.arc(
-        x + this.config.fontSize + 6,
-        y - this.config.fontSize/4,
-        this.config.dotRadius,
-        0,
-        Math.PI*2
-      );
-      this.ctx.fill();
-    }
-
-    _calculateUnderLines(duration) {
-      if (duration >= 0.25) return 0;
-      return Math.log2(0.25 / duration);
     }
 
     _calculateNoteWidth(note) {

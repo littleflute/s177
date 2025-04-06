@@ -43,36 +43,31 @@
             renderer.setKeySignature('1=C');
             renderer.setTimeSignature('4/4');
 
-            // Add sample notes
-            // Format: addNote(pitch, duration, {octave, dotted})
-            const scales = [1,2,3,4,5,6,7];
-            for(i in scales){
-                renderer.addNote(scales[i],0.25,{octave:-1});
+              //test cases 
+            const scales = [1,2,3 ];
+            for(let i in scales){//test1
+                            renderer.addNote(new C4Note(scales[i],0.25,{octave:-2}));
             }
-            for(i in scales){
-                renderer.addNote(scales[i],0.25,{octave:0});
-            }
-            for(i in scales){
-                renderer.addNote(scales[i],0.25,{octave:1});
-            }
-            for(i in scales){
-                renderer.addNote(scales[i],0.125,{octave:0});
-            }
-            for(i in scales){
-                renderer.addNote(scales[i],0.0625,{octave:0});
-            }
-            renderer.addNote('1', 1, { octave: 0 });     // Whole note
-            renderer.addNote('2', 0.5, { octave: 0 });   // Half note
-            renderer.addNote('3', 0.25, { octave: 0 });  // Quarter note
-            renderer.addNote('4', 0.125, { octave: 0 }); // Eighth note
-            renderer.addNote('5', 1, { octave: 1, dotted: true }); // High 5 with dot
-            renderer.addNote('6', 2, { octave: -1 });    // Low 6 with overline
-            renderer.addNote('7', 0.5, { octave: 0 });
-            renderer.addNote('1', 0.5, { octave: 1 });
+            for(let i in scales){//test2
+                            renderer.addNote(new C4Note(scales[i],0.25,{octave:0}));
+                        }
+            for(let i in scales){//test3
+                            renderer.addNote(new C4Note(scales[i],0.25,{octave:2}));
+                        }
+            for(let i in scales){//test4
+                            renderer.addNote(new C4Note(scales[i],0.125,{octave:0}));
+                        }
+            for(let i in scales){//test5
+                            renderer.addNote(new C4Note(scales[i],0.0625,{octave:0}));
+                        }
+            renderer.addNote(new C4Note(1, 1)); //   全音符，显示三条增时线
+            renderer.addNote(new C4Note(2, 0.5)); //   二分音符，一条增时线
+            renderer.addNote(new C4Note(3, 0.25)); //   四分音符，无增时线 
+            renderer.addNote(new C4Note(4, 0.125)); //   8分音符  
 
-            // Add some rest examples (0 as pitch)
-            renderer.addNote('0', 0.5); // Half rest
-            renderer.addNote('0', 0.25); // Quarter rest
+            renderer.addNote(new C4Note(3, 0.25, { dotted: true }));
+            renderer.addNote(new C4Note(5, 2, { octave: 1 }));
+            renderer.addNote(new C4Note(6, 0.5, { octave: -1 }));
 
             renderer.render();
         }
