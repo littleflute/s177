@@ -45,7 +45,7 @@
         }
         /* 添加全局SVG样式 */
         .render-output svg {
-            max-width: 100%;
+            max-width: none;
             height: auto;
         }
         
@@ -216,7 +216,8 @@ C D E F | G A B c</code></pre>
                     padding: '10px',
                     border: '1px solid #eee',
                     borderRadius: '4px',
-                    minHeight: '200px'
+                    minHeight: '200px',
+                    maxHeight: 'calc(100vh - 200px)' // 最大高度，防止溢出屏幕
                 });
 
                 this.titleBar.textContent = 'ABC Music Editor';
@@ -294,7 +295,6 @@ C D E F | G A B c</code></pre>
                     ABCJS.renderAbc(this.renderOutput, abcCode, {
                         responsive: 'resize',
                         staffwidth: 'auto',  // 修改为自动适应
-                        staffwidth: 450,
                         add_classes: true,
                         paddingtop: 15,
                         paddingbottom: 15,
@@ -333,7 +333,7 @@ C D E F | G A B c</code></pre>
             loadABCJS() {
                 if (typeof ABCJS === 'undefined') {
                     const script = document.createElement('script');
-                    script.src = 'abcjs-basic.js';
+                    script.src = 'https://littleflute.github.io/s177/test/abcjs-basic.js';
                     script.onload = () => {
                         this.renderButton.disabled = false;
                         this.showMessage('ABCJS loaded successfully!', 'info');
