@@ -22,6 +22,8 @@
   <canvas id="jianpuCanvas" style="border: 1px red solid;"></canvas>
 
   <script>
+    class C4Bar{}
+
     class C4Beat {
       constructor(...notes) {
         this.notes = notes;
@@ -221,6 +223,33 @@
             border-top-right-radius: 6px;
           }
 
+          .settings-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+          }
+
+          .settings-tab {
+            cursor: pointer;
+            padding: 6px 12px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            transition: background 0.2s;
+          }
+
+          .settings-tab.active {
+            background: #007bff;
+            color: white;
+          }
+
+          .settings-tab-content {
+            display: none;
+          }
+
+          .settings-tab-content.active {
+            display: block;
+          }
+
           .settings-row {
             margin: 8px 0;
             display: flex;
@@ -287,33 +316,41 @@
         wnd.className = 'jianpu-settings hidden';
         wnd.innerHTML = `
           <div class="settings-header">设置</div>
-          <div class="settings-row">
-            <label>调号:</label>
-            <select class="key-sig">
-              ${['C', 'G', 'D', 'A', 'E', 'B', 'F'].map(k =>
-                `<option ${this.keySignature === `1=${k}` ? 'selected' : ''}>1=${k}</option>`
-              ).join('')}
-            </select>
+          <div class="settings-tabs">
+            <div class="settings-tab active" data-tab="general">常规设置</div>
+            <div class="settings-tab" data-tab="canvas">画布设置</div>
           </div>
-          <div class="settings-row">
-            <label>节拍:</label>
-            <input type="text" class="time-sig" value="${this.timeSignature}">
+          <div class="settings-tab-content active" id="general">
+            <div class="settings-row">
+              <label>调号:</label>
+              <select class="key-sig">
+                ${['C', 'G', 'D', 'A', 'E', 'B', 'F'].map(k =>
+                  `<option ${this.keySignature === `1=${k}` ? 'selected' : ''}>1=${k}</option>`
+                ).join('')}
+              </select>
+            </div>
+            <div class="settings-row">
+              <label>节拍:</label>
+              <input type="text" class="time-sig" value="${this.timeSignature}">
+            </div>
+            <div class="settings-row">
+              <label>音符间距:</label>
+              <input type="number" class="note-spacing" value="${this.config.noteSpacing}" min="10">
+            </div>
+            <div class="settings-row">
+              <label>字体大小:</label>
+              <input type="number" class="font-size" value="${this.config.fontSize}" min="10">
+            </div>
           </div>
-          <div class="settings-row">
-            <label>画布宽度:</label>
-            <input type="number" class="canvas-width" value="${this.config.width}" min="100">
-          </div>
-          <div class="settings-row">
-            <label>画布高度:</label>
-            <input type="number" class="canvas-height" value="${this.config.height}" min="100">
-          </div>
-          <div class="settings-row">
-            <label>音符间距:</label>
-            <input type="number" class="note-spacing" value="${this.config.noteSpacing}" min="10">
-          </div>
-          <div class="settings-row">
-            <label>字体大小:</label>
-            <input type="number" class="font-size" value="${this.config.fontSize}" min="10">
+          <div class="settings-tab-content" id="canvas">
+            <div class="settings-row">
+              <label>画布宽度:</label>
+              <input type="number" class="canvas-width" value="${this.config.width}" min="100">
+            </div>
+            <div class="settings-row">
+              <label>画布高度:</label>
+              <input type="number" class="canvas-height" value="${this.config.height}" min="100">
+            </div>
           </div>
           <div class="settings-buttons">
             <button class="close-btn">应用并关闭</button>
@@ -347,6 +384,23 @@
 
         wnd.querySelector('.close-btn').addEventListener('click', () => {
           wnd.classList.add('hidden');
+        });
+
+        // 标签页切换事件
+        const tabs = wnd.querySelectorAll('.settings-tab');
+        tabs.forEach(tab => {
+          tab.addEventListener('click', () => {
+            const tabId = tab.dataset.tab;
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            const tabContents = wnd.querySelectorAll('.settings-tab-content');
+            tabContents.forEach(content => {
+              content.classList.remove('active');
+              if (content.id === tabId) {
+                content.classList.add('active');
+              }
+            });
+          });
         });
 
         // 添加可移动功能
@@ -511,5 +565,5 @@
     
 <!--
 升级：
- settingsBtn toggle color
+ settingsWnd 分成两个 tab , 画布宽度，高度 单独放一页
 -->
