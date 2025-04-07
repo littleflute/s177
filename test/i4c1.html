@@ -204,6 +204,16 @@
             min-width: 300px;
           }
 
+          .settings-header {
+            cursor: move;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+            margin: -15px -15px 15px -15px;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+          }
+
           .settings-row {
             margin: 8px 0;
             display: flex;
@@ -269,6 +279,7 @@
         const wnd = document.createElement('div');
         wnd.className = 'jianpu-settings hidden';
         wnd.innerHTML = `
+          <div class="settings-header">设置</div>
           <div class="settings-row">
             <label>调号:</label>
             <select class="key-sig">
@@ -335,7 +346,8 @@
         let isDragging = false;
         let offsetX, offsetY;
 
-        wnd.addEventListener('mousedown', (e) => {
+        const header = wnd.querySelector('.settings-header');
+        header.addEventListener('mousedown', (e) => {
           isDragging = true;
           offsetX = e.clientX - parseInt(wnd.style.left);
           offsetY = e.clientY - parseInt(wnd.style.top);
@@ -485,9 +497,10 @@
   </script>
 </body>
 
-</html>    
+</html>
+    
     
 <!--
 升级：
- settingsWnd 可移动
+ settingsWnd 添加 header, 只有点 header可移动
 -->
