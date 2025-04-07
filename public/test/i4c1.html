@@ -340,6 +340,7 @@
             <div class="settings-tab active" data-tab="general">常规设置</div>
             <div class="settings-tab" data-tab="canvas">画布设置</div>
             <div class="settings-tab" data-tab="bar">小节管理</div>
+            <div class="settings-tab" data-tab="test-cases">测试用例</div>
           </div>
           <div class="settings-tab-content active" id="general">
             <div class="settings-row">
@@ -376,6 +377,14 @@
           <div class="settings-tab-content" id="bar">
             <div class="settings-row">
               <button class="add-bar-btn">添加新小节</button>
+            </div>
+          </div>
+          <div class="settings-tab-content" id="test-cases">
+            <div class="settings-row">
+              <button class="random-add-beat-btn">随机添加节拍</button>
+            </div>
+            <div class="settings-row">
+              <button class="random-add-note-btn">随机添加音符</button>
             </div>
           </div>
           <div class="settings-buttons">
@@ -455,6 +464,30 @@
         wnd.querySelector('.add-bar-btn').addEventListener('click', () => {
           const newBar = new C4Bar(this.barList.length + 1);
           this.barList.push(newBar);
+          this.render();
+        });
+
+        // 随机添加节拍按钮事件
+        wnd.querySelector('.random-add-beat-btn').addEventListener('click', () => {
+          const noteCount = Math.floor(Math.random() * 4) + 1;
+          const notes = [];
+          for (let i = 0; i < noteCount; i++) {
+            const pitch = Math.floor(Math.random() * 7) + 1;
+            const durationOptions = [1, 0.5, 0.25, 0.125, 0.0625];
+            const duration = durationOptions[Math.floor(Math.random() * durationOptions.length)];
+            notes.push(new C4Note(pitch, duration));
+          }
+          this.addBeat(...notes);
+          this.render();
+        });
+
+        // 随机添加音符按钮事件
+        wnd.querySelector('.random-add-note-btn').addEventListener('click', () => {
+          const pitch = Math.floor(Math.random() * 7) + 1;
+          const durationOptions = [1, 0.5, 0.25, 0.125, 0.0625];
+          const duration = durationOptions[Math.floor(Math.random() * durationOptions.length)];
+          const note = new C4Note(pitch, duration);
+          this.addNote(note);
           this.render();
         });
 
@@ -602,11 +635,10 @@
   </script>
 </body>
 
-</html>
-    
+</html>    
 <!--
 升级：
- settingsWnd 添加一个tab（小节管理）， 页面上有一个按钮，点击 添加一个新的小节到 barList[].
- 在画布（50,50）位置开始渲染 barList.
- 实现 C4Bar类。画一个矩形代表一个小节，在矩形左上角显示小节序号
+ settingsWnd 添加一个tab（test cases）， 
+ 有一按钮，可随机 addBeat
+ 有一按钮，可随机 addNote
 -->
