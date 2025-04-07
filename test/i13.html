@@ -82,6 +82,7 @@
             <button onclick="toggleEditor()">Toggle Editor Visibility</button>
             <button onclick="loadExample1()">Load Example 1 ABC Notation</button>
             <button onclick="loadExample2()">实例乐谱</button>
+            <button onclick="loadExample3()">Load 《春天的歌》</button>
             
             <h3>Sample ABC Notation</h3>
             <pre><code>X:1
@@ -125,12 +126,14 @@ C D E F | G A B c</code></pre>
                 this.renderButton = document.createElement('button');
                 this.example1Button = document.createElement('button');
                 this.example2Button = document.createElement('button');
+                this.example3Button = document.createElement('button');
                 this.renderOutput = document.createElement('div');
 
                 this.content.appendChild(this.textarea);
                 this.content.appendChild(this.renderButton);
                 this.content.appendChild(this.example1Button);
                 this.content.appendChild(this.example2Button);
+                this.content.appendChild(this.example3Button);
                 this.content.appendChild(this.renderOutput);
                 this.element.appendChild(this.titleBar);
                 this.element.appendChild(this.content);
@@ -210,6 +213,16 @@ C D E F | G A B c</code></pre>
                     alignSelf: 'flex-start'
                 });
 
+                Object.assign(this.example3Button.style, {
+                    padding: '8px 16px',
+                    backgroundColor: '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    alignSelf: 'flex-start'
+                });
+
                 Object.assign(this.renderOutput.style, {
                     flex: '1',
                     overflow: 'auto',
@@ -224,6 +237,7 @@ C D E F | G A B c</code></pre>
                 this.renderButton.textContent = 'Render';
                 this.example1Button.textContent = 'Load Example 1';
                 this.example2Button.textContent = 'ex2';
+                this.example3Button.textContent = 'ex3';
                 this.textarea.placeholder = 'Enter ABC notation here...\nExample:\nX:1\nT:Sample Song\nM:4/4\nL:1/4\nK:C\nC D E F | G A B c';
                         
                 this.renderOutput.className = 'render-output';  
@@ -239,6 +253,7 @@ C D E F | G A B c</code></pre>
                 this.renderButton.addEventListener('click', this.handleRender.bind(this));
                 this.example1Button.addEventListener('click', this.loadExample1.bind(this));
                 this.example2Button.addEventListener('click', this.loadExample2.bind(this));
+                this.example3Button.addEventListener('click', this.loadExample3.bind(this));
             }
 
             handleDragStart(e) {
@@ -333,7 +348,7 @@ C D E F | G A B c</code></pre>
             loadABCJS() {
                 if (typeof ABCJS === 'undefined') {
                     const script = document.createElement('script');
-                    script.src = 'https://littleflute.github.io/s177/test/abcjs-basic.js';
+                    script.src = 'abcjs-basic.js';
                     script.onload = () => {
                         this.renderButton.disabled = false;
                         this.showMessage('ABCJS loaded successfully!', 'info');
@@ -385,6 +400,17 @@ C D E F | G A B c
 w: 我 爱 北 京`;
                 this.handleRender();
             }
+
+            loadExample3() {
+                this.textarea.value = `X:4
+T:春天的歌
+M:4/4
+L:1/4
+K:C
+C D E F | G A B c | C D E F | G A B c | C D E F | G A B c | C D E F | G A B c | C D E F | G A B c
+w: 春天 带来 温暖 阳光 照耀 大地 处处 鲜花 开放 蝴蝶 飞舞 蜜蜂 忙碌 鸟儿 欢唱 歌声 悠扬 春天 春天 美丽 时光`;
+                this.handleRender();
+            }
         }
 
         // Initialize the editor window
@@ -413,11 +439,16 @@ C D E F | G A B c`;
         function loadExample2() {
             window.wi6.loadExample2();
         }
+
+        function loadExample3() {
+            window.wi6.loadExample3();
+        }
     </script>
 </body>
 </html>
     
 <!-- 
 升级 
-乐谱过大时，画布也变大，出现滚动条 
+添加： ex3
+一首《春天的歌》，10 行歌词以上
 -->
