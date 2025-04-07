@@ -517,10 +517,19 @@
         // 添加新小节按钮事件
         wnd.querySelector('.add-bar-btn').addEventListener('click', () => {
           const newBar = new C4Bar(this.barList.length + 1);
+          
+          // 计算初始位置
+          const barWidth = 100;
+          const barSpacing = 20;
+          const barsPerRow = Math.floor((this.config.width - 50) / (barWidth + barSpacing));
+          const row = Math.floor(this.barList.length / barsPerRow);
+          const col = this.barList.length % barsPerRow;
+          newBar.x = 50 + col * (barWidth + barSpacing);
+          newBar.y = 50 + row * 100; // 行高100
+          
           this.barList.push(newBar);
           this.render();
         });
-
         // 随机添加节拍按钮事件
         wnd.querySelector('.random-add-beat-btn').addEventListener('click', () => {
           const noteCount = Math.floor(Math.random() * 4) + 1;
@@ -611,12 +620,7 @@
         let barX = 50;
         let barY = 50;
         this.barList.forEach(bar => {
-          bar.drawMe(this.ctx, barX, barY, this.config);
-          barX += 120;
-          if (barX + 100 > this.config.width) {
-            barX = 50;
-            barY += 100;
-          }
+          bar.drawMe(this.ctx, bar.x, bar.y, this.config);
         });
       }
 
