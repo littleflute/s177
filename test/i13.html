@@ -157,7 +157,7 @@ C D E F | G A B c</code></pre>
                     padding: '8px',
                     border: '1px solid #ddd',
                     borderRadius: '4px',
-                    resize: 'vertical',
+                    resize: 'none', // 禁止调整大小
                     fontFamily: 'monospace'
                 });
 
@@ -193,10 +193,11 @@ C D E F | G A B c</code></pre>
 
                 Object.assign(this.renderOutput.style, {
                     flex: '1',
-                    overflowY: 'auto',
+                    overflowY: 'auto', // 乐谱过大时出现垂直滚动条
                     padding: '10px',
                     border: '1px solid #eee',
-                    borderRadius: '4px'
+                    borderRadius: '4px',
+                    maxHeight: '400px' // 固定高度
                 });
 
                 this.titleBar.textContent = 'ABC Music Editor';
@@ -291,7 +292,6 @@ C D E F | G A B c</code></pre>
                             }
                         }
                     });
-                    this.adjustWindowSize();
                 } catch (error) {
                     this.showMessage(`Rendering error: ${error.message}`, 'error');
                 }
@@ -306,12 +306,6 @@ C D E F | G A B c</code></pre>
                         ${message}
                     </div>
                 `;
-            }
-
-            adjustWindowSize() {
-                const outputHeight = this.renderOutput.scrollHeight;
-                const newHeight = Math.min(Math.max(outputHeight + 200, 400), 800);
-                this.element.style.height = `${newHeight}px`;
             }
 
             loadABCJS() {
@@ -400,7 +394,7 @@ C D E F | G A B c`;
     </script>
 </body>
 </html>
-       
+    
 <!-- 
 升级
  abcCode 大小永远不变 ，
