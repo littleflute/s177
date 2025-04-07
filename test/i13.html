@@ -63,6 +63,7 @@
             <button onclick="loadSample()">Load Sample ABC Notation</button>
             <button onclick="toggleEditor()">Toggle Editor Visibility</button>
             <button onclick="loadExample1()">Load Example 1 ABC Notation</button>
+            <button onclick="loadExample2()">实例乐谱</button>
             
             <h3>Sample ABC Notation</h3>
             <pre><code>X:1
@@ -105,11 +106,13 @@ C D E F | G A B c</code></pre>
                 this.textarea = document.createElement('textarea');
                 this.renderButton = document.createElement('button');
                 this.example1Button = document.createElement('button');
+                this.example2Button = document.createElement('button');
                 this.renderOutput = document.createElement('div');
 
                 this.content.appendChild(this.textarea);
                 this.content.appendChild(this.renderButton);
                 this.content.appendChild(this.example1Button);
+                this.content.appendChild(this.example2Button);
                 this.content.appendChild(this.renderOutput);
                 this.element.appendChild(this.titleBar);
                 this.element.appendChild(this.content);
@@ -178,6 +181,16 @@ C D E F | G A B c</code></pre>
                     alignSelf: 'flex-start'
                 });
 
+                Object.assign(this.example2Button.style, {
+                    padding: '8px 16px',
+                    backgroundColor: '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    alignSelf: 'flex-start'
+                });
+
                 Object.assign(this.renderOutput.style, {
                     flex: '1',
                     overflowY: 'auto',
@@ -189,6 +202,7 @@ C D E F | G A B c</code></pre>
                 this.titleBar.textContent = 'ABC Music Editor';
                 this.renderButton.textContent = 'Render';
                 this.example1Button.textContent = 'Load Example 1';
+                this.example2Button.textContent = 'ex2';
                 this.textarea.placeholder = 'Enter ABC notation here...\nExample:\nX:1\nT:Sample Song\nM:4/4\nL:1/4\nK:C\nC D E F | G A B c';
             }
 
@@ -201,6 +215,7 @@ C D E F | G A B c</code></pre>
                 this.titleBar.addEventListener('touchstart', this.onDragStart, { passive: false });
                 this.renderButton.addEventListener('click', this.handleRender.bind(this));
                 this.example1Button.addEventListener('click', this.loadExample1.bind(this));
+                this.example2Button.addEventListener('click', this.loadExample2.bind(this));
             }
 
             handleDragStart(e) {
@@ -343,6 +358,17 @@ K:G
 G A B | c d e | f g a`;
                 this.handleRender();
             }
+
+            loadExample2() {
+                this.textarea.value = `X:3
+T:我爱北京实例乐谱
+M:4/4
+L:1/4
+K:C
+C D E F | G A B c
+w: 我 爱 北 京`;
+                this.handleRender();
+            }
         }
 
         // Initialize the editor window
@@ -367,9 +393,16 @@ C D E F | G A B c`;
         function loadExample1() {
             window.wi6.loadExample1();
         }
+
+        function loadExample2() {
+            window.wi6.loadExample2();
+        }
     </script>
 </body>
-</html>     
+</html>
+       
 <!-- 
-实现 example1Button
+升级
+ abcCode 大小永远不变 ，
+乐谱过大时，出现滚动条 
 -->
