@@ -184,6 +184,8 @@
         this.settingsWnd = null;
 
         this._injectStyles();
+        this._createSettingsWindow();
+        this._positionSettingsWindowToTop();
       }
 
       _injectStyles() {
@@ -272,7 +274,7 @@
           this._createSettingsWindow();
         }
         this.settingsWnd.classList.toggle('hidden');
-        this._positionSettingsWindow();
+        this._positionSettingsWindowToTop();
       }
 
       _createSettingsWindow() {
@@ -368,12 +370,10 @@
         this.settingsWnd = wnd;
       }
 
-      _positionSettingsWindow() {
+      _positionSettingsWindowToTop() {
         if (!this.settingsWnd) return;
-
-        const rect = this.canvas.getBoundingClientRect();
-        this.settingsWnd.style.left = `${rect.left + window.scrollX}px`;
-        this.settingsWnd.style.top = `${rect.top + rect.height + window.scrollY + 10}px`;
+        this.settingsWnd.style.left = '10px';
+        this.settingsWnd.style.top = '40px';
       }
 
       setKeySignature(key) {
@@ -500,7 +500,8 @@
 </html>
     
     
+    
 <!--
 升级：
- settingsWnd 添加 header, 只有点 header可移动
+ settingsBtn toggle color
 -->
