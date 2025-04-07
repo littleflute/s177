@@ -43,6 +43,24 @@
             border-radius: 4px;
             font-family: monospace;
         }
+        /* 添加全局SVG样式 */
+        .render-output svg {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        /* 美化滚动条 */
+        .render-output::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .render-output::-webkit-scrollbar-thumb {
+            background: #cccccc;
+            border-radius: 4px;
+        }
+        .render-output::-webkit-scrollbar-thumb:hover {
+            background: #aaaaaa;
+        }
     </style>
 </head>
 <body>
@@ -130,7 +148,8 @@ C D E F | G A B c</code></pre>
                     boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
                     zIndex: 1000,
                     borderRadius: '4px',
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    resize: 'both' // 新增调整尺寸功能
                 });
 
                 Object.assign(this.titleBar.style, {
@@ -193,11 +212,11 @@ C D E F | G A B c</code></pre>
 
                 Object.assign(this.renderOutput.style, {
                     flex: '1',
-                    overflowY: 'auto', // 乐谱过大时出现垂直滚动条
+                    overflow: 'auto',
                     padding: '10px',
                     border: '1px solid #eee',
                     borderRadius: '4px',
-                    maxHeight: '400px' // 固定高度
+                    minHeight: '200px'
                 });
 
                 this.titleBar.textContent = 'ABC Music Editor';
@@ -205,6 +224,8 @@ C D E F | G A B c</code></pre>
                 this.example1Button.textContent = 'Load Example 1';
                 this.example2Button.textContent = 'ex2';
                 this.textarea.placeholder = 'Enter ABC notation here...\nExample:\nX:1\nT:Sample Song\nM:4/4\nL:1/4\nK:C\nC D E F | G A B c';
+                        
+                this.renderOutput.className = 'render-output';  
             }
 
             bindEvents() {
@@ -272,6 +293,7 @@ C D E F | G A B c</code></pre>
                     this.renderOutput.innerHTML = '';
                     ABCJS.renderAbc(this.renderOutput, abcCode, {
                         responsive: 'resize',
+                        staffwidth: 'auto',  // 修改为自动适应
                         staffwidth: 450,
                         add_classes: true,
                         paddingtop: 15,
@@ -396,7 +418,6 @@ C D E F | G A B c`;
 </html>
     
 <!-- 
-升级
- abcCode 大小永远不变 ，
-乐谱过大时，出现滚动条 
+升级 
+乐谱过大时，画布也变大，出现滚动条 
 -->
