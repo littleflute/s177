@@ -22,8 +22,26 @@
   <canvas id="jianpuCanvas" style="border: 1px red solid;"></canvas>
 
   <script>
-    class C4Bar{}
-    class C4Bar{}
+    class C4Bar {
+      constructor(index) {
+        this.index = index;
+        this.beats = [];
+      }
+      drawMe(ctx, x, y, config) {
+        const barWidth = 100;
+        const barHeight = 80;
+        ctx.strokeRect(x, y, barWidth, barHeight);
+        ctx.fillText(this.index, x + 5, y + 20);
+        let currentY = y + 30;
+        this.beats.forEach(beat => {
+          beat.drawMe(ctx, x + 10, currentY, config);
+          currentY += 30;
+        });
+      }
+      addBeat(beat) {
+        this.beats.push(beat);
+      }
+    }
 
     class C4Beat {
       constructor(...notes) {
@@ -321,6 +339,7 @@
           <div class="settings-tabs">
             <div class="settings-tab active" data-tab="general">常规设置</div>
             <div class="settings-tab" data-tab="canvas">画布设置</div>
+            <div class="settings-tab" data-tab="bar">小节管理</div>
           </div>
           <div class="settings-tab-content active" id="general">
             <div class="settings-row">
@@ -352,6 +371,11 @@
             <div class="settings-row">
               <label>画布高度:</label>
               <input type="number" class="canvas-height" value="${this.config.height}" min="100">
+            </div>
+          </div>
+          <div class="settings-tab-content" id="bar">
+            <div class="settings-row">
+              <button class="add-bar-btn">添加新小节</button>
             </div>
           </div>
           <div class="settings-buttons">
@@ -427,6 +451,13 @@
           isDragging = false;
         });
 
+        // 添加新小节按钮事件
+        wnd.querySelector('.add-bar-btn').addEventListener('click', () => {
+          const newBar = new C4Bar(this.barList.length + 1);
+          this.barList.push(newBar);
+          this.render();
+        });
+
         document.body.appendChild(wnd);
         this.settingsWnd = wnd;
       }
@@ -488,6 +519,17 @@
 
           beat.drawMe(this.ctx, currentX, currentY, this.config);
           currentX += beatWidth + this.config.noteSpacing;
+        });
+
+        let barX = 50;
+        let barY = 50;
+        this.barList.forEach(bar => {
+          bar.drawMe(this.ctx, barX, barY, this.config);
+          barX += 120;
+          if (barX + 100 > this.config.width) {
+            barX = 50;
+            barY += 100;
+          }
         });
       }
 
@@ -561,9 +603,6 @@
 </body>
 
 </html>
-    
-    
-    
     
 <!--
 升级：
