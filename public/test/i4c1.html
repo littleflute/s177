@@ -531,6 +531,7 @@
           this.barList.push(newBar);
           this.render();
         });
+
         // 随机添加节拍按钮事件
         wnd.querySelector('.random-add-beat-btn').addEventListener('click', () => {
           const noteCount = Math.floor(Math.random() * 4) + 1;
@@ -553,6 +554,11 @@
           const note = new C4Note(pitch, duration);
           this.addNote(note);
           this.render();
+        });
+
+        // 重置所有小节按钮事件
+        wnd.querySelector('.btnResetAllBars').addEventListener('click', () => {
+          this.resetAllBars();
         });
 
         document.body.appendChild(wnd);
@@ -700,6 +706,22 @@
           this.selectedBar = null;
         }
       }
+
+      resetAllBars() {
+        const barWidth = 100;
+        const barSpacing = 20;
+        const barsPerRow = Math.floor((this.config.width - 50) / (barWidth + barSpacing));
+
+        this.barList.forEach((bar, index) => {
+          bar.index = index + 1;
+          const row = Math.floor(index / barsPerRow);
+          const col = index % barsPerRow;
+          bar.x = 50 + col * (barWidth + barSpacing);
+          bar.y = 50 + row * 100;
+        });
+
+        this.render();
+      }
     }
 
     // 使用示例
@@ -749,7 +771,7 @@
   </script>
 </body>
 
-</html>    
+</html>     
 <!--
 升级：
   实现 btnResetAllBars 重新按序号排列所有小节 
