@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8"> 
+    <title>BLC4ObjsInWindow Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            padding: 8px 12px;
+            margin: 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .status {
+            margin-top: 10px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-controls">
+        <h2>Test Controls</h2>
+        
+        <div>
+            <input type="text" id="newId" placeholder="Enter ID for new window" value="window_1">
+            <button onclick="createNewWindow()">Create New Window</button>
+        </div>
+
+        <div>
+            <button onclick="toggleMainWindow()">Toggle Main Window</button>
+            <button onclick="showAllCounts()">Show All Counts</button>
+            <button onclick="clearAllCanvases()">Clear All Canvases</button>
+        </div>
+
+        <div class="status" id="status">
+            Current instances: 0 | Last action: -
+        </div>
+    </div>
+    <script src="i2.js"> </script>
+
+    <script>
+        // Initialize main instance
+        const mainWindow = BLC4ObjsInWindow.getInstance('id_s177_i2_BLC4ObjsInWindow');
+
+        function updateStatus() {
+            const status = document.getElementById('status');
+            status.innerHTML = `Current instances: ${window.blos?.length || 0} | Last action: ${lastAction}`;
+        }
+
+        let lastAction = 'Initialized';
+        
+        function createNewWindow() {
+            const idInput = document.getElementById('newId');
+            const newId = idInput.value || `window_${Date.now()}`;
+            const instance = BLC4ObjsInWindow.getInstance(newId);
+            instance.toggleUI();
+            lastAction = `Created window: ${newId}`;
+            idInput.value = `window_${window.blos?.length + 1 || 1}`;
+            updateStatus();
+        }
+
+        function toggleMainWindow() {
+            mainWindow.toggleUI();
+            lastAction = 'Toggled main window';
+            updateStatus();
+        }
+
+        function showAllCounts() {
+            window.blos?.forEach(instance => {
+                instance.showCount();
+                instance.highlightButton(instance.btnCount);
+            });
+            lastAction = 'Showed counts in all windows';
+            updateStatus();
+        }
+
+        function clearAllCanvases() {
+            window.blos?.forEach(instance => {
+                instance.ctx.clearRect(0, 0, instance.canvas.width, instance.canvas.height);
+            });
+            lastAction = 'Cleared all canvases';
+            updateStatus();
+        }
+
+        // Initial status update
+        updateStatus();
+    </script>
+ 
+    
+</body>
+</html>

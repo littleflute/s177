@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Jianpu Notation Test</title>
+    <style>
+        .container {
+            margin: 20px auto;
+            max-width: 800px;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            margin: 20px 0;
+        }
+        .controls {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Jianpu Notation Test</h1>
+        <div class="controls">
+            <button onclick="renderSampleScore()">Render Sample Score</button>
+            <button onclick="clearCanvas()">Clear Canvas</button>
+            <button id="settingsBtn">显示设置</button>
+        </div>
+        <canvas id="jianpuCanvas"></canvas>
+    </div>
+
+    <script src="i4.js"></script>
+    <script> 
+
+        const renderer = new JianpuRenderer('jianpuCanvas', {
+                        width: 800,
+                        height: 600,
+                        noteSpacing: 15
+        });
+
+        function renderSampleScore() { 
+            renderer.setKeySignature('1=C');
+            renderer.setTimeSignature('4/4');
+
+              //test cases 
+            const scales = [1,2,3 ];
+            for(let i in scales){//test1
+                            renderer.addNote(new C4Note(scales[i],0.25,{octave:-2}));
+            }
+            for(let i in scales){//test2
+                            renderer.addNote(new C4Note(scales[i],0.25,{octave:0}));
+                        }
+            for(let i in scales){//test3
+                            renderer.addNote(new C4Note(scales[i],0.25,{octave:2}));
+                        }
+            for(let i in scales){//test4
+                            renderer.addNote(new C4Note(scales[i],0.125,{octave:0}));
+                        }
+            for(let i in scales){//test5
+                            renderer.addNote(new C4Note(scales[i],0.0625,{octave:0}));
+                        }
+            renderer.addNote(new C4Note(1, 1)); //   全音符，显示三条增时线
+            renderer.addNote(new C4Note(2, 0.5)); //   二分音符，一条增时线
+            renderer.addNote(new C4Note(3, 0.25)); //   四分音符，无增时线 
+            renderer.addNote(new C4Note(4, 0.125)); //   8分音符  
+
+            renderer.addNote(new C4Note(3, 0.25, { dotted: true }));
+            renderer.addNote(new C4Note(5, 2, { octave: 1 }));
+            renderer.addNote(new C4Note(6, 0.5, { octave: -1 }));
+
+            renderer.addBeat(new C4Note(1, 0.0625),new C4Note(0, 0.0625),new C4Note(2, 0.0625),new C4Note(2, 0.0625)); //t11
+            renderer.addBeat(new C4Note(1, 0.0625),new C4Note(2, 0.125),new C4Note(2, 0.0625)); //t12
+            renderer.addBeat(new C4Note(1, 0.0625),new C4Note(2, 0.0625),new C4Note(2, 0.125)); //t13
+            renderer.addBeat(new C4Note(1, 0.125),new C4Note(2, 0.0625),new C4Note(3, 0.0625)); //t14
+            renderer.addBeat(new C4Note(0, 0.125),new C4Note(4, 0.125));  
+            renderer.addBeat(new C4Note(2, 0.125),new C4Note(1, 0.125));  
+            renderer.render();
+        }
+
+        function clearCanvas() {
+            const canvas = document.getElementById('jianpuCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Render initial sample on load
+        window.onload = renderSampleScore;
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            renderer.toggleSettingWnd();
+        });
+
+    </script>
+</body>
+</html>
