@@ -14,6 +14,10 @@
       background-color: #0056b3;
       color: white;
     }
+    /* 选中的小节样式 */
+    .selected-bar {
+      border: 2px solid red;
+    }
   </style>
 </head>
 
@@ -26,11 +30,23 @@
       constructor(index) {
         this.index = index;
         this.beats = [];
+        this.isSelected = false;
+        this.x = 0;
+        this.y = 0;
       }
       drawMe(ctx, x, y, config) {
+        this.x = x;
+        this.y = y;
         const barWidth = 100;
         const barHeight = 80;
         ctx.strokeRect(x, y, barWidth, barHeight);
+        if (this.isSelected) {
+          ctx.strokeStyle = 'red';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x, y, barWidth, barHeight);
+          ctx.strokeStyle = 'black';
+          ctx.lineWidth = 1;
+        }
         ctx.fillText(this.index, x + 5, y + 20);
         let currentY = y + 30;
         this.beats.forEach(beat => {
@@ -209,10 +225,18 @@
         this.keySignature = '1=C';
         this.timeSignature = '4/4';
         this.settingsWnd = null;
+        this.selectedBar = null;
+        this.isDragging = false;
+        this.offsetX = 0;
+        this.offsetY = 0;
 
         this._injectStyles();
         this._createSettingsWindow();
         this._positionSettingsWindowToTop();
+
+        this.canvas.addEventListener('mousedown', this._onMouseDown.bind(this));
+        this.canvas.addEventListener('mousemove', this._onMouseMove.bind(this));
+        this.canvas.addEventListener('mouseup', this._onMouseUp.bind(this));
       }
 
       _injectStyles() {
@@ -616,6 +640,61 @@
         const lineCount = Math.floor(note.duration * 4);
         return lineCount * this.config.noteSpacing + this.config.fontSize;
       }
+
+      _onMouseDown(e) {
+        // 重置所有小节的选中状态
+        this.barList.forEach(bar => {
+          bar.isSelected = false;
+        });
+        this.selectedBar = null;
+
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        this.barList.forEach(bar => {
+          if (
+            mouseX >= bar.x &&
+            mouseX <= bar.x + 100 &&
+            mouseY >= bar.y &&
+            mouseY <= bar.y + 80
+          ) {
+            this.selectedBar = bar;
+            bar.isSelected = true;
+            this.isDragging = true;
+            this.offsetX = mouseX - bar.x;
+            this.offsetY = mouseY - bar.y;
+            return;
+          }
+        });
+
+        this.render();
+      }
+
+      _onMouseMove(e) {
+        if (this.isDragging && this.selectedBar) {
+          const rect = this.canvas.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
+
+          // 计算新的位置
+          this.selectedBar.x = mouseX - this.offsetX;
+          this.selectedBar.y = mouseY - this.offsetY;
+
+          // 防止小节被拖出画布范围
+          this.selectedBar.x = Math.max(0, Math.min(this.selectedBar.x, this.config.width - 100));
+          this.selectedBar.y = Math.max(0, Math.min(this.selectedBar.y, this.config.height - 80));
+
+          this.render();
+        }
+      }
+
+      _onMouseUp() {
+        this.isDragging = false;
+        if (this.selectedBar) {
+          this.selectedBar = null;
+        }
+      }
     }
 
     // 使用示例
@@ -665,8 +744,8 @@
   </script>
 </body>
 
-</html>     
+</html>    
 <!--
 升级：
- settingsWnd every tab has different color 
+  小节 拖动 failed
 -->
