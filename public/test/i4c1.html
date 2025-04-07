@@ -252,14 +252,28 @@
           .settings-tab {
             cursor: pointer;
             padding: 6px 12px;
-            background: #f0f0f0;
             border-radius: 4px;
             transition: background 0.2s;
           }
 
           .settings-tab.active {
-            background: #007bff;
             color: white;
+          }
+
+          .settings-tab[data-tab="general"] {
+            background: #007bff;
+          }
+
+          .settings-tab[data-tab="canvas"] {
+            background: #28a745;
+          }
+
+          .settings-tab[data-tab="bar"] {
+            background: #ffc107;
+          }
+
+          .settings-tab[data-tab="test-cases"] {
+            background: #dc3545;
           }
 
           .settings-tab-content {
@@ -268,6 +282,22 @@
 
           .settings-tab-content.active {
             display: block;
+          }
+
+          .settings-tab-content#general {
+            background-color: #e7f3ff;
+          }
+
+          .settings-tab-content#canvas {
+            background-color: #e8f8ee;
+          }
+
+          .settings-tab-content#bar {
+            background-color: #fff6cc;
+          }
+
+          .settings-tab-content#test-cases {
+            background-color: #ffe8e9;
           }
 
           .settings-row {
@@ -635,10 +665,8 @@
   </script>
 </body>
 
-</html>    
+</html>     
 <!--
 升级：
- settingsWnd 添加一个tab（test cases）， 
- 有一按钮，可随机 addBeat
- 有一按钮，可随机 addNote
+ settingsWnd every tab has different color 
 -->
