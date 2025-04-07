@@ -23,6 +23,7 @@
 
   <script>
     class C4Bar{}
+    class C4Bar{}
 
     class C4Beat {
       constructor(...notes) {
@@ -186,6 +187,7 @@
 
         this.noteList = [];
         this.beatList = [];
+        this.barList = [];
         this.keySignature = '1=C';
         this.timeSignature = '4/4';
         this.settingsWnd = null;
@@ -565,5 +567,7 @@
     
 <!--
 升级：
- settingsWnd 分成两个 tab , 画布宽度，高度 单独放一页
+ settingsWnd 添加一个tab（小节管理）， 页面上有一个按钮，点击 添加一个新的小节到 barList[].
+ 在画布（50,50）位置开始渲染 barList.
+ 实现 C4Bar类。画一个矩形代表一个小节，在矩形左上角显示小节序号
 -->
