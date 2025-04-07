@@ -237,6 +237,9 @@
         this.canvas.addEventListener('mousedown', this._onMouseDown.bind(this));
         this.canvas.addEventListener('mousemove', this._onMouseMove.bind(this));
         this.canvas.addEventListener('mouseup', this._onMouseUp.bind(this));
+        this.canvas.addEventListener('touchstart', this._onTouchStart.bind(this));
+        this.canvas.addEventListener('touchmove', this._onTouchMove.bind(this));
+        this.canvas.addEventListener('touchend', this._onTouchEnd.bind(this));
       }
 
       _injectStyles() {
@@ -515,6 +518,23 @@
           isDragging = false;
         });
 
+        header.addEventListener('touchstart', (e) => {
+          isDragging = true;
+          offsetX = e.touches[0].clientX - parseInt(wnd.style.left);
+          offsetY = e.touches[0].clientY - parseInt(wnd.style.top);
+        });
+
+        document.addEventListener('touchmove', (e) => {
+          if (isDragging) {
+            wnd.style.left = (e.touches[0].clientX - offsetX) + 'px';
+            wnd.style.top = (e.touches[0].clientY - offsetY) + 'px';
+          }
+        });
+
+        document.addEventListener('touchend', () => {
+          isDragging = false;
+        });
+
         // 添加新小节按钮事件
         wnd.querySelector('.add-bar-btn').addEventListener('click', () => {
           const newBar = new C4Bar(this.barList.length + 1);
@@ -707,6 +727,61 @@
         }
       }
 
+      _onTouchStart(e) {
+        // 重置所有小节的选中状态
+        this.barList.forEach(bar => {
+          bar.isSelected = false;
+        });
+        this.selectedBar = null;
+
+        const rect = this.canvas.getBoundingClientRect();
+        const touchX = e.touches[0].clientX - rect.left;
+        const touchY = e.touches[0].clientY - rect.top;
+
+        this.barList.forEach(bar => {
+          if (
+            touchX >= bar.x &&
+            touchX <= bar.x + 100 &&
+            touchY >= bar.y &&
+            touchY <= bar.y + 80
+          ) {
+            this.selectedBar = bar;
+            bar.isSelected = true;
+            this.isDragging = true;
+            this.offsetX = touchX - bar.x;
+            this.offsetY = touchY - bar.y;
+            return;
+          }
+        });
+
+        this.render();
+      }
+
+      _onTouchMove(e) {
+        if (this.isDragging && this.selectedBar) {
+          const rect = this.canvas.getBoundingClientRect();
+          const touchX = e.touches[0].clientX - rect.left;
+          const touchY = e.touches[0].clientY - rect.top;
+
+          // 计算新的位置
+          this.selectedBar.x = touchX - this.offsetX;
+          this.selectedBar.y = touchY - this.offsetY;
+
+          // 防止小节被拖出画布范围
+          this.selectedBar.x = Math.max(0, Math.min(this.selectedBar.x, this.config.width - 100));
+          this.selectedBar.y = Math.max(0, Math.min(this.selectedBar.y, this.config.height - 80));
+
+          this.render();
+        }
+      }
+
+      _onTouchEnd() {
+        this.isDragging = false;
+        if (this.selectedBar) {
+          this.selectedBar = null;
+        }
+      }
+
       resetAllBars() {
         const barWidth = 100;
         const barSpacing = 20;
@@ -771,8 +846,9 @@
   </script>
 </body>
 
-</html>     
+</html>
+    
 <!--
 升级：
-  实现 btnResetAllBars 重新按序号排列所有小节 
+  移动端可移动窗口，
 -->
