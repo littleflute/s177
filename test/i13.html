@@ -103,6 +103,7 @@ C D E F | G A B c</code></pre>
                 this.content = document.createElement('div');
                 this.textarea = document.createElement('textarea');
                 this.renderButton = document.createElement('button');
+                this.example1Button = document.createElement('button');
                 this.renderOutput = document.createElement('div');
 
                 this.content.appendChild(this.textarea);
@@ -117,8 +118,8 @@ C D E F | G A B c</code></pre>
                 Object.assign(this.element.style, {
                     position: 'fixed',
                     display: 'none',
-                    width: '500px',
-                    minHeight: '400px',
+                    width: '1200px',
+                    minHeight: '600px',
                     backgroundColor: 'white',
                     border: '1px solid #ccc',
                     boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
@@ -169,7 +170,7 @@ C D E F | G A B c</code></pre>
                     flex: '1',
                     overflowY: 'auto',
                     padding: '10px',
-                    border: '1px solid '#eee',
+                    border: '1px solid #eee',
                     borderRadius: '4px'
                 });
 
@@ -242,6 +243,7 @@ C D E F | G A B c</code></pre>
                     ABCJS.renderAbc(this.renderOutput, abcCode, {
                         responsive: 'resize',
                         staffwidth: 450,
+                        add_classes: true,
                         paddingtop: 15,
                         paddingbottom: 15,
                         paddingleft: 15,
@@ -250,6 +252,14 @@ C D E F | G A B c</code></pre>
                             preferredMeasuresPerLine: 4,
                             minSpacing: 2,
                             maxSpacing: 3
+                        },
+                        // 添加多声部渲染配置
+                        format: {
+                            voices: {
+                                V1: { staff: 1 },
+                                V2: { staff: 2 },
+                                Ch: { staff: 3 }
+                            }
                         }
                     });
                     this.adjustWindowSize();
@@ -278,7 +288,7 @@ C D E F | G A B c</code></pre>
             loadABCJS() {
                 if (typeof ABCJS === 'undefined') {
                     const script = document.createElement('script');
-                    script.src = 'https://cdn.jsdelivr.net/npm/abcjs@6.0.0/dist/abcjs-min.js';
+                    script.src = 'abcjs-basic.js';
                     script.onload = () => {
                         this.renderButton.disabled = false;
                         this.showMessage('ABCJS loaded successfully!', 'info');
@@ -331,4 +341,4 @@ C D E F | G A B c`;
         }
     </script>
 </body>
-</html>
+</html>    
