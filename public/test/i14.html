@@ -219,7 +219,11 @@
                         <!-- 将issue_toolbar移动到内容区域顶部 -->
                         <div id="issue_toolbar" class="issue_toolbar"></div>
                         <p>Current Repo: <span id="current-repo">${this.currentRepo}</span></p>
-                        <p>Current Issue: <span id="current-issue">${this.currentIssue}</span></p>
+                        <div id="id_4_current_issue">
+                            Current Issue: <span id="current_issue">${this.currentIssue}</span> 
+                            <div id="id_4_comments_current_issue">
+                            </div>
+                        </div>
                         <button onclick="appCore.toggleUI()">Close Window</button>
                     </div>
                 `;
@@ -241,6 +245,46 @@
                 });
             }
 
+            async getComments(divID, issueNumber) {
+                try {
+                    const container = document.getElementById(divID);
+                    container.innerHTML = 'Loading comments...'; // 加载提示
+                    
+                    const comments = await this.#apiRequest('GET', `issues/${issueNumber}/comments`, null);
+                    container.innerHTML = ''; // 清空加载提示
+
+                    if (comments.length === 0) {
+                        container.innerHTML = '<div>No comments yet</div>';
+                        return;
+                    }
+
+                    comments.forEach(comment => {
+                        const btn = document.createElement('button');
+                        btn.className = 'issue_btn';
+                        
+                        // 处理可能缺失的内容
+                        const username = comment.user?.login || 'Anonymous';
+                        const preview = comment.body 
+                            ? `${comment.body.substring(0, 30).replace(/\n/g, ' ')}...`
+                            : 'No content';
+                        
+                        btn.textContent = `${username}: ${preview}`;
+                        
+                        // 添加悬停显示完整内容
+                        btn.title = comment.body || '';
+                        
+                        // 点击打开评论页面
+                        btn.onclick = () => window.open(comment.html_url, '_blank');
+                        
+                        container.appendChild(btn);
+                    });
+
+                } catch (error) {
+                    console.error('Failed to fetch comments:', error);
+                    const container = document.getElementById(divID);
+                    container.innerHTML = `<div style="color: #ff4444">Error loading comments: ${error.message}</div>`;
+                }
+            }
             /* 保持其他方法不变 */
             async fetchAndDisplayIssues() {
                 try {
@@ -254,7 +298,8 @@
                         btn.textContent = `#${issue.number}`;
                         btn.onclick = () => {
                             this.currentIssue = issue.number;
-                            document.getElementById('current-issue').textContent = this.currentIssue;
+                            document.getElementById('current_issue').textContent = this.currentIssue;
+                            this.getComments('id_4_comments_current_issue',this.currentIssue);
                         };
                         toolbar.appendChild(btn);
                     });
@@ -346,7 +391,6 @@
 </html>
 <!--
  升级：
-  let issue_toolbar on the top of the UI. 
-
+  code getComments
   return all new code
 --> 
