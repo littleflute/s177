@@ -539,6 +539,7 @@
           if (this.selectedBar) {
             const index = this.barList.indexOf(this.selectedBar);
             this.barList.splice(index, 1);
+            this.resetAllBars(); // 添加这行以重新排列小节位置
             this._updateBarToolbar();
             this.selectedBar = null;
             this.render();
@@ -969,7 +970,7 @@
     
 <!--
 升级： 
-  小节管理页，添加一个工具条，每增加一个小节，工具条上建立一按钮代表此小节，
-  画布上选择小节时，高亮小节按钮，反之，按钮点击时，画布上对应小节也高亮
+   
+  画布上选择小节时， 删除按钮不起作用
 
 -->
