@@ -50,7 +50,7 @@
     <div class="mobile-container">
         <div class="topnav">
             <div id="id_4_info">
-                <a href="#home" class="active" id="toggleUI" onclick="appCore.toggleUI();" style="border:1px brown solid;">i14 v1.111</a> 
+                <a href="#home" class="active" id="id_4_toggleUI" onclick="appCore.toggleUI();" style="border:1px brown solid;">i14 v1.111</a> 
             </div>
 
             <div id="myLinks">
@@ -115,7 +115,7 @@
                 document.head.appendChild(style);
             }
 
-            createModal() {
+            #createModal() {
                 if (this.modal) return;
 
                 this.modal = document.createElement('div');
@@ -163,7 +163,7 @@
             }
 
             toggleUI() {
-                this.createModal();
+                this.#createModal();
                 this.modal.style.display = this.modal.style.display === 'none' ? 'block' : 'none';
                 // 初始居中显示
                 if (this.modal.style.display === 'block' && !this.modal.style.left) {
@@ -203,7 +203,7 @@
 </html>
 <!--
  升级：
-  实现 toggleUI
-  相关css 放在类代码里
+  第一次点击 id_4_toggleUI， 就应该显示 UI
+
   return all new code
 -->
