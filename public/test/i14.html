@@ -4,7 +4,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <style>
-        /* 保持原有样式不变 */
         body {
             font-family: Arial, Helvetica, sans-serif;
             margin: 0;
@@ -91,7 +90,7 @@
             gap: 5px;
             padding: 10px 0;
             margin: 10px 0;
-            order: -1; /* 新增：将工具栏移到内容顶部 */
+            order: -1;
         }
 
         .issue_btn {
@@ -107,14 +106,60 @@
         .issue_btn:hover {
             background: #45a049;
         }
+
+        /* 新增高亮样式 */
+        .issue_btn.active {
+            background: #ff9800;
+            border: 2px solid #ff5722;
+        }
+
+        /* 新增编辑窗口样式 */
+        .edit-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #333;
+            color: white;
+            border: 1px solid #4CAF50;
+            border-radius: 5px;
+            z-index: 1001;
+            width: 300px;
+            padding: 15px;
+        }
+
+        .edit-modal label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .edit-modal input,
+        .edit-modal textarea {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+
+        .edit-modal button {
+            padding: 5px 10px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .edit-modal button:hover {
+            background: #45a049;
+        }
     </style>
 </head>
 <body>
-    <!-- 保持原有HTML结构不变 -->
     <div class="mobile-container">
         <div class="topnav">
             <div id="id_4_info">
-                <a href="#home" class="active" id="id_4_toggleUI" onclick="appCore.toggleUI();" style="border:1px brown solid;">i14 v1.112</a> 
+                <a href="#home" class="active" id="id_4_toggleUI" onclick="appCore.toggleUI();" style="border:1px brown solid;">i14 v1.113</a> 
             </div>
 
             <div id="myLinks">
@@ -125,6 +170,17 @@
                 <i class="fa fa-bars"></i>
             </a>
         </div>
+    </div>
+
+    <!-- 新增编辑窗口 -->
+    <div id="edit-modal" class="edit-modal">
+        <h2>Edit Issue</h2>
+        <label for="edit-title">Title:</label>
+        <input type="text" id="edit-title">
+        <label for="edit-body">Body:</label>
+        <textarea id="edit-body"></textarea>
+        <button onclick="appCore.updateIssue()">Save Changes</button>
+        <button onclick="appCore.closeEditModal()">Cancel</button>
     </div>
 
     <script>
@@ -142,6 +198,7 @@
                 this.offsetX = 0;
                 this.offsetY = 0;
                 this.issuesLoaded = false;
+                this.editModal = document.getElementById('edit-modal');
                 this.#injectStyles();
             }         
             
@@ -201,6 +258,46 @@
                     .issue_btn:hover {
                         background: #45a049;
                     }
+                    .issue_btn.active {
+                        background: #ff9800;
+                        border: 2px solid #ff5722;
+                    }
+                    /* 新增编辑窗口样式 */
+                    .edit-modal {
+                        display: none;
+                        position: fixed;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        background: #333;
+                        color: white;
+                        border: 1px solid #4CAF50;
+                        border-radius: 5px;
+                        z-index: 1001;
+                        width: 300px;
+                        padding: 15px;
+                    }
+                    .edit-modal label {
+                        display: block;
+                        margin-bottom: 5px;
+                    }
+                    .edit-modal input,
+                    .edit-modal textarea {
+                        width: 100%;
+                        padding: 5px;
+                        margin-bottom: 10px;
+                    }
+                    .edit-modal button {
+                        padding: 5px 10px;
+                        background: #4CAF50;
+                        border: none;
+                        border-radius: 3px;
+                        color: white;
+                        cursor: pointer;
+                    }
+                    .edit-modal button:hover {
+                        background: #45a049;
+                    }
                 `;
                 document.head.appendChild(style);
             }
@@ -216,11 +313,15 @@
                         <span class="modal-close">×</span>
                     </div>
                     <div class="movable-modal-content">
-                        <!-- 将issue_toolbar移动到内容区域顶部 -->
                         <div id="issue_toolbar" class="issue_toolbar"></div>
                         <p>Current Repo: <span id="current-repo">${this.currentRepo}</span></p>
                         <div id="id_4_current_issue">
                             Current Issue: <span id="current_issue">${this.currentIssue}</span> 
+                            <button id='id_4_edit_current_issue' onclick="appCore.openEditModal()">Edit Issue</button>
+                            <div id="id_4_action_current_issue">
+                                if issue.title has 'blc:', make a 'blc' button here.
+                                click this button can toggle a window
+                            </div>
                             <div id="id_4_comments_current_issue">
                             </div>
                         </div>
@@ -248,10 +349,10 @@
             async getComments(divID, issueNumber) {
                 try {
                     const container = document.getElementById(divID);
-                    container.innerHTML = 'Loading comments...'; // 加载提示
+                    container.innerHTML = 'Loading comments...';
                     
                     const comments = await this.#apiRequest('GET', `issues/${issueNumber}/comments`, null);
-                    container.innerHTML = ''; // 清空加载提示
+                    container.innerHTML = '';
 
                     if (comments.length === 0) {
                         container.innerHTML = '<div>No comments yet</div>';
@@ -262,18 +363,13 @@
                         const btn = document.createElement('button');
                         btn.className = 'issue_btn';
                         
-                        // 处理可能缺失的内容
                         const username = comment.user?.login || 'Anonymous';
                         const preview = comment.body 
                             ? `${comment.body.substring(0, 30).replace(/\n/g, ' ')}...`
                             : 'No content';
                         
                         btn.textContent = `${username}: ${preview}`;
-                        
-                        // 添加悬停显示完整内容
                         btn.title = comment.body || '';
-                        
-                        // 点击打开评论页面
                         btn.onclick = () => window.open(comment.html_url, '_blank');
                         
                         container.appendChild(btn);
@@ -285,7 +381,7 @@
                     container.innerHTML = `<div style="color: #ff4444">Error loading comments: ${error.message}</div>`;
                 }
             }
-            /* 保持其他方法不变 */
+
             async fetchAndDisplayIssues() {
                 try {
                     const issues = await this.#apiRequest('GET', 'issues?per_page=100', null);
@@ -296,10 +392,20 @@
                         const btn = document.createElement('button');
                         btn.className = 'issue_btn';
                         btn.textContent = `#${issue.number}`;
+                        
+                        // 初始化时设置高亮
+                        if (issue.number === this.currentIssue) {
+                            btn.classList.add('active');
+                        }
+                        
                         btn.onclick = () => {
+                            // 移除所有按钮的高亮
+                            document.querySelectorAll('.issue_btn').forEach(b => b.classList.remove('active'));
+                            // 添加当前按钮高亮
+                            btn.classList.add('active');
                             this.currentIssue = issue.number;
                             document.getElementById('current_issue').textContent = this.currentIssue;
-                            this.getComments('id_4_comments_current_issue',this.currentIssue);
+                            this.getComments('id_4_comments_current_issue', this.currentIssue);
                         };
                         toolbar.appendChild(btn);
                     });
@@ -383,14 +489,51 @@
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.json();
             }
+
+            openEditModal() {
+                this.editModal.style.display = 'block';
+                this.populateEditFields();
+            }
+
+            closeEditModal() {
+                this.editModal.style.display = 'none';
+            }
+
+            async populateEditFields() {
+                try {
+                    const issue = await this.#apiRequest('GET', `issues/${this.currentIssue}`, null);
+                    document.getElementById('edit-title').value = issue.title;
+                    document.getElementById('edit-body').value = issue.body;
+                } catch (error) {
+                    console.error('Failed to fetch issue details:', error);
+                }
+            }
+
+            async updateIssue() {
+                const title = document.getElementById('edit-title').value;
+                const body = document.getElementById('edit-body').value;
+                const data = { title, body };
+
+                try {
+                    await this.#apiRequest('PATCH', `issues/${this.currentIssue}`, data);
+                    alert('Issue updated successfully!');
+                    this.closeEditModal();
+                    this.fetchAndDisplayIssues();
+                } catch (error) {
+                    console.error('Failed to update issue:', error);
+                    alert('Error updating issue: ' + error.message);
+                }
+            }
         }
 
         const appCore = new C4XDR177I14();
     </script>
 </body>
 </html>
+    
 <!--
  升级：
-  code getComments
+  实现： id_4_action_current_issue  ， 
+
   return all new code
 --> 
