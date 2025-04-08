@@ -534,17 +534,18 @@
           this.render();
         });
         wnd.querySelector('.delete-bar-btn').addEventListener('click', () => {
+          // 直接使用 this.selectedBar 判断
           if (this.selectedBar) {
             const index = this.barList.indexOf(this.selectedBar);
-            this.barList.splice(index, 1);
-            // 更新剩余小节的索引为连续编号
-            this.barList.forEach((bar, i) => {
-              bar.index = i + 1;
-            });
-            this.resetAllBars();
-            this._updateBarToolbar();
-            this.selectedBar = null;
-            this.render();
+            if (index !== -1) {
+              this.barList.splice(index, 1);
+              // 更新索引并重置布局
+              this.barList.forEach((bar, i) => bar.index = i + 1);
+              this.resetAllBars();
+              this._updateBarToolbar();
+              this.selectedBar = null; // 清空当前选中
+              this.render();
+            }
           }
         });
 
@@ -814,15 +815,13 @@
             mouseY >= bar.y &&
             mouseY <= bar.y + 80
           ) {
-            this._selectBar(bar);
-            this.selectedBar = bar;
-            bar.isSelected = true;
+            this._selectBar(bar); 
             this.isDragging = true;
             this.offsetX = mouseX - bar.x;
             this.offsetY = mouseY - bar.y;
             return;
           }
-        });
+        }); 
 
         this.render();
       }
@@ -846,10 +845,7 @@
       }
 
       _onMouseUp() {
-        this.isDragging = false;
-        if (this.selectedBar) {
-          this.selectedBar = null;
-        }
+        this.isDragging = false; 
       }
 
       _onTouchStart(e) {
@@ -899,10 +895,7 @@
       }
 
       _onTouchEnd() {
-        this.isDragging = false;
-        if (this.selectedBar) {
-          this.selectedBar = null;
-        }
+        this.isDragging = false; 
       }
 
       resetAllBars() {
@@ -974,6 +967,8 @@
 <!--
 升级： 
    
-    id="barToolbar" 移到 小节管理页上
+    在画布上选择小节后，再点删除按钮，删除没有生效。
+    而在小节工具条上选择小节，再点删除按钮，删除生效。
+    应该都行才对
 
 -->
