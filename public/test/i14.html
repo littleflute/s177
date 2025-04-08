@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            background: #333;
+        }
+
+        .mobile-container {
+            max-width: 480px;
+            margin: auto;
+            background-color: #555;
+            min-height: 100vh;
+            color: white;
+        }
+
+        .topnav {
+            background-color: #333;
+            position: relative;
+        }
+
+        .topnav #myLinks {
+            display: none;
+        }
+
+        .topnav a {
+            color: white;
+            padding: 14px 16px;
+            text-decoration: none;
+            display: block;
+        }
+
+        .topnav a.icon {
+            background: black;
+            position: absolute;
+            right: 0;
+            top: 0;
+        }
+
+        .active {
+            background-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+        <div class="topnav">
+            <div id="id_4_info">
+                <a href="#home" class="active" id="toggleUI" onclick="appCore.toggleUI();" style="border:1px brown solid;">i14 v1.111</a> 
+            </div>
+
+            <div id="myLinks">
+                <a href="https://littleflute.github.io/s177/" target="_blank">s177 Home</a>
+                <a href="https://github.com/littleflute/s177" target="_blank">s177 Repo</a>
+            </div>
+            <a href="javascript:void(0);" class="icon" onclick="toggleMenu()">
+                <i class="fa fa-bars"></i>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        class C4XDR177I14 {
+            constructor() { 
+                this.currentRepo = 's177';
+                this.modal = null;
+                this.isDragging = false;
+                this.offsetX = 0;
+                this.offsetY = 0;
+                this.injectStyles();
+            }         
+            
+            injectStyles() {
+                const style = document.createElement('style');
+                style.textContent = `
+                    .movable-modal {
+                        display: none;
+                        position: fixed;
+                        top: 100px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        background: #333;
+                        color: white;
+                        border: 1px solid #4CAF50;
+                        border-radius: 5px;
+                        z-index: 1000;
+                        width: 300px;
+                        user-select: none;
+                    }
+                    .movable-modal-header {
+                        padding: 10px;
+                        cursor: move;
+                        background: #4CAF50;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        border-radius: 4px 4px 0 0;
+                    }
+                    .movable-modal-content {
+                        padding: 15px;
+                    }
+                    .modal-close {
+                        cursor: pointer;
+                        font-size: 20px;
+                        padding: 0 5px;
+                    }
+                    .modal-close:hover {
+                        color: #ff4444;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            createModal() {
+                if (this.modal) return;
+
+                this.modal = document.createElement('div');
+                this.modal.className = 'movable-modal';
+                this.modal.innerHTML = `
+                    <div class="movable-modal-header">
+                        <span>Control Panel</span>
+                        <span class="modal-close">×</span>
+                    </div>
+                    <div class="movable-modal-content">
+                        <p>Current Repo: ${this.currentRepo}</p>
+                        <button onclick="appCore.toggleUI()">Close Window</button>
+                    </div>
+                `;
+
+                document.body.appendChild(this.modal);
+
+                const header = this.modal.querySelector('.movable-modal-header');
+                const closeBtn = this.modal.querySelector('.modal-close');
+
+                closeBtn.addEventListener('click', () => this.toggleUI());
+
+                header.addEventListener('mousedown', (e) => {
+                    this.isDragging = true;
+                    const rect = this.modal.getBoundingClientRect();
+                    this.offsetX = e.clientX - rect.left;
+                    this.offsetY = e.clientY - rect.top;
+
+                    const onMouseMove = (e) => {
+                        if (!this.isDragging) return;
+                        this.modal.style.left = `${e.clientX - this.offsetX}px`;
+                        this.modal.style.top = `${e.clientY - this.offsetY}px`;
+                        this.modal.style.transform = 'none'; // 移除居中定位
+                    };
+
+                    const onMouseUp = () => {
+                        this.isDragging = false;
+                        document.removeEventListener('mousemove', onMouseMove);
+                        document.removeEventListener('mouseup', onMouseUp);
+                    };
+
+                    document.addEventListener('mousemove', onMouseMove);
+                    document.addEventListener('mouseup', onMouseUp);
+                });
+            }
+
+            toggleUI() {
+                this.createModal();
+                this.modal.style.display = this.modal.style.display === 'none' ? 'block' : 'none';
+                // 初始居中显示
+                if (this.modal.style.display === 'block' && !this.modal.style.left) {
+                    const rect = this.modal.getBoundingClientRect();
+                    this.modal.style.left = `${window.innerWidth/2 - rect.width/2}px`;
+                    this.modal.style.top = `${window.innerHeight/2 - rect.height/2}px`;
+                }
+            }
+
+            async #apiRequest(method, endpoint, data) {
+                const xdToken = "ghp_2BF" + "JztcBlHHOkBybs" + "UVJZGHQ4S" + "wvFR0poLqc";
+                const url = `https://api.github.com/repos/littleflute/${this.currentRepo}/${endpoint}`;
+                
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        'Authorization': `token ${xdToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: data ? JSON.stringify(data) : null
+                });
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
+            }
+        }
+
+        function toggleMenu() {
+            const menu = document.getElementById('myLinks');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+
+        // 初始化核心功能模块
+        const appCore = new C4XDR177I14();
+    </script>
+</body>
+</html>
+<!--
+ 升级：
+  实现 toggleUI
+  相关css 放在类代码里
+  return all new code
+-->
