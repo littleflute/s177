@@ -5,6 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Jianpu Renderer</title>
   <style>
+    #barToolbar {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: white;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  max-width: 300px;
+  overflow-x: auto;
+  display: flex;
+  gap: 5px;
+  z-index: 1000;
+}
+
+.bar-button {
+  padding: 4px 8px;
+  min-width: 40px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bar-button.selected {
+  background: #007bff;
+  color: white;
+  border-color: #0056b3;
+}
     #settingsBtn {
       position: fixed;
       top: 10px;
@@ -40,6 +69,7 @@
 </head>
 
 <body>
+  <div id="barToolbar"></div> <!-- 添加工具栏容器 -->
   <button id="settingsBtn">显示设置</button>
   <canvas id="jianpuCanvas"></canvas>
 
@@ -477,6 +507,9 @@
               <button class="add-bar-btn">添加新小节</button>
               <button class="btnResetAllBars">reset</button>
             </div>
+            <div class="settings-row">
+              <button class="delete-bar-btn">删除选中小节</button>
+            </div>
           </div>
           <div class="settings-tab-content" id="test-cases">
             <div class="settings-row">
@@ -501,6 +534,15 @@
           this.timeSignature = e.target.value.replace(/[^0-9\/]/g, '');
           e.target.value = this.timeSignature;
           this.render();
+        });
+        wnd.querySelector('.delete-bar-btn').addEventListener('click', () => {
+          if (this.selectedBar) {
+            const index = this.barList.indexOf(this.selectedBar);
+            this.barList.splice(index, 1);
+            this._updateBarToolbar();
+            this.selectedBar = null;
+            this.render();
+          }
         });
 
         const updateConfig = (key, parseFn = parseInt) => e => {
@@ -582,17 +624,9 @@
         // 添加新小节按钮事件
         wnd.querySelector('.add-bar-btn').addEventListener('click', () => {
           const newBar = new C4Bar(this.barList.length + 1);
-          
-          // 计算初始位置
-          const barWidth = 100;
-          const barSpacing = 20;
-          const barsPerRow = Math.floor((this.config.width - 50) / (barWidth + barSpacing));
-          const row = Math.floor(this.barList.length / barsPerRow);
-          const col = this.barList.length % barsPerRow;
-          newBar.x = 50 + col * (barWidth + barSpacing);
-          newBar.y = 50 + row * 100; // 行高100
-          
           this.barList.push(newBar);
+          this.resetAllBars(); // 重置布局
+          this._updateBarToolbar(); // 更新工具栏
           this.render();
         });
 
@@ -629,6 +663,48 @@
         this.settingsWnd = wnd;
       }
 
+      _updateBarToolbar() {
+        const toolbar = document.getElementById('barToolbar');
+        toolbar.innerHTML = ''; // 清空现有按钮
+        
+        this.barList.forEach((bar, index) => {
+          const btn = document.createElement('button');
+          btn.className = 'bar-button';
+          btn.textContent = index + 1;
+          btn.addEventListener('click', () => {
+            this._selectBar(bar);
+          });
+          if (bar.isSelected) {
+            btn.classList.add('selected');
+          }
+          toolbar.appendChild(btn);
+        });
+      }
+  _selectBar(bar) {
+    // 清除所有选中状态
+    this.barList.forEach(b => b.isSelected = false);
+    bar.isSelected = true;
+    this.selectedBar = bar;
+    
+    // 滚动到可见区域
+    const canvasRect = this.canvas.getBoundingClientRect();
+    const barRect = {
+      left: bar.x,
+      top: bar.y,
+      right: bar.x + this.config.barWidth,
+      bottom: bar.y + this.config.barHeight
+    };
+
+    if (barRect.right > canvasRect.width) {
+      this.canvas.scrollLeft = barRect.right - canvasRect.width + 20;
+    }
+    if (barRect.bottom > canvasRect.height) {
+      this.canvas.scrollTop = barRect.bottom - canvasRect.height + 20;
+    }
+
+    this._updateBarToolbar();
+    this.render();
+  }
       _positionSettingsWindowToTop() {
         if (!this.settingsWnd) return;
         this.settingsWnd.style.left = '10px';
@@ -734,6 +810,7 @@
             mouseY >= bar.y &&
             mouseY <= bar.y + 80
           ) {
+            this._selectBar(bar);
             this.selectedBar = bar;
             bar.isSelected = true;
             this.isDragging = true;
@@ -837,6 +914,7 @@
         });
 
         this.render();
+        this._updateBarToolbar(); // 添加工具栏更新
       }
     }
 
