@@ -16,14 +16,21 @@
       border-radius: 4px;
     }
 
-.bar-button {
-  padding: 4px 8px;
-  min-width: 40px;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
+    .bar-button:disabled,
+    .delete-bar-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background-color: #ddd;
+      border-color: #999;
+    }
+    .bar-button {
+      padding: 4px 8px;
+      min-width: 40px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
 
 .bar-button.selected {
   background: #007bff;
@@ -246,6 +253,7 @@
 
     class JianpuRenderer {
       constructor(canvasId, options = {}) {
+        this.deleteBarBtn = null;
         this.barToolbarElement = null; // 新增工具栏元素引用
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
@@ -521,6 +529,7 @@
           </div>
         `;
 
+        this.deleteBarBtn = wnd.querySelector('.delete-bar-btn'); // 新增
         this.barToolbarElement = wnd.querySelector('#barToolbar');
         // 事件绑定
         wnd.querySelector('.key-sig').addEventListener('change', e => {
@@ -546,6 +555,8 @@
               this.selectedBar = null; // 清空当前选中
               this.render();
             }
+            
+            this._updateDeleteButtonState(); // 新增
           }
         });
 
@@ -685,6 +696,10 @@
           toolbar.appendChild(btn);
         });
       }
+      _updateDeleteButtonState() {
+        const hasSelection = !!this.selectedBar;
+        this.deleteBarBtn.disabled = !hasSelection;
+      }
   _selectBar(bar) {
     // 清除所有选中状态
     this.barList.forEach(b => b.isSelected = false);
@@ -709,6 +724,8 @@
 
     this._updateBarToolbar();
     this.render();
+    
+    this._updateDeleteButtonState(); // 新增
   }
       _positionSettingsWindowToTop() {
         if (!this.settingsWnd) return;
@@ -824,6 +841,7 @@
         }); 
 
         this.render();
+        this._updateDeleteButtonState(); // 新增
       }
 
       _onMouseMove(e) {
@@ -967,8 +985,6 @@
 <!--
 升级： 
    
-    在画布上选择小节后，再点删除按钮，删除没有生效。
-    而在小节工具条上选择小节，再点删除按钮，删除生效。
-    应该都行才对
+    当没有小节被选择时，删除按钮变灰
 
 -->
