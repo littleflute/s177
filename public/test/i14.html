@@ -221,7 +221,8 @@
     <!-- 新增 blc 窗口 -->
     <div id="blc_window" class="blc_window">
         <h2>BLc Window</h2>
-        <p>This is the blc window content.</p>
+        <p id="id_parse_body_as_class">parse issue.body as javascript class. show class name here</p>
+        <ul id="id_parse_member_functions"></ul>
         <button onclick="appCore.closeBlcWindow()">Close</button>
     </div>
 
@@ -635,8 +636,74 @@
                 }
             }
 
-            toggleBlcWindow() {
-                this.blcWindow.style.display = this.blcWindow.style.display === 'block' ? 'none' : 'block';
+            async toggleBlcWindow() {
+                const isShowing = this.blcWindow.style.display === 'block';
+                this.blcWindow.style.display = isShowing ? 'none' : 'block';
+                
+                if (!isShowing) {
+                    await this.parseBodyClass();
+                }
+            }
+            async parseBodyClass() {
+                try {
+                    const issue = await this.#apiRequest('GET', `issues/${this.currentIssue}`, null);
+                    const body = issue.body || '';
+                    const className = this.extractClassName(body);
+                    const classElement = document.getElementById('id_parse_body_as_class');
+                    const memberFunctionsElement = document.getElementById('id_parse_member_functions');
+                    
+                    if (className) {
+                        classElement.innerHTML = `解析到的类名: <strong>${className}</strong>`;
+                    } else {
+                        classElement.textContent = '在issue内容中未找到JavaScript类定义';
+                    }
+
+                    const memberFunctions = this.extractMemberFunctions(body);
+                    if (memberFunctions.length > 0) {
+                        memberFunctionsElement.innerHTML = '';
+                        memberFunctions.forEach(func => {
+                            const button = document.createElement('button');
+                            button.className = 'issue_btn';
+                            button.textContent = func;
+                            button.onclick = () => {
+                                try {
+                                    const jsCode = `(() => { ${body} const instance = new ${className}(); instance.${func}(); })()`;
+                                    const fn = new Function(jsCode);
+                                    fn();
+                                } catch (e) {
+                                    alert(`执行函数 ${func} 时出错: ${e.message}`);
+                                }
+                            };
+                            const li = document.createElement('li');
+                            li.appendChild(button);
+                            memberFunctionsElement.appendChild(li);
+                        });
+                    } else {
+                        memberFunctionsElement.innerHTML = '<li>未找到成员函数</li>';
+                    }
+                } catch (error) {
+                    console.error('解析类名和成员函数失败:', error);
+                    document.getElementById('id_parse_body_as_class').textContent = 
+                        '解析错误: ' + error.message;
+                    document.getElementById('id_parse_member_functions').innerHTML = '';
+                }
+            }
+            
+            extractClassName(body) {
+                // 改进后的正则表达式，支持更多格式
+                const classRegex = /(?:^|\s)(?:export\s+)?class\s+([A-Za-z_$][A-Za-z0-9_$]*)/m;
+                const match = body.match(classRegex);
+                return match ? match[1] : null;
+            }
+
+            extractMemberFunctions(body) {
+                const funcRegex = /(?:^|\s)(?:async\s+)?(?:static\s+)?([A-Za-z_$][A-Za-z0-9_$]*)\s*\([^)]*\)\s*{/gm;
+                const matches = [];
+                let match;
+                while ((match = funcRegex.exec(body))!== null) {
+                    matches.push(match[1]);
+                }
+                return matches;
             }
 
             closeBlcWindow() {
@@ -649,10 +716,10 @@
 </body>
 
 </html>
-            
+      
 <!--
  升级：
-  let id_4_toggleUI show UI at the first click
-
+  renew parseBodyClass
+  let member function to be a button. click the button can run the function.
   return all new code
 --> 
