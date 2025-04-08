@@ -156,7 +156,7 @@
         }
 
         /* 新增 blc 窗口样式 */
-       .blc-window {
+       .blc_window {
             display: none;
             position: fixed;
             top: 50%;
@@ -219,7 +219,7 @@
     </div>
 
     <!-- 新增 blc 窗口 -->
-    <div id="blc-window" class="blc-window">
+    <div id="blc_window" class="blc_window">
         <h2>BLc Window</h2>
         <p>This is the blc window content.</p>
         <button onclick="appCore.closeBlcWindow()">Close</button>
@@ -241,7 +241,7 @@
                 this.offsetY = 0;
                 this.issuesLoaded = false;
                 this.editModal = document.getElementById('edit-modal');
-                this.blcWindow = document.getElementById('blc-window');
+                this.blcWindow = document.getElementById('blc_window');
                 this.#injectStyles();
             }
 
@@ -342,7 +342,7 @@
                         background: #45a049;
                     }
                     /* 新增 blc 窗口样式 */
-                   .blc-window {
+                   .blc_window {
                         display: none;
                         position: fixed;
                         top: 50%;
