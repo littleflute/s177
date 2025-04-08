@@ -529,7 +529,7 @@
 
             toggleUI() {
                 this.#createModal();
-                const isShowing = this.modal.style.display !== 'none';
+                const isShowing = this.modal.style.display === 'block';
                 this.modal.style.display = isShowing ? 'none' : 'block';
 
                 if (!isShowing && !this.issuesLoaded) {
@@ -648,10 +648,11 @@
     </script>
 </body>
 
-</html>          
+</html>
+            
 <!--
  升级：
-  let appBtn blcBtn has different color.
+  let id_4_toggleUI show UI at the first click
 
   return all new code
 --> 
