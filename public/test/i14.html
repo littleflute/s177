@@ -44,13 +44,74 @@
         .active {
             background-color: #4CAF50;
         }
+
+        .movable-modal {
+            display: none;
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            border: 1px solid #4CAF50;
+            border-radius: 5px;
+            z-index: 1000;
+            width: 300px;
+            user-select: none;
+        }
+
+        .movable-modal-header {
+            padding: 10px;
+            cursor: move;
+            background: #4CAF50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 4px 4px 0 0;
+        }
+
+        .movable-modal-content {
+            padding: 15px;
+        }
+
+        .modal-close {
+            cursor: pointer;
+            font-size: 20px;
+            padding: 0 5px;
+        }
+
+        .modal-close:hover {
+            color: #ff4444;
+        }
+
+        .issue_toolbar {
+            display: flex;
+            overflow-x: auto;
+            gap: 5px;
+            padding: 10px 0;
+            margin: 10px 0;
+        }
+
+        .issue_btn {
+            padding: 5px 10px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .issue_btn:hover {
+            background: #45a049;
+        }
     </style>
 </head>
 <body>
     <div class="mobile-container">
         <div class="topnav">
             <div id="id_4_info">
-                <a href="#home" class="active" id="id_4_toggleUI" onclick="appCore.toggleUI();" style="border:1px brown solid;">i14 v1.111</a> 
+                <a href="#home" class="active" id="id_4_toggleUI" onclick="appCore.toggleUI();" style="border:1px brown solid;">i14 v1.112</a> 
             </div>
 
             <div id="myLinks">
@@ -64,17 +125,24 @@
     </div>
 
     <script>
+        function toggleMenu() {
+            const menu = document.getElementById('myLinks');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+
         class C4XDR177I14 {
             constructor() { 
                 this.currentRepo = 's177';
+                this.currentIssue = 0;
                 this.modal = null;
                 this.isDragging = false;
                 this.offsetX = 0;
                 this.offsetY = 0;
-                this.injectStyles();
+                this.issuesLoaded = false;
+                this.#injectStyles();
             }         
             
-            injectStyles() {
+            #injectStyles() {
                 const style = document.createElement('style');
                 style.textContent = `
                     .movable-modal {
@@ -108,8 +176,24 @@
                         font-size: 20px;
                         padding: 0 5px;
                     }
-                    .modal-close:hover {
-                        color: #ff4444;
+                    .issue_toolbar {
+                        display: flex;
+                        overflow-x: auto;
+                        gap: 5px;
+                        padding: 10px 0;
+                        margin: 10px 0;
+                    }
+                    .issue_btn {
+                        padding: 5px 10px;
+                        background: #4CAF50;
+                        border: none;
+                        border-radius: 3px;
+                        color: white;
+                        cursor: pointer;
+                        white-space: nowrap;
+                    }
+                    .issue_btn:hover {
+                        background: #45a049;
                     }
                 `;
                 document.head.appendChild(style);
@@ -126,7 +210,9 @@
                         <span class="modal-close">×</span>
                     </div>
                     <div class="movable-modal-content">
-                        <p>Current Repo: ${this.currentRepo}</p>
+                        <p>Current Repo: <span id="current-repo">${this.currentRepo}</span></p>
+                        <p>Current Issue: <span id="current-issue">${this.currentIssue}</span></p>
+                        <div id="issue_toolbar" class="issue_toolbar"></div>
                         <button onclick="appCore.toggleUI()">Close Window</button>
                     </div>
                 `;
@@ -139,34 +225,89 @@
                 closeBtn.addEventListener('click', () => this.toggleUI());
 
                 header.addEventListener('mousedown', (e) => {
-                    this.isDragging = true;
-                    const rect = this.modal.getBoundingClientRect();
-                    this.offsetX = e.clientX - rect.left;
-                    this.offsetY = e.clientY - rect.top;
-
-                    const onMouseMove = (e) => {
-                        if (!this.isDragging) return;
-                        this.modal.style.left = `${e.clientX - this.offsetX}px`;
-                        this.modal.style.top = `${e.clientY - this.offsetY}px`;
-                        this.modal.style.transform = 'none'; // 移除居中定位
-                    };
-
-                    const onMouseUp = () => {
-                        this.isDragging = false;
-                        document.removeEventListener('mousemove', onMouseMove);
-                        document.removeEventListener('mouseup', onMouseUp);
-                    };
-
-                    document.addEventListener('mousemove', onMouseMove);
-                    document.addEventListener('mouseup', onMouseUp);
+                    this.startDrag(e.clientX, e.clientY);
                 });
+
+                header.addEventListener('touchstart', (e) => {
+                    const touch = e.touches[0];
+                    this.startDrag(touch.clientX, touch.clientY);
+                });
+            }
+
+            async fetchAndDisplayIssues() {
+                try {
+                    const issues = await this.#apiRequest('GET', 'issues?per_page=100', null);
+                    const toolbar = document.getElementById('issue_toolbar');
+                    toolbar.innerHTML = '';
+                    
+                    issues.forEach(issue => {
+                        const btn = document.createElement('button');
+                        btn.className = 'issue_btn';
+                        btn.textContent = `#${issue.number}`;
+                        btn.onclick = () => {
+                            this.currentIssue = issue.number;
+                            document.getElementById('current-issue').textContent = this.currentIssue;
+                        };
+                        toolbar.appendChild(btn);
+                    });
+                    
+                    this.issuesLoaded = true;
+                } catch (error) {
+                    console.error('Failed to fetch issues:', error);
+                }
+            }
+
+            startDrag(clientX, clientY) {
+                this.isDragging = true;
+                const rect = this.modal.getBoundingClientRect();
+                this.offsetX = clientX - rect.left;
+                this.offsetY = clientY - rect.top;
+
+                const onMouseMove = (e) => {
+                    if (!this.isDragging) return;
+                    e.preventDefault();
+                    this.modal.style.left = `${e.clientX - this.offsetX}px`;
+                    this.modal.style.top = `${e.clientY - this.offsetY}px`;
+                    this.modal.style.transform = 'none';
+                };
+
+                const onTouchMove = (e) => {
+                    if (!this.isDragging) return;
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    this.modal.style.left = `${touch.clientX - this.offsetX}px`;
+                    this.modal.style.top = `${touch.clientY - this.offsetY}px`;
+                    this.modal.style.transform = 'none';
+                };
+
+                const onMouseUp = () => {
+                    this.isDragging = false;
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+
+                const onTouchEnd = () => {
+                    this.isDragging = false;
+                    document.removeEventListener('touchmove', onTouchMove);
+                    document.removeEventListener('touchend', onTouchEnd);
+                };
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+                document.addEventListener('touchmove', onTouchMove);
+                document.addEventListener('touchend', onTouchEnd);
             }
 
             toggleUI() {
                 this.#createModal();
-                this.modal.style.display = this.modal.style.display === 'none' ? 'block' : 'none';
-                // 初始居中显示
-                if (this.modal.style.display === 'block' && !this.modal.style.left) {
+                const isShowing = this.modal.style.display !== 'none';
+                this.modal.style.display = isShowing ? 'none' : 'block';
+                
+                if (!isShowing && !this.issuesLoaded) {
+                    this.fetchAndDisplayIssues();
+                }
+
+                if (!isShowing && !this.modal.style.left) {
                     const rect = this.modal.getBoundingClientRect();
                     this.modal.style.left = `${window.innerWidth/2 - rect.width/2}px`;
                     this.modal.style.top = `${window.innerHeight/2 - rect.height/2}px`;
@@ -191,19 +332,14 @@
             }
         }
 
-        function toggleMenu() {
-            const menu = document.getElementById('myLinks');
-            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-        }
-
-        // 初始化核心功能模块
         const appCore = new C4XDR177I14();
     </script>
 </body>
 </html>
 <!--
  升级：
-  第一次点击 id_4_toggleUI， 就应该显示 UI
+  在UI上建立一工具条，遍历本库所有的issue数，在工具条上建立按钮对应所有issue
+  点按钮时更新 currentIssue
 
   return all new code
 -->
