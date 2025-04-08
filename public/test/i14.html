@@ -4,6 +4,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <style>
+        /* 保持原有样式不变 */
         body {
             font-family: Arial, Helvetica, sans-serif;
             margin: 0;
@@ -90,6 +91,7 @@
             gap: 5px;
             padding: 10px 0;
             margin: 10px 0;
+            order: -1; /* 新增：将工具栏移到内容顶部 */
         }
 
         .issue_btn {
@@ -108,6 +110,7 @@
     </style>
 </head>
 <body>
+    <!-- 保持原有HTML结构不变 -->
     <div class="mobile-container">
         <div class="topnav">
             <div id="id_4_info">
@@ -170,6 +173,8 @@
                     }
                     .movable-modal-content {
                         padding: 15px;
+                        display: flex;
+                        flex-direction: column;
                     }
                     .modal-close {
                         cursor: pointer;
@@ -182,6 +187,7 @@
                         gap: 5px;
                         padding: 10px 0;
                         margin: 10px 0;
+                        order: -1;
                     }
                     .issue_btn {
                         padding: 5px 10px;
@@ -210,9 +216,10 @@
                         <span class="modal-close">×</span>
                     </div>
                     <div class="movable-modal-content">
+                        <!-- 将issue_toolbar移动到内容区域顶部 -->
+                        <div id="issue_toolbar" class="issue_toolbar"></div>
                         <p>Current Repo: <span id="current-repo">${this.currentRepo}</span></p>
                         <p>Current Issue: <span id="current-issue">${this.currentIssue}</span></p>
-                        <div id="issue_toolbar" class="issue_toolbar"></div>
                         <button onclick="appCore.toggleUI()">Close Window</button>
                     </div>
                 `;
@@ -234,6 +241,7 @@
                 });
             }
 
+            /* 保持其他方法不变 */
             async fetchAndDisplayIssues() {
                 try {
                     const issues = await this.#apiRequest('GET', 'issues?per_page=100', null);
@@ -338,8 +346,7 @@
 </html>
 <!--
  升级：
-  在UI上建立一工具条，遍历本库所有的issue数，在工具条上建立按钮对应所有issue
-  点按钮时更新 currentIssue
+  let issue_toolbar on the top of the UI. 
 
   return all new code
--->
+--> 
