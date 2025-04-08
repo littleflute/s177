@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
@@ -10,7 +11,7 @@
             background: #333;
         }
 
-        .mobile-container {
+       .mobile-container {
             max-width: 480px;
             margin: auto;
             background-color: #555;
@@ -18,34 +19,34 @@
             color: white;
         }
 
-        .topnav {
+       .topnav {
             background-color: #333;
             position: relative;
         }
 
-        .topnav #myLinks {
+       .topnav #myLinks {
             display: none;
         }
 
-        .topnav a {
+       .topnav a {
             color: white;
             padding: 14px 16px;
             text-decoration: none;
             display: block;
         }
 
-        .topnav a.icon {
+       .topnav a.icon {
             background: black;
             position: absolute;
             right: 0;
             top: 0;
         }
 
-        .active {
+       .active {
             background-color: #4CAF50;
         }
 
-        .movable-modal {
+       .movable-modal {
             display: none;
             position: fixed;
             top: 100px;
@@ -60,7 +61,7 @@
             user-select: none;
         }
 
-        .movable-modal-header {
+       .movable-modal-header {
             padding: 10px;
             cursor: move;
             background: #4CAF50;
@@ -70,21 +71,21 @@
             border-radius: 4px 4px 0 0;
         }
 
-        .movable-modal-content {
+       .movable-modal-content {
             padding: 15px;
         }
 
-        .modal-close {
+       .modal-close {
             cursor: pointer;
             font-size: 20px;
             padding: 0 5px;
         }
 
-        .modal-close:hover {
+       .modal-close:hover {
             color: #ff4444;
         }
 
-        .issue_toolbar {
+       .issue_toolbar {
             display: flex;
             overflow-x: auto;
             gap: 5px;
@@ -93,7 +94,7 @@
             order: -1;
         }
 
-        .issue_btn {
+       .issue_btn {
             padding: 5px 10px;
             background: #4CAF50;
             border: none;
@@ -103,18 +104,18 @@
             white-space: nowrap;
         }
 
-        .issue_btn:hover {
+       .issue_btn:hover {
             background: #45a049;
         }
 
         /* 新增高亮样式 */
-        .issue_btn.active {
+       .issue_btn.active {
             background: #ff9800;
             border: 2px solid #ff5722;
         }
 
         /* 新增编辑窗口样式 */
-        .edit-modal {
+       .edit-modal {
             display: none;
             position: fixed;
             top: 50%;
@@ -129,19 +130,19 @@
             padding: 15px;
         }
 
-        .edit-modal label {
+       .edit-modal label {
             display: block;
             margin-bottom: 5px;
         }
 
-        .edit-modal input,
-        .edit-modal textarea {
+       .edit-modal input,
+       .edit-modal textarea {
             width: 100%;
             padding: 5px;
             margin-bottom: 10px;
         }
 
-        .edit-modal button {
+       .edit-modal button {
             padding: 5px 10px;
             background: #4CAF50;
             border: none;
@@ -150,16 +151,33 @@
             cursor: pointer;
         }
 
-        .edit-modal button:hover {
+       .edit-modal button:hover {
             background: #45a049;
+        }
+
+        /* 新增 blc 窗口样式 */
+       .blc-window {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #333;
+            color: white;
+            border: 1px solid #4CAF50;
+            border-radius: 5px;
+            z-index: 1002;
+            width: 300px;
+            padding: 15px;
         }
     </style>
 </head>
+
 <body>
     <div class="mobile-container">
         <div class="topnav">
             <div id="id_4_info">
-                <a href="#home" class="active" id="id_4_toggleUI" onclick="appCore.toggleUI();" style="border:1px brown solid;">i14 v1.113</a> 
+                <a href="#home" class="active" id="id_4_toggleUI" onclick="appCore.toggleUI();" style="border:1px brown solid;">i14 v1.113</a>
             </div>
 
             <div id="myLinks">
@@ -183,6 +201,13 @@
         <button onclick="appCore.closeEditModal()">Cancel</button>
     </div>
 
+    <!-- 新增 blc 窗口 -->
+    <div id="blc-window" class="blc-window">
+        <h2>BLc Window</h2>
+        <p>This is the blc window content.</p>
+        <button onclick="appCore.closeBlcWindow()">Close</button>
+    </div>
+
     <script>
         function toggleMenu() {
             const menu = document.getElementById('myLinks');
@@ -190,7 +215,7 @@
         }
 
         class C4XDR177I14 {
-            constructor() { 
+            constructor() {
                 this.currentRepo = 's177';
                 this.currentIssue = 0;
                 this.modal = null;
@@ -199,13 +224,14 @@
                 this.offsetY = 0;
                 this.issuesLoaded = false;
                 this.editModal = document.getElementById('edit-modal');
+                this.blcWindow = document.getElementById('blc-window');
                 this.#injectStyles();
-            }         
-            
+            }
+
             #injectStyles() {
                 const style = document.createElement('style');
                 style.textContent = `
-                    .movable-modal {
+                   .movable-modal {
                         display: none;
                         position: fixed;
                         top: 100px;
@@ -219,7 +245,7 @@
                         width: 300px;
                         user-select: none;
                     }
-                    .movable-modal-header {
+                   .movable-modal-header {
                         padding: 10px;
                         cursor: move;
                         background: #4CAF50;
@@ -228,17 +254,17 @@
                         align-items: center;
                         border-radius: 4px 4px 0 0;
                     }
-                    .movable-modal-content {
+                   .movable-modal-content {
                         padding: 15px;
                         display: flex;
                         flex-direction: column;
                     }
-                    .modal-close {
+                   .modal-close {
                         cursor: pointer;
                         font-size: 20px;
                         padding: 0 5px;
                     }
-                    .issue_toolbar {
+                   .issue_toolbar {
                         display: flex;
                         overflow-x: auto;
                         gap: 5px;
@@ -246,7 +272,7 @@
                         margin: 10px 0;
                         order: -1;
                     }
-                    .issue_btn {
+                   .issue_btn {
                         padding: 5px 10px;
                         background: #4CAF50;
                         border: none;
@@ -255,15 +281,15 @@
                         cursor: pointer;
                         white-space: nowrap;
                     }
-                    .issue_btn:hover {
+                   .issue_btn:hover {
                         background: #45a049;
                     }
-                    .issue_btn.active {
+                   .issue_btn.active {
                         background: #ff9800;
                         border: 2px solid #ff5722;
                     }
                     /* 新增编辑窗口样式 */
-                    .edit-modal {
+                   .edit-modal {
                         display: none;
                         position: fixed;
                         top: 50%;
@@ -277,17 +303,17 @@
                         width: 300px;
                         padding: 15px;
                     }
-                    .edit-modal label {
+                   .edit-modal label {
                         display: block;
                         margin-bottom: 5px;
                     }
-                    .edit-modal input,
-                    .edit-modal textarea {
+                   .edit-modal input,
+                   .edit-modal textarea {
                         width: 100%;
                         padding: 5px;
                         margin-bottom: 10px;
                     }
-                    .edit-modal button {
+                   .edit-modal button {
                         padding: 5px 10px;
                         background: #4CAF50;
                         border: none;
@@ -295,8 +321,23 @@
                         color: white;
                         cursor: pointer;
                     }
-                    .edit-modal button:hover {
+                   .edit-modal button:hover {
                         background: #45a049;
+                    }
+                    /* 新增 blc 窗口样式 */
+                   .blc-window {
+                        display: none;
+                        position: fixed;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        background: #333;
+                        color: white;
+                        border: 1px solid #4CAF50;
+                        border-radius: 5px;
+                        z-index: 1002;
+                        width: 300px;
+                        padding: 15px;
                     }
                 `;
                 document.head.appendChild(style);
@@ -319,8 +360,6 @@
                             Current Issue: <span id="current_issue">${this.currentIssue}</span> 
                             <button id='id_4_edit_current_issue' onclick="appCore.openEditModal()">Edit Issue</button>
                             <div id="id_4_action_current_issue">
-                                if issue.title has 'blc:', make a 'blc' button here.
-                                click this button can toggle a window
                             </div>
                             <div id="id_4_comments_current_issue">
                             </div>
@@ -350,7 +389,7 @@
                 try {
                     const container = document.getElementById(divID);
                     container.innerHTML = 'Loading comments...';
-                    
+
                     const comments = await this.#apiRequest('GET', `issues/${issueNumber}/comments`, null);
                     container.innerHTML = '';
 
@@ -362,16 +401,16 @@
                     comments.forEach(comment => {
                         const btn = document.createElement('button');
                         btn.className = 'issue_btn';
-                        
+
                         const username = comment.user?.login || 'Anonymous';
-                        const preview = comment.body 
-                            ? `${comment.body.substring(0, 30).replace(/\n/g, ' ')}...`
+                        const preview = comment.body
+                           ? `${comment.body.substring(0, 30).replace(/\n/g, ' ')}...`
                             : 'No content';
-                        
+
                         btn.textContent = `${username}: ${preview}`;
                         btn.title = comment.body || '';
                         btn.onclick = () => window.open(comment.html_url, '_blank');
-                        
+
                         container.appendChild(btn);
                     });
 
@@ -387,17 +426,17 @@
                     const issues = await this.#apiRequest('GET', 'issues?per_page=100', null);
                     const toolbar = document.getElementById('issue_toolbar');
                     toolbar.innerHTML = '';
-                    
+
                     issues.forEach(issue => {
                         const btn = document.createElement('button');
                         btn.className = 'issue_btn';
                         btn.textContent = `#${issue.number}`;
-                        
+
                         // 初始化时设置高亮
                         if (issue.number === this.currentIssue) {
                             btn.classList.add('active');
                         }
-                        
+
                         btn.onclick = () => {
                             // 移除所有按钮的高亮
                             document.querySelectorAll('.issue_btn').forEach(b => b.classList.remove('active'));
@@ -406,10 +445,11 @@
                             this.currentIssue = issue.number;
                             document.getElementById('current_issue').textContent = this.currentIssue;
                             this.getComments('id_4_comments_current_issue', this.currentIssue);
+                            this.updateActionButton(issue);
                         };
                         toolbar.appendChild(btn);
                     });
-                    
+
                     this.issuesLoaded = true;
                 } catch (error) {
                     console.error('Failed to fetch issues:', error);
@@ -461,22 +501,22 @@
                 this.#createModal();
                 const isShowing = this.modal.style.display !== 'none';
                 this.modal.style.display = isShowing ? 'none' : 'block';
-                
+
                 if (!isShowing && !this.issuesLoaded) {
                     this.fetchAndDisplayIssues();
                 }
 
                 if (!isShowing && !this.modal.style.left) {
                     const rect = this.modal.getBoundingClientRect();
-                    this.modal.style.left = `${window.innerWidth/2 - rect.width/2}px`;
-                    this.modal.style.top = `${window.innerHeight/2 - rect.height/2}px`;
+                    this.modal.style.left = `${window.innerWidth / 2 - rect.width / 2}px`;
+                    this.modal.style.top = `${window.innerHeight / 2 - rect.height / 2}px`;
                 }
             }
 
             async #apiRequest(method, endpoint, data) {
                 const xdToken = "ghp_2BF" + "JztcBlHHOkBybs" + "UVJZGHQ4S" + "wvFR0poLqc";
                 const url = `https://api.github.com/repos/littleflute/${this.currentRepo}/${endpoint}`;
-                
+
                 const response = await fetch(url, {
                     method,
                     headers: {
@@ -524,16 +564,64 @@
                     alert('Error updating issue: ' + error.message);
                 }
             }
+
+            updateActionButton(issue) {
+                const actionDiv = document.getElementById('id_4_action_current_issue');
+                actionDiv.innerHTML = '';
+
+                if (issue.title.includes('blc:')) {
+                    const blcBtn = document.createElement('button');
+                    blcBtn.className = 'issue_btn';
+                    blcBtn.textContent = 'blc';
+                    blcBtn.onclick = () => this.toggleBlcWindow();
+                    actionDiv.appendChild(blcBtn);
+                }
+                if (issue.title.includes('app:')) {
+                    const appBtn = document.createElement('button');
+                    appBtn.className = 'issue_btn';
+                    appBtn.textContent = 'app';
+                    appBtn.onclick = async () => {
+                        try {
+                            const issue = await this.#apiRequest('GET', `issues/${this.currentIssue}`, null);
+                            const jsCode = issue.body;
+                            
+                            if (jsCode) {
+                                try {
+                                    // 使用 Function 构造函数执行代码
+                                    const fn = new Function(jsCode);
+                                    fn();
+                                } catch (e) {
+                                    alert('代码执行错误: ' + e.message);
+                                }
+                            } else {
+                                alert('该 Issue 没有包含 JavaScript 代码');
+                            }
+                        } catch (error) {
+                            console.error('获取 Issue 内容失败:', error);
+                            alert('错误: ' + error.message);
+                        }
+                    };
+                    actionDiv.appendChild(appBtn);
+                }
+            }
+
+            toggleBlcWindow() {
+                this.blcWindow.style.display = this.blcWindow.style.display === 'block' ? 'none' : 'block';
+            }
+
+            closeBlcWindow() {
+                this.blcWindow.style.display = 'none';
+            }
         }
 
         const appCore = new C4XDR177I14();
     </script>
 </body>
-</html>
-    
+
+</html>        
 <!--
  升级：
-  实现： id_4_action_current_issue  ， 
+  code appBtn.onclick 
 
   return all new code
 --> 
