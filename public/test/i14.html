@@ -170,6 +170,23 @@
             width: 300px;
             padding: 15px;
         }
+
+        /* 新增 appBtn 和 blcBtn 颜色样式 */
+       .app-btn {
+            background-color: #2196F3;
+        }
+
+       .app-btn:hover {
+            background-color: #1976D2;
+        }
+
+       .blc-btn {
+            background-color: #FF9800;
+        }
+
+       .blc-btn:hover {
+            background-color: #F57C00;
+        }
     </style>
 </head>
 
@@ -338,6 +355,19 @@
                         z-index: 1002;
                         width: 300px;
                         padding: 15px;
+                    }
+                    /* 新增 appBtn 和 blcBtn 颜色样式 */
+                   .app-btn {
+                        background-color: #2196F3;
+                    }
+                   .app-btn:hover {
+                        background-color: #1976D2;
+                    }
+                   .blc-btn {
+                        background-color: #FF9800;
+                    }
+                   .blc-btn:hover {
+                        background-color: #F57C00;
                     }
                 `;
                 document.head.appendChild(style);
@@ -571,20 +601,20 @@
 
                 if (issue.title.includes('blc:')) {
                     const blcBtn = document.createElement('button');
-                    blcBtn.className = 'issue_btn';
+                    blcBtn.className = 'issue_btn blc-btn';
                     blcBtn.textContent = 'blc';
                     blcBtn.onclick = () => this.toggleBlcWindow();
                     actionDiv.appendChild(blcBtn);
                 }
                 if (issue.title.includes('app:')) {
                     const appBtn = document.createElement('button');
-                    appBtn.className = 'issue_btn';
+                    appBtn.className = 'issue_btn app-btn';
                     appBtn.textContent = 'app';
                     appBtn.onclick = async () => {
                         try {
                             const issue = await this.#apiRequest('GET', `issues/${this.currentIssue}`, null);
                             const jsCode = issue.body;
-                            
+
                             if (jsCode) {
                                 try {
                                     // 使用 Function 构造函数执行代码
@@ -618,10 +648,10 @@
     </script>
 </body>
 
-</html>        
+</html>          
 <!--
  升级：
-  code appBtn.onclick 
+  let appBtn blcBtn has different color.
 
   return all new code
 --> 
