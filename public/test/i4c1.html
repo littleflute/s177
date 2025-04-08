@@ -104,8 +104,9 @@
           currentY += 30;
         });
       }
-      addBeat(beat) {
-        this.beats.push(beat);
+      addBeat(...notes) {
+        const oBeat = new C4Beat(...notes);
+        this.beats.push(oBeat);
       }
     }
 
@@ -266,7 +267,7 @@
           fontSize: this.isMobile ? 18 : 24,
           lineHeight: this.isMobile ? 100 : 140,
           dotRadius: 2,
-          barWidth: this.isMobile ? 80 : 100,
+          barWidth: this.isMobile ? 122 : 155,
           barHeight: this.isMobile ? 60 : 80,
           dpr: window.devicePixelRatio || 1
         };
@@ -452,6 +453,31 @@
             display: none !important;
           }
         `;
+        style.textContent += ` 
+          .bar-properties {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+          }
+          .bar-properties h4 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #333;
+          }
+          .property-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 5px;
+          }
+          .property-label {
+            font-weight: bold;
+            min-width: 60px;
+          }
+          .property-value {
+            color: #666;
+          }
+        `;
         document.head.appendChild(style);
       }
 
@@ -515,6 +541,17 @@
               <button class="delete-bar-btn">删除选中小节</button>
             </div>
             <div id="barToolbar"></div> <!-- 工具栏移动到此处 -->
+            <div class="bar-properties">
+              <h4>选中小节属性</h4>
+              <div class="property-row">
+                <span class="property-label">索引:</span>
+                <span class="property-value" id="barIndex">无</span>
+              </div>
+              <div class="property-row">
+                <span class="property-label">位置:</span>
+                <span class="property-value" id="barPosition">无</span>
+              </div>
+            </div>
           </div>
           <div class="settings-tab-content" id="test-cases">
             <div class="settings-row">
@@ -639,6 +676,11 @@
         // 添加新小节按钮事件
         wnd.querySelector('.add-bar-btn').addEventListener('click', () => {
           const newBar = new C4Bar(this.barList.length + 1);
+          newBar.addBeat(new C4Note(1, 0.25));
+          newBar.addBeat(new C4Note(2, 0.25));
+          newBar.addBeat(new C4Note(3, 0.25));
+          newBar.addBeat(new C4Note(4, 0.25));
+  
           this.barList.push(newBar);
           this.resetAllBars();
           this._updateBarToolbar();
@@ -700,33 +742,24 @@
         const hasSelection = !!this.selectedBar;
         this.deleteBarBtn.disabled = !hasSelection;
       }
-  _selectBar(bar) {
-    // 清除所有选中状态
-    this.barList.forEach(b => b.isSelected = false);
-    bar.isSelected = true;
-    this.selectedBar = bar;
-    
-    // 滚动到可见区域
-    const canvasRect = this.canvas.getBoundingClientRect();
-    const barRect = {
-      left: bar.x,
-      top: bar.y,
-      right: bar.x + this.config.barWidth,
-      bottom: bar.y + this.config.barHeight
-    };
 
-    if (barRect.right > canvasRect.width) {
-      this.canvas.scrollLeft = barRect.right - canvasRect.width + 20;
-    }
-    if (barRect.bottom > canvasRect.height) {
-      this.canvas.scrollTop = barRect.bottom - canvasRect.height + 20;
-    }
+      _selectBar(bar) {
+        // 清除所有选中状态
+        this.barList.forEach(b => b.isSelected = false);
+        bar.isSelected = true;
+        this.selectedBar = bar;
+        // 更新属性显示
+        const barIndexElement = this.settingsWnd.querySelector('#barIndex');
+        const barPositionElement = this.settingsWnd.querySelector('#barPosition');
+        if (barIndexElement && barPositionElement) {
+          barIndexElement.textContent = bar.index;
+          barPositionElement.textContent = `X: ${Math.round(bar.x)}, Y: ${Math.round(bar.y)}`;
+        }
+        this._updateBarToolbar(); // 确保及时更新按钮状态
+        this.render();
+        this._updateDeleteButtonState(); // 统一在此处更新按钮状态
+      }
 
-    this._updateBarToolbar();
-    this.render();
-    
-    this._updateDeleteButtonState(); // 新增
-  }
       _positionSettingsWindowToTop() {
         if (!this.settingsWnd) return;
         this.settingsWnd.style.left = '10px';
@@ -820,11 +853,14 @@
           bar.isSelected = false;
         });
         this.selectedBar = null;
+        
+        this._updateBarToolbar(); // 新增代码：立即更新工具栏状态
 
         const rect = this.canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
 
+        let hitBar = false;
         this.barList.forEach(bar => {
           if (
             mouseX >= bar.x &&
@@ -836,14 +872,22 @@
             this.isDragging = true;
             this.offsetX = mouseX - bar.x;
             this.offsetY = mouseY - bar.y;
+            hitBar = true;
             return;
           }
         }); 
-
+        if (!hitBar) {
+          this.selectedBar = null;
+          const barIndexElement = this.settingsWnd.querySelector('#barIndex');
+          const barPositionElement = this.settingsWnd.querySelector('#barPosition');
+          if (barIndexElement && barPositionElement) {
+            barIndexElement.textContent = '无';
+            barPositionElement.textContent = '无';
+          }
+        }
         this.render();
-        this._updateDeleteButtonState(); // 新增
+        this._updateDeleteButtonState();
       }
-
       _onMouseMove(e) {
         if (this.isDragging && this.selectedBar) {
           const rect = this.canvas.getBoundingClientRect();
@@ -859,6 +903,10 @@
           this.selectedBar.y = Math.max(0, Math.min(this.selectedBar.y, this.config.height - 80));
 
           this.render();
+          const barPositionElement = this.settingsWnd.querySelector('#barPosition');
+          if (barPositionElement) {
+            barPositionElement.textContent = `X: ${Math.round(this.selectedBar.x)}, Y: ${Math.round(this.selectedBar.y)}`;
+          }
         }
       }
 
@@ -985,6 +1033,7 @@
 <!--
 升级： 
    
-    当没有小节被选择时，删除按钮变灰
+    小节管理tab底部添加 div 显示选择小节的属性,
+    相关css 通过代码添加
 
 -->
