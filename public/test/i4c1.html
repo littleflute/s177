@@ -6,19 +6,15 @@
   <title>Jianpu Renderer</title>
   <style>
     #barToolbar {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  background: white;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  max-width: 300px;
-  overflow-x: auto;
-  display: flex;
-  gap: 5px;
-  z-index: 1000;
-}
+      display: flex;
+      gap: 5px;
+      overflow-x: auto;
+      padding: 5px 0;
+      margin: 8px 0;
+      background: #f8f9fa;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
 
 .bar-button {
   padding: 4px 8px;
@@ -68,8 +64,7 @@
   </style>
 </head>
 
-<body>
-  <div id="barToolbar"></div> <!-- 添加工具栏容器 -->
+<body> 
   <button id="settingsBtn">显示设置</button>
   <canvas id="jianpuCanvas"></canvas>
 
@@ -251,6 +246,7 @@
 
     class JianpuRenderer {
       constructor(canvasId, options = {}) {
+        this.barToolbarElement = null; // 新增工具栏元素引用
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
         this.isMobile = /Mobi|Android/i.test(navigator.userAgent);
@@ -510,6 +506,7 @@
             <div class="settings-row">
               <button class="delete-bar-btn">删除选中小节</button>
             </div>
+            <div id="barToolbar"></div> <!-- 工具栏移动到此处 -->
           </div>
           <div class="settings-tab-content" id="test-cases">
             <div class="settings-row">
@@ -524,6 +521,7 @@
           </div>
         `;
 
+        this.barToolbarElement = wnd.querySelector('#barToolbar');
         // 事件绑定
         wnd.querySelector('.key-sig').addEventListener('change', e => {
           this.keySignature = e.target.value;
@@ -539,7 +537,11 @@
           if (this.selectedBar) {
             const index = this.barList.indexOf(this.selectedBar);
             this.barList.splice(index, 1);
-            this.resetAllBars(); // 添加这行以重新排列小节位置
+            // 更新剩余小节的索引为连续编号
+            this.barList.forEach((bar, i) => {
+              bar.index = i + 1;
+            });
+            this.resetAllBars();
             this._updateBarToolbar();
             this.selectedBar = null;
             this.render();
@@ -626,8 +628,8 @@
         wnd.querySelector('.add-bar-btn').addEventListener('click', () => {
           const newBar = new C4Bar(this.barList.length + 1);
           this.barList.push(newBar);
-          this.resetAllBars(); // 重置布局
-          this._updateBarToolbar(); // 更新工具栏
+          this.resetAllBars();
+          this._updateBarToolbar();
           this.render();
         });
 
@@ -665,8 +667,9 @@
       }
 
       _updateBarToolbar() {
-        const toolbar = document.getElementById('barToolbar');
-        toolbar.innerHTML = ''; // 清空现有按钮
+        if (!this.barToolbarElement) return;
+        const toolbar = this.barToolbarElement;
+        toolbar.innerHTML = '';
         
         this.barList.forEach((bar, index) => {
           const btn = document.createElement('button');
@@ -971,6 +974,6 @@
 <!--
 升级： 
    
-  画布上选择小节时， 删除按钮不起作用
+    id="barToolbar" 移到 小节管理页上
 
 -->
