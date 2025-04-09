@@ -5,7 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <style>
-        .bottom-toolbar {
+        .purple-btn {
+            background-color: #9C27B0;
+        }
+
+        /* 添加按钮悬停动画 */
+        .toolbar-btn {
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .toolbar-btn:hover {
+            transform: scale(1.1);
+            opacity: 0.9;
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 480px) {
+            .toolbar-btn {
+                padding: 6px 12px;
+                font-size: 14px;
+            }
+        }
+        .bottom_toolbar {
             position: fixed;
             bottom: 0;
             left: 0;
@@ -14,7 +35,7 @@
             padding: 10px;
             display: flex;
             justify-content: space-between;
-            z-index: 1000;
+            z-index: 33;
         }
 
         .toolbar-btn {
@@ -23,6 +44,11 @@
             border-radius: 4px;
             color: white;
             cursor: pointer;
+        }
+
+        .yellow-btn {
+            background-color: #ffeb3b;
+            color: black;
         }
 
         .green-btn {
@@ -38,11 +64,11 @@
 
         #mainCanvas {
             position: fixed;
-            top: 0;
-            left: 0;
+            top: 50;
+            left: 50;
             width: 100%;
             height: 100%;
-            z-index: 0;
+            z-index: 2;
         }
 
         body {
@@ -50,9 +76,9 @@
             margin: 0;
             background: transparent; /* 改为透明 */
         } 
-       .mobile-container {
+       .mobile_container {
             position: relative;
-            z-index: 1;
+            z-index: 11;
             max-width: 480px;
             margin: auto;
             background-color: transparent; /* 移除原背景色 */
@@ -348,12 +374,13 @@
 
 <body>
     <!-- 新增底部工具条 -->
-    <div class="bottom-toolbar">
-        <button id="id_4_left_btn" class="toolbar-btn blue-btn" onclick="appCore.setCanvasColor('#2196F3')">Blue Background</button>
-        <button id="id_4_right_btn" class="toolbar-btn red-btn" onclick="appCore.setCanvasColor('#ff4444')">Red Background</button>
+    <div class="bottom_toolbar">
+        <button id="id_4_left_btn" class="toolbar-btn blue-btn" onclick="appCore.setCanvasColor('#2196F3')">Blue</button>
+        <button id="id_4_right_btn" class="toolbar-btn red-btn" onclick="appCore.setCanvasColor('#ff4444')">Red</button>
+        <button id="id_4_center_btn" class="toolbar-btn yellow-btn" onclick="appCore.setCanvasColor('#ffeb3b')">Yellow</button>
+        <button id="id_4_left_btn" class="toolbar-btn blue-btn" onclick="appCore.setCanvasColor('#2196F3')">Blue</button>
     </div>
-    <canvas id="mainCanvas"></canvas>
-    <div class="mobile-container">
+    <div class="mobile_container">
         <div class="topnav">
             <div id="id_4_info">
                 <a href="#home" class="active" id="id_4_toggleUI" onclick="appCore.toggleUI();" style="border:1px brown solid;">i14 v1.114</a>
@@ -368,6 +395,8 @@
                 <i class="fa fa-bars"></i>
             </a>
         </div>
+            
+        <canvas id="mainCanvas"></canvas>
     </div>
 
     <!-- 新增编辑窗口 -->
@@ -427,8 +456,14 @@
 
         class C4XDR177I14 {
             constructor() {
+                this.drawHistory = [];
+                
+                this.drawType = null; // 'circle' 或 'rect'
+                this.lastDrawTime = 0;
+                this.drawColor = '#FF5722'; // 默认绘图颜色
                 this.backgroundColor = '#333'; // 初始化背景色
                 this.initializeCanvas();
+                this.#initCanvasEvents(); // 新增：初始化画布事件监听
                 this.currentRepo = 's177';
                 this.currentIssue = 0;
                 this.modal = null;
@@ -444,6 +479,125 @@
                 this.currentCommentId = null;
                 this.#injectStyles();
             }
+            #initCanvasEvents() {
+                // 统一处理坐标获取
+                const getCanvasCoordinates = (event) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    let clientX, clientY;
+                    
+                    if (event.touches) {
+                        // 移动端处理
+                        const touch = event.touches[0];
+                        clientX = touch.clientX;
+                        clientY = touch.clientY;
+                    } else {
+                        // 桌面端处理
+                        clientX = event.clientX;
+                        clientY = event.clientY;
+                    }
+
+                    return {
+                        x: clientX - rect.left,
+                        y: clientY - rect.top
+                    };
+                };
+
+                // 桌面端点击事件
+                this.canvas.addEventListener('click', (e) => {
+                    const pos = getCanvasCoordinates(e);
+                    this.handleCanvasClick(pos);
+                });
+
+                // 移动端触摸事件
+                this.canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    const pos = getCanvasCoordinates(e);
+                    this.handleCanvasClick(pos);
+                });
+
+                // 添加触摸移动事件
+                this.canvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    const pos = getCanvasCoordinates(e);
+                    this.handleCanvasClick(pos);
+                });
+            }
+
+            // 新增绘图类型设置方法
+            setDrawType(type) {
+                this.drawType = type;
+                this.showDrawCursor();
+            }
+
+            // 显示绘图光标提示
+            showDrawCursor() {
+                this.canvas.style.cursor = 'crosshair';
+                setTimeout(() => {
+                    this.canvas.style.cursor = 'default';
+                }, 2000);
+            }
+            // 处理画布点击事件
+            handleCanvasClick(pos) {
+                if (!this.drawType) return;
+
+                // 节流控制（300ms）
+                const now = Date.now();
+                if (now - this.lastDrawTime < 300) return;
+                this.lastDrawTime = now;
+
+                // 根据类型绘制图形
+                switch(this.drawType) {
+                    case 'circle':
+                        this.drawRandomCircle(pos.x, pos.y);
+                        break;
+                    case 'rect':
+                        this.drawRandomRect(pos.x, pos.y);
+                        break;
+                }
+            }
+
+            // 绘制随机圆形
+            drawRandomCircle(x, y) {
+                const color = this.getRandomColor();
+                const radius = Math.random() * 50 + 20;
+                
+                // 存储绘图信息
+                this.drawHistory.push({
+                    type: 'circle',
+                    x,
+                    y,
+                    radius,
+                    color
+                });
+
+                this.ctx.fillStyle = color;
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+            // 绘制随机矩形
+            drawRandomRect(x, y) {
+                const color = this.getRandomColor();
+                const width = Math.random() * 100 + 50;
+                const height = Math.random() * 100 + 50;
+                
+                // 存储正确的左上角坐标
+                this.drawHistory.push({
+                    type: 'rect',
+                    x: x - width/2,  // 计算并存储左上角X
+                    y: y - height/2, // 计算并存储左上角Y
+                    width,
+                    height,
+                    color
+                });
+
+                this.ctx.fillStyle = color;
+                this.ctx.fillRect(x - width/2, y - height/2, width, height);
+            }
+            getRandomColor() {
+                return `hsl(${Math.random() * 360}, 70%, 60%)`;
+            }
+
             // 新增背景色设置方法
             setCanvasColor(color) {
                 this.backgroundColor = color;
@@ -455,18 +609,132 @@
                 this.ctx = this.canvas.getContext('2d');
                 window.addEventListener('resize', () => this.resizeCanvas());
                 this.resizeCanvas();
-                
-                // 初始绘制示例
                 this.drawSample();
+                this.#initBottomToolbar();
             }
 
+            
+            #initBottomToolbar() {
+                const toolbar = document.querySelector('.bottom_toolbar');
+                toolbar.innerHTML = ''; // 清空原有按钮
+                
+                // 定义按钮配置数组
+                const buttonConfigs = [
+                    {
+                        color: 'blue-btn',
+                        action: () => this.setDrawType('circle'),
+                        text: '⚪ Circle'
+                    },
+                    {
+                        color: 'red-btn',
+                        action: () => this.setDrawType('rect'),
+                        text: '⬜ Rect'
+                    },
+                    {
+                        color: 'yellow-btn',
+                        action: () => {
+                            this.drawHistory = []; // 清空历史记录
+                            this.setCanvasColor('#333')
+                        },
+                        text: 'clear'
+                    },
+                    {
+                        color: 'green-btn',
+                        action: () => this.#showRandomShape(),
+                        text: 'Random Shape'
+                    },
+                    {
+                        color: 'purple-btn',
+                        action: () => window.open('https://github.com/littleflute/s177'),
+                        text: 'GitHub'
+                    }
+                ];
+
+                // 打乱数组顺序
+                const shuffled = buttonConfigs.sort(() => Math.random() - 0.5);
+
+                // 创建5个随机按钮
+                shuffled.slice(0, 5).forEach(config => {
+                    const btn = document.createElement('button');
+                    btn.className = `toolbar-btn ${config.color}`;
+                    btn.textContent = config.text;
+                    btn.onclick = config.action;
+                    
+                    // 添加触摸事件支持
+                    btn.ontouchstart = (e) => {
+                        e.preventDefault();
+                        config.action();
+                    };
+
+                    toolbar.appendChild(btn);
+                });
+            }
+
+            #showRandomShape() {
+                const shapes = ['circle', 'rect', 'triangle'];
+                const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
+                
+                this.ctx.fillStyle = '#FF5722';
+                
+                switch(randomShape) {
+                    case 'circle':
+                        this.ctx.beginPath();
+                        this.ctx.arc(
+                            Math.random() * this.canvas.width,
+                            Math.random() * this.canvas.height,
+                            Math.random() * 50 + 20,
+                            0,
+                            Math.PI * 2
+                        );
+                        this.ctx.fill();
+                        break;
+                        
+                    case 'rect':
+                        this.ctx.fillRect(
+                            Math.random() * this.canvas.width,
+                            Math.random() * this.canvas.height,
+                            Math.random() * 100 + 50,
+                            Math.random() * 100 + 50
+                        );
+                        break;
+                        
+                    case 'triangle':
+                        this.ctx.beginPath();
+                        const x = Math.random() * this.canvas.width;
+                        const y = Math.random() * this.canvas.height;
+                        this.ctx.moveTo(x, y);
+                        this.ctx.lineTo(x + 50, y + 100);
+                        this.ctx.lineTo(x - 50, y + 100);
+                        this.ctx.closePath();
+                        this.ctx.fill();
+                        break;
+                }
+            }
             resizeCanvas() {
                 this.canvas.width = window.innerWidth;
                 this.canvas.height = window.innerHeight;
                 this.ctx.fillStyle = this.backgroundColor;
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                this.redrawHistory(); // 重绘历史记录
             }
-
+            redrawHistory() {
+                this.drawHistory.forEach(shape => {
+                    this.ctx.fillStyle = shape.color;
+                    if (shape.type === 'circle') {
+                        this.ctx.beginPath();
+                        this.ctx.arc(shape.x, shape.y, shape.radius, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    } else if (shape.type === 'rect') {
+                        // 修复矩形重绘坐标问题
+                        this.ctx.fillRect(
+                            shape.x,  // 直接使用存储的左上角X坐标
+                            shape.y,  // 直接使用存储的左上角Y坐标
+                            shape.width,
+                            shape.height
+                        );
+                    }
+                });
+            }
             drawSample() {
                 // 示例绘制代码
                 this.ctx.fillStyle = '#4CAF50';
@@ -1121,7 +1389,9 @@
     
 <!--
  升级：
- id_4_left_btn  change to blue color
+ 看不到绘制的圆形 & 矩形
+ 
+
  
  return all new code
 -->
