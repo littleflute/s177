@@ -9,12 +9,9 @@
         /* 新增属性面板样式 */
         .property_panel {
             position: fixed;
-            right: 20px;
-            top: 50%;
-            transform: translateY(-50%);
             background: #333;
             color: white;
-            padding: 15px;
+            padding: 0;
             border: 1px solid #4CAF50;
             border-radius: 5px;
             z-index: 1005;
@@ -22,12 +19,29 @@
             min-width: 250px;
             box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
-
         .property_panel h3 {
             margin: 0 0 10px 0;
             color: #4CAF50;
         }
 
+        .property-header {
+            padding: 10px;
+            cursor: move;
+            background: #4CAF50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .panel-close {
+            cursor: pointer;
+            font-size: 20px;
+            padding: 0 5px;
+        }
+
+        .panel-close:hover {
+            color: #ff4444;
+        }
         .property_panel label {
             display: block;
             margin: 5px 0;
@@ -440,8 +454,11 @@
 <body>
     <!-- 新增属性面板 -->
     <div id="property_panel" class="property_panel">
-        <h3>属性</h3>
-        <div id="property-form"></div>
+        <div class="property-header">
+            <h3>属性</h3>
+            <span class="panel-close">×</span>
+        </div>
+        <div id="property-form" class="property-content"></div>
     </div>
     <!-- 新增底部工具条 -->
     <div class="bottom_toolbar">
@@ -526,8 +543,17 @@
 
         class C4XDR177I14 {
             constructor() {
-                
+                // 属性面板相关元素
                 this.propertyPanel = document.getElementById('property_panel');
+                this.propertyHeader = this.propertyPanel.querySelector('.property-header');
+                this.panelCloseBtn = this.propertyPanel.querySelector('.panel-close');
+                // 新增拖动相关属性
+                this.isDraggingPanel = false;
+                this.panelOffsetX = 0;
+                this.panelOffsetY = 0;
+                // 初始化属性面板事件
+                this.#initPropertyPanelEvents();
+                 
                 this.propertyForm = document.getElementById('property-form');
                 this.isTouchDevice = 'ontouchstart' in window;
                 this.controlPointSize = this.isTouchDevice ? 20 : 12;
@@ -560,6 +586,66 @@
                 this.newCommentModal = document.getElementById('new-comment-modal');
                 this.currentCommentId = null;
                 this.#injectStyles();
+            }
+            #initPropertyPanelEvents() {
+                // 关闭按钮事件
+                this.panelCloseBtn.addEventListener('click', () => this.hidePropertyPanel());
+
+                // 桌面端拖动事件
+                this.propertyHeader.addEventListener('mousedown', (e) => {
+                    this.startPanelDrag(e.clientX, e.clientY);
+                });
+
+                // 移动端拖动事件
+                this.propertyHeader.addEventListener('touchstart', (e) => {
+                    const touch = e.touches[0];
+                    this.startPanelDrag(touch.clientX, touch.clientY);
+                });
+            }
+            startPanelDrag(startX, startY) {
+                this.isDraggingPanel = true;
+                const rect = this.propertyPanel.getBoundingClientRect();
+                this.panelOffsetX = startX - rect.left;
+                this.panelOffsetY = startY - rect.top;
+
+                const onMouseMove = (e) => {
+                    if (!this.isDraggingPanel) return;
+                    this.updatePanelPosition(e.clientX, e.clientY);
+                };
+
+                const onTouchMove = (e) => {
+                    if (!this.isDraggingPanel) return;
+                    const touch = e.touches[0];
+                    this.updatePanelPosition(touch.clientX, touch.clientY);
+                };
+
+                const onMouseUp = () => {
+                    this.isDraggingPanel = false;
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+
+                const onTouchEnd = () => {
+                    this.isDraggingPanel = false;
+                    document.removeEventListener('touchmove', onTouchMove);
+                    document.removeEventListener('touchend', onTouchEnd);
+                };
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+                document.addEventListener('touchmove', onTouchMove);
+                document.addEventListener('touchend', onTouchEnd);
+            }
+            updatePanelPosition(x, y) {
+                const newX = x - this.panelOffsetX;
+                const newY = y - this.panelOffsetY;
+                
+                // 限制面板在可视范围内
+                const maxX = window.innerWidth - this.propertyPanel.offsetWidth;
+                const maxY = window.innerHeight - this.propertyPanel.offsetHeight;
+
+                this.propertyPanel.style.left = `${Math.max(0, Math.min(newX, maxX))}px`;
+                this.propertyPanel.style.top = `${Math.max(0, Math.min(newY, maxY))}px`;
             }
             deleteSelectedShape() {
                 if (this.selectedShapeIndex === -1) return;
@@ -687,10 +773,17 @@
             }
 
             showPropertyPanel() {
+                // 初始化位置（首次显示时在右侧中间）
+                if (!this.propertyPanel.style.left || this.propertyPanel.style.left === 'auto') {
+                    const rect = this.propertyPanel.getBoundingClientRect();
+                    const left = window.innerWidth - rect.width - 20;
+                    const top = (window.innerHeight - rect.height) / 2;
+                    this.propertyPanel.style.left = `${left}px`;
+                    this.propertyPanel.style.top = `${top}px`;
+                }
                 this.propertyPanel.style.display = 'block';
                 this.updatePropertyForm();
             }
-
             hidePropertyPanel() {
                 this.propertyPanel.style.display = 'none';
             }
