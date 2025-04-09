@@ -461,6 +461,11 @@
 
         class C4XDR177I14 {
             constructor() {
+                
+                this.selectedShapeIndex = -1;
+                this.isDragging = false;
+                this.dragStartX = 0;
+                this.dragStartY = 0;
                 this.triangleSizes = [30, 50, 70]; // 三角形尺寸选项
                 this.drawHistory = [];
                 
@@ -486,18 +491,15 @@
                 this.#injectStyles();
             }
             #initCanvasEvents() {
-                // 统一处理坐标获取
                 const getCanvasCoordinates = (event) => {
                     const rect = this.canvas.getBoundingClientRect();
                     let clientX, clientY;
                     
                     if (event.touches) {
-                        // 移动端处理
                         const touch = event.touches[0];
                         clientX = touch.clientX;
                         clientY = touch.clientY;
                     } else {
-                        // 桌面端处理
                         clientX = event.clientX;
                         clientY = event.clientY;
                     }
@@ -508,26 +510,176 @@
                     };
                 };
 
-                // 桌面端点击事件
-                this.canvas.addEventListener('click', (e) => {
+                // 桌面端事件
+                this.canvas.addEventListener('mousedown', (e) => {
                     const pos = getCanvasCoordinates(e);
-                    this.handleCanvasClick(pos);
+                    this.handleCanvasMouseDown(pos);
                 });
 
-                // 移动端触摸事件
+                this.canvas.addEventListener('mousemove', (e) => {
+                    const pos = getCanvasCoordinates(e);
+                    this.handleCanvasMouseMove(pos);
+                });
+
+                this.canvas.addEventListener('mouseup', () => this.handleCanvasMouseUp());
+                this.canvas.addEventListener('mouseleave', () => this.handleCanvasMouseUp());
+
+                // 移动端事件
                 this.canvas.addEventListener('touchstart', (e) => {
                     e.preventDefault();
                     const pos = getCanvasCoordinates(e);
-                    this.handleCanvasClick(pos);
+                    this.handleCanvasMouseDown(pos);
                 });
 
-                // 添加触摸移动事件
                 this.canvas.addEventListener('touchmove', (e) => {
                     e.preventDefault();
                     const pos = getCanvasCoordinates(e);
+                    this.handleCanvasMouseMove(pos);
+                });
+
+                this.canvas.addEventListener('touchend', () => this.handleCanvasMouseUp());
+            }
+            handleCanvasMouseDown(pos) {
+                const index = this.getShapeAtPosition(pos.x, pos.y);
+                if (index !== -1) {
+                    this.selectedShapeIndex = index;
+                    this.isDragging = true;
+                    this.dragStartX = pos.x;
+                    this.dragStartY = pos.y;
+                    
+                    // 将选中的图形移到最上层
+                    const selected = this.drawHistory.splice(index, 1)[0];
+                    this.drawHistory.push(selected);
+                    this.selectedShapeIndex = this.drawHistory.length - 1;
+                    this.redrawCanvas();
+                }else if (this.drawType) {
+                    // 新增：在空白处点击时绘制新图形
                     this.handleCanvasClick(pos);
+                }
+            }
+            handleCanvasMouseMove(pos) {
+                if (this.isDragging && this.selectedShapeIndex !== -1) {
+                    const shape = this.drawHistory[this.selectedShapeIndex];
+                    const dx = pos.x - this.dragStartX;
+                    const dy = pos.y - this.dragStartY;
+
+                    switch(shape.type) {
+                        case 'circle':
+                            shape.x += dx;
+                            shape.y += dy;
+                            break;
+                        case 'rect':
+                            shape.x += dx;
+                            shape.y += dy;
+                            break;
+                        case 'triangle':
+                            shape.points.forEach(point => {
+                                point.x += dx;
+                                point.y += dy;
+                            });
+                            break;
+                    }
+
+                    this.dragStartX = pos.x;
+                    this.dragStartY = pos.y;
+                    this.redrawCanvas();
+                }
+            }
+
+            handleCanvasMouseUp() {
+                this.isDragging = false;
+                this.selectedShapeIndex = -1;
+                this.redrawCanvas();
+            }
+            getShapeAtPosition(x, y) {
+                for (let i = this.drawHistory.length - 1; i >= 0; i--) {
+                    const shape = this.drawHistory[i];
+                    let isInside = false;
+                    
+                    switch(shape.type) {
+                        case 'circle':
+                            const dx = x - shape.x;
+                            const dy = y - shape.y;
+                            isInside = (dx * dx + dy * dy) <= shape.radius * shape.radius;
+                            break;
+                        case 'rect':
+                            isInside = x >= shape.x && x <= shape.x + shape.width &&
+                                       y >= shape.y && y <= shape.y + shape.height;
+                            break;
+                        case 'triangle':
+                            isInside = this.isPointInTriangle(x, y, shape.points);
+                            break;
+                    }
+                    
+                    if (isInside) return i;
+                }
+                return -1;
+            }
+            isPointInTriangle(x, y, points) {
+                const p0 = points[0], p1 = points[1], p2 = points[2];
+                const area = 0.5 * (-p1.y * p2.x + p0.y * (-p1.x + p2.x) + 
+                            p0.x * (p1.y - p2.y) + p1.x * p2.y);
+                
+                const s = 1 / (2 * area) * (p0.y * p2.x - p0.x * p2.y + 
+                            (p2.y - p0.y) * x + (p0.x - p2.x) * y);
+                const t = 1 / (2 * area) * (p0.x * p1.y - p0.y * p1.x + 
+                            (p0.y - p1.y) * x + (p1.x - p0.x) * y);
+                
+                return s > 0 && t > 0 && (1 - s - t) > 0;
+            }
+
+            redrawCanvas() {
+                this.ctx.fillStyle = this.backgroundColor;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                this.drawHistory.forEach((shape, index) => {
+                    this.ctx.fillStyle = shape.color;
+                    
+                    // 绘制图形
+                    switch(shape.type) {
+                        case 'circle':
+                            this.ctx.beginPath();
+                            this.ctx.arc(shape.x, shape.y, shape.radius, 0, Math.PI * 2);
+                            this.ctx.fill();
+                            break;
+                        case 'rect':
+                            this.ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
+                            break;
+                        case 'triangle':
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(shape.points[0].x, shape.points[0].y);
+                            shape.points.forEach(p => this.ctx.lineTo(p.x, p.y));
+                            this.ctx.closePath();
+                            this.ctx.fill();
+                            break;
+                    }
+
+                    // 绘制选中高亮
+                    if (index === this.selectedShapeIndex) {
+                        this.ctx.strokeStyle = '#FF0000';
+                        this.ctx.lineWidth = 2;
+                        
+                        switch(shape.type) {
+                            case 'circle':
+                                this.ctx.beginPath();
+                                this.ctx.arc(shape.x, shape.y, shape.radius, 0, Math.PI * 2);
+                                this.ctx.stroke();
+                                break;
+                            case 'rect':
+                                this.ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
+                                break;
+                            case 'triangle':
+                                this.ctx.beginPath();
+                                this.ctx.moveTo(shape.points[0].x, shape.points[0].y);
+                                shape.points.forEach(p => this.ctx.lineTo(p.x, p.y));
+                                this.ctx.closePath();
+                                this.ctx.stroke();
+                                break;
+                        }
+                    }
                 });
             }
+
 
             setDrawType(type) {
                 this.drawType = type;
@@ -549,23 +701,23 @@
             handleCanvasClick(pos) {
                 if (!this.drawType) return;
 
-                // 节流控制（300ms）
                 const now = Date.now();
                 if (now - this.lastDrawTime < 300) return;
                 this.lastDrawTime = now;
 
-                // 根据类型绘制图形
                 switch(this.drawType) {
                     case 'circle':
                         this.drawRandomCircle(pos.x, pos.y);
                         break;
                     case 'rect':
+                        // 修复矩形中心点坐标计算
                         this.drawRandomRect(pos.x, pos.y);
                         break;
                     case 'triangle':
                         this.drawRandomTriangle(pos.x, pos.y);
                         break;
                 }
+                this.redrawCanvas(); // 新增：绘制后刷新画布
             }
             drawRandomTriangle(x, y) {
                 const color = this.getRandomColor();
@@ -617,18 +769,14 @@
                 const width = Math.random() * 100 + 50;
                 const height = Math.random() * 100 + 50;
                 
-                // 存储正确的左上角坐标
                 this.drawHistory.push({
                     type: 'rect',
-                    x: x - width/2,  // 计算并存储左上角X
-                    y: y - height/2, // 计算并存储左上角Y
+                    x: x - width/2,  // 存储基于中心的坐标
+                    y: y - height/2,
                     width,
                     height,
                     color
                 });
-
-                this.ctx.fillStyle = color;
-                this.ctx.fillRect(x - width/2, y - height/2, width, height);
             }
             getRandomColor() {
                 return `hsl(${Math.random() * 360}, 70%, 60%)`;
@@ -681,12 +829,7 @@
                             this.setCanvasColor('#333')
                         },
                         text: 'clear'
-                    },
-                    {
-                        color: 'purple-btn',
-                        action: () => window.open('https://github.com/littleflute/s177'),
-                        text: 'GitHub'
-                    }
+                    }, 
                 ];
 
                 // 打乱数组顺序
@@ -729,9 +872,7 @@
             resizeCanvas() {
                 this.canvas.width = window.innerWidth;
                 this.canvas.height = window.innerHeight;
-                this.ctx.fillStyle = this.backgroundColor;
-                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-                this.redrawHistory(); // 重绘历史记录
+                this.redrawCanvas();
             }
             redrawHistory() {
                 this.drawHistory.forEach(shape => {
@@ -1411,10 +1552,7 @@
     
 <!--
  升级：
- after setDrawType , hight light button
- 
-
- 
+ 已经画的图行可移动
  return all new code
 -->
  
