@@ -5,6 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <style>
+        
+        /* 新增属性面板样式 */
+        .property_panel {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #333;
+            color: white;
+            padding: 15px;
+            border: 1px solid #4CAF50;
+            border-radius: 5px;
+            z-index: 1005;
+            display: none;
+            min-width: 250px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .property_panel h3 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+        }
+
+        .property_panel label {
+            display: block;
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+
+        .property_panel input,
+        .property_panel select {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+            background: #555;
+            color: white;
+            border: 1px solid #666;
+            border-radius: 3px;
+        }
+
+        .property_panel input[type="color"] {
+            height: 30px;
+            padding: 2px;
+        }
+
          .control-point {
             width: 12px;
             height: 12px;
@@ -393,6 +438,11 @@
 </head>
 
 <body>
+    <!-- 新增属性面板 -->
+    <div id="property_panel" class="property_panel">
+        <h3>属性</h3>
+        <div id="property-form"></div>
+    </div>
     <!-- 新增底部工具条 -->
     <div class="bottom_toolbar">
         <button id="id_4_left_btn" class="toolbar-btn blue-btn" onclick="appCore.setCanvasColor('#2196F3')">Blue</button>
@@ -476,6 +526,9 @@
 
         class C4XDR177I14 {
             constructor() {
+                
+                this.propertyPanel = document.getElementById('property_panel');
+                this.propertyForm = document.getElementById('property-form');
                 this.isTouchDevice = 'ontouchstart' in window;
                 this.controlPointSize = this.isTouchDevice ? 20 : 12;
                 this.adjustingControl = null;
@@ -508,6 +561,18 @@
                 this.currentCommentId = null;
                 this.#injectStyles();
             }
+            togglePropertyPanel() {
+                if (this.propertyPanel.style.display === 'block') {
+                    this.hidePropertyPanel();
+                } else {
+                    this.showPropertyPanel();
+                    if (this.selectedShapeIndex === -1 && this.drawHistory.length > 0) {
+                        this.selectedShapeIndex = this.drawHistory.length - 1;
+                    }
+                    this.updatePropertyForm();
+                }
+            }
+
             #initCanvasEvents() {
                 const getCanvasCoordinates = (event) => {
                     const rect = this.canvas.getBoundingClientRect();
@@ -563,36 +628,159 @@
                     pos.y -= this.controlPointSize/2;
                 }
                 
-                const index = this.getShapeAtPosition(pos.x, pos.y);
-                if (index !== -1) {
-                    this.selectedShapeIndex = index;
-                    const shape = this.drawHistory[index];
+                let shapeIndex = this.getShapeAtPosition(pos.x, pos.y);
+                let control = null;
 
-                    // 检查是否点击了控制点
-                    const control = this.getControlPointAt(pos.x, pos.y, shape);
+                // 如果未选中形状，检查所有形状的控制点
+                if (shapeIndex === -1) {
+                    this.showPropertyPanel();
+                    for (let i = this.drawHistory.length - 1; i >= 0; i--) {
+                        const shape = this.drawHistory[i];
+                        control = this.getControlPointAt(pos.x, pos.y, shape);
+                        if (control) {
+                            shapeIndex = i;
+                            break;
+                        }
+                    }
+                }
+
+                if (shapeIndex !== -1) {
+                    this.selectedShapeIndex = shapeIndex;
+                    const shape = this.drawHistory[shapeIndex];
+
+                    // 如果未检测到控制点，可能是点击了形状主体区域
+                    if (!control) {
+                        control = this.getControlPointAt(pos.x, pos.y, shape);
+                    }
+
                     if (control) {
                         this.adjustingControl = control;
                         this.isDragging = true;
                         this.dragStartX = pos.x;
                         this.dragStartY = pos.y;
-                        this.redrawCanvas(); // 新增：立即重绘画布
+                        this.redrawCanvas();
                         return;
                     }
 
+                    // 处理形状移动逻辑
                     this.isDragging = true;
                     this.dragStartX = pos.x;
                     this.dragStartY = pos.y;
                     
                     // 将选中的图形移到最上层
-                    const selected = this.drawHistory.splice(index, 1)[0];
+                    const selected = this.drawHistory.splice(shapeIndex, 1)[0];
                     this.drawHistory.push(selected);
                     this.selectedShapeIndex = this.drawHistory.length - 1;
-                    this.redrawCanvas(); // 新增：立即重绘画布
+                    this.redrawCanvas();
                 } else if (this.drawType) {
+                    this.selectedShapeIndex = -1;
                     this.handleCanvasClick(pos);
+                    this.hidePropertyPanel();
                 }
             }
 
+            showPropertyPanel() {
+                this.propertyPanel.style.display = 'block';
+                this.updatePropertyForm();
+            }
+
+            hidePropertyPanel() {
+                this.propertyPanel.style.display = 'none';
+            }
+            updatePropertyForm() {
+                this.propertyForm.innerHTML = '';
+                if (this.selectedShapeIndex === -1) return;
+
+                const shape = this.drawHistory[this.selectedShapeIndex];
+                if (!shape) return;
+
+                // 通用颜色选择
+                this.createColorInput(shape);
+                
+                switch(shape.type) {
+                    case 'circle':
+                        this.createCircleControls(shape);
+                        break;
+                    case 'rect':
+                        this.createRectControls(shape);
+                        break;
+                    case 'triangle':
+                        this.createTriangleControls(shape);
+                        break;
+                }
+            }
+            createColorInput(shape) {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <label>颜色</label>
+                    <input type="color" value="${shape.color}">
+                `;
+                div.querySelector('input').addEventListener('input', (e) => {
+                    shape.color = e.target.value;
+                    this.redrawCanvas();
+                });
+                this.propertyForm.appendChild(div);
+            }
+            createCircleControls(shape) {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <label>X 坐标</label>
+                    <input type="number" value="${shape.x}">
+                    <label>Y 坐标</label>
+                    <input type="number" value="${shape.y}">
+                    <label>半径</label>
+                    <input type="number" value="${shape.radius}">
+                `;
+                div.querySelectorAll('input').forEach((input, index) => {
+                    const properties = ['x', 'y', 'radius'];
+                    input.addEventListener('input', (e) => {
+                        shape[properties[index]] = parseFloat(e.target.value);
+                        this.redrawCanvas();
+                    });
+                });
+                this.propertyForm.appendChild(div);
+            }
+            
+            createRectControls(shape) {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <label>X 坐标</label>
+                    <input type="number" value="${shape.x}">
+                    <label>Y 坐标</label>
+                    <input type="number" value="${shape.y}">
+                    <label>宽度</label>
+                    <input type="number" value="${shape.width}">
+                    <label>高度</label>
+                    <input type="number" value="${shape.height}">
+                `;
+                div.querySelectorAll('input').forEach((input, index) => {
+                    const properties = ['x', 'y', 'width', 'height'];
+                    input.addEventListener('input', (e) => {
+                        shape[properties[index]] = parseFloat(e.target.value);
+                        this.redrawCanvas();
+                    });
+                });
+                this.propertyForm.appendChild(div);
+            }
+            
+            createTriangleControls(shape) {
+                shape.points.forEach((point, index) => {
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <label>点 ${index + 1} X</label>
+                        <input type="number" value="${point.x}">
+                        <label>点 ${index + 1} Y</label>
+                        <input type="number" value="${point.y}">
+                    `;
+                    div.querySelectorAll('input').forEach((input, i) => {
+                        input.addEventListener('input', (e) => {
+                            point[i === 0 ? 'x' : 'y'] = parseFloat(e.target.value);
+                            this.redrawCanvas();
+                        });
+                    });
+                    this.propertyForm.appendChild(div);
+                });
+            }
             getControlPointAt(x, y, shape) {
                 const controlSize = this.controlPointSize;
                 switch(shape.type) {
@@ -680,8 +868,7 @@
 
             handleCanvasMouseUp() {
                 this.isDragging = false;
-                this.adjustingControl = null;
-                this.selectedShapeIndex = -1;
+                this.adjustingControl = null; 
                 this.redrawCanvas();
             }
             getShapeAtPosition(x, y) {
@@ -806,7 +993,9 @@
                 }
                 this.ctx.globalAlpha = 1.0;
 
-                
+                if (this.propertyPanel.style.display === 'block') {
+                    this.updatePropertyForm();
+                }
             }
 
 
@@ -829,7 +1018,12 @@
             // 处理画布点击事件
             handleCanvasClick(pos) {
                 if (!this.drawType) return;
+                const wasVisible = this.propertyPanel.style.display === 'block';
 
+                // 新增：点击绘制新图形时清除选中状态
+                this.selectedShapeIndex = -1;
+                this.hidePropertyPanel();
+                
                 const now = Date.now();
                 if (now - this.lastDrawTime < 300) return;
                 this.lastDrawTime = now;
@@ -847,6 +1041,10 @@
                         break;
                 }
                 this.redrawCanvas(); // 新增：绘制后刷新画布
+                if (wasVisible) {
+                    this.selectedShapeIndex = this.drawHistory.length - 1;
+                    this.showPropertyPanel();
+                }
             }
             drawRandomTriangle(x, y) {
                 const color = this.getRandomColor();
@@ -908,9 +1106,37 @@
                 });
             }
             getRandomColor() {
-                return `hsl(${Math.random() * 360}, 70%, 60%)`;
+                const hue = Math.random() * 360;
+                return this.hslToHex(hue, 70, 60);
             }
-
+            hslToHex(h, s, l) {
+                h /= 360;
+                s /= 100;
+                l /= 100;
+                let r, g, b;
+                if (s === 0) {
+                    r = g = b = l;
+                } else {
+                    const hue2rgb = (p, q, t) => {
+                        if (t < 0) t += 1;
+                        if (t > 1) t -= 1;
+                        if (t < 1/6) return p + (q - p) * 6 * t;
+                        if (t < 1/2) return q;
+                        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                        return p;
+                    };
+                    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                    const p = 2 * l - q;
+                    r = hue2rgb(p, q, h + 1/3);
+                    g = hue2rgb(p, q, h);
+                    b = hue2rgb(p, q, h - 1/3);
+                }
+                const toHex = x => {
+                    const hex = Math.round(x * 255).toString(16).padStart(2, '0');
+                    return hex;
+                };
+                return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+            }
             // 新增背景色设置方法
             setCanvasColor(color) {
                 this.backgroundColor = color; 
@@ -956,6 +1182,18 @@
                             this.setCanvasColor('#333')
                         },
                         text: 'clear'
+                    }, 
+                    {
+                        color: 'green-btn',
+                        action: () => this.togglePropertyPanel(),
+                        text: 'togglePP'
+                    }, 
+                    {
+                        color: 'red-btn',
+                        action: () => {
+                            //delete selected shape.
+                        },
+                        text: 'delShape'
                     }, 
                 ];
 
@@ -1679,7 +1917,7 @@
     
 <!--
  升级：
- 图形被选中以后一直保持被选中状态，还要显示一个属性对话框。点空白处被选中状态消失，对话框也消失。
+ code delShape
  return all new code
 -->
  
