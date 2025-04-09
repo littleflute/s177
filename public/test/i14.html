@@ -561,6 +561,13 @@
                 this.currentCommentId = null;
                 this.#injectStyles();
             }
+            deleteSelectedShape() {
+                if (this.selectedShapeIndex === -1) return;
+                this.drawHistory.splice(this.selectedShapeIndex, 1);
+                this.selectedShapeIndex = -1;
+                this.hidePropertyPanel();
+                this.redrawCanvas();
+            }
             togglePropertyPanel() {
                 if (this.propertyPanel.style.display === 'block') {
                     this.hidePropertyPanel();
@@ -1190,10 +1197,8 @@
                     }, 
                     {
                         color: 'red-btn',
-                        action: () => {
-                            //delete selected shape.
-                        },
-                        text: 'delShape'
+                        action: () => this.deleteSelectedShape(), // 绑定删除方法
+                        text: 'del'
                     }, 
                 ];
 
@@ -1917,7 +1922,7 @@
     
 <!--
  升级：
- code delShape
+ let property panel be movable
  return all new code
 -->
  
