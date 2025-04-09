@@ -540,32 +540,36 @@ i14c2.html
 
 
 <script>
-class CanvasManager {
-    constructor(canvasId) {
-        this.canvas = document.getElementById(canvasId);
-        this.ctx = this.canvas.getContext('2d');
-        this.shapes = [];
-        this.selectedIndex = -1;
-        this.isDragging = false;
-        this.currentType = null;
-        this.controlSize = 12;
-        
-        this.initEvents();
-        this.resizeCanvas();
-        window.addEventListener('resize', () => this.resizeCanvas());
-    }
+    class CanvasManager {
+        constructor(canvasId) {
+            this.canvas = document.getElementById(canvasId);
+            this.ctx = this.canvas.getContext('2d');
+            this.shapes = [];
+            this.selectedIndex = -1;
+            this.isDragging = false;
+            this.currentType = null;
+            this.controlSize = 12;
+            this.dragStart = { x: 0, y: 0 };
+            this.adjustingControl = null;
+            this.backgroundColor = '#333';
+            this.triangleSizes = [30, 50, 70];
+            
+            this.initEvents();
+            this.resizeCanvas();
+            window.addEventListener('resize', () => this.resizeCanvas());
+            this.onSelect = null; // 新增选中回调
+        }
 
-    initEvents() {
-        const getPos = e => {
-            const rect = this.canvas.getBoundingClientRect();
-            return {
-                x: (e.touches ? e.touches[0].clientX : e.clientX) - rect.left,
-                y: (e.touches ? e.touches[0].clientY : e.clientY) - rect.top
+        initEvents() {
+            const getPos = e => {
+                const rect = this.canvas.getBoundingClientRect();
+                return {
+                    x: (e.touches ? e.touches[0].clientX : e.clientX) - rect.left,
+                    y: (e.touches ? e.touches[0].clientY : e.clientY) - rect.top
+                };
             };
-        };
 
-        const eventHandlers = {
-            start: e => {
+            const handleStart = e => {
                 const pos = getPos(e);
                 const shapeIdx = this.findShape(pos.x, pos.y);
                 
@@ -574,121 +578,435 @@ class CanvasManager {
                 } else if (this.currentType) {
                     this.createShape(pos);
                 }
-            },
-            move: e => {
+            };
+
+            const handleMove = e => {
                 if (!this.isDragging) return;
                 const pos = getPos(e);
                 this.updateShape(pos);
-            },
-            end: () => {
+            };
+
+            const handleEnd = () => {
                 this.isDragging = false;
                 this.adjustingControl = null;
-            }
-        };
+                this.redraw();
+            };
 
-        this.canvas.addEventListener('mousedown', eventHandlers.start);
-        this.canvas.addEventListener('touchstart', eventHandlers.start);
-        document.addEventListener('mousemove', eventHandlers.move);
-        document.addEventListener('touchmove', eventHandlers.move);
-        document.addEventListener('mouseup', eventHandlers.end);
-        document.addEventListener('touchend', eventHandlers.end);
-    }
+            // Desktop events
+            this.canvas.addEventListener('mousedown', handleStart);
+            document.addEventListener('mousemove', handleMove);
+            document.addEventListener('mouseup', handleEnd);
 
-    createShape(pos) {
-        const types = {
-            circle: () => ({
-                type: 'circle',
-                x: pos.x, y: pos.y,
-                radius: Math.random() * 50 + 20,
-                color: this.randomColor()
-            }),
-            rect: () => ({
-                type: 'rect',
-                x: pos.x - 50, y: pos.y - 50,
-                width: 100, height: 100,
-                color: this.randomColor()
-            }),
-            triangle: () => ({
-                type: 'triangle',
-                points: [
-                    {x: pos.x, y: pos.y - 43},
-                    {x: pos.x - 50, y: pos.y + 43},
-                    {x: pos.x + 50, y: pos.y + 43}
-                ],
-                color: this.randomColor()
-            })
-        };
-        
-        this.shapes.push(types[this.currentType]());
-        this.redraw();
-    }
-
-    handleSelect(index, pos) {
-        this.selectedIndex = index;
-        const shape = this.shapes[index];
-        this.adjustingControl = this.getControlPoint(pos, shape);
-        
-        if (this.adjustingControl) {
-            this.isDragging = true;
-        } else {
-            const selected = this.shapes.splice(index, 1)[0];
-            this.shapes.push(selected);
-            this.selectedIndex = this.shapes.length - 1;
+            // Mobile events
+            this.canvas.addEventListener('touchstart', handleStart);
+            document.addEventListener('touchmove', handleMove);
+            document.addEventListener('touchend', handleEnd);
         }
-        this.redraw();
+
+        createShape(pos) {
+            const types = {
+                circle: () => ({
+                    type: 'circle',
+                    x: pos.x,
+                    y: pos.y,
+                    radius: Math.random() * 50 + 20,
+                    color: this.randomColor()
+                }),
+                rect: () => ({
+                    type: 'rect',
+                    x: pos.x - 50,
+                    y: pos.y - 50,
+                    width: 100,
+                    height: 100,
+                    color: this.randomColor()
+                }),
+                triangle: () => {
+                    const size = this.triangleSizes[Math.floor(Math.random() * this.triangleSizes.length)];
+                    const height = size * Math.sqrt(3)/2;
+                    return {
+                        type: 'triangle',
+                        points: [
+                            { x: pos.x, y: pos.y - height/2 },
+                            { x: pos.x - size/2, y: pos.y + height/2 },
+                            { x: pos.x + size/2, y: pos.y + height/2 }
+                        ],
+                        color: this.randomColor()
+                    };
+                }
+            };
+            
+            if (this.currentType && types[this.currentType]) {
+                this.shapes.push(types[this.currentType]());
+                this.redraw();
+            }
+        }
+
+        handleSelect(index, pos) {
+            this.selectedIndex = index;
+            const shape = this.shapes[index];
+            this.adjustingControl = this.getControlPoint(pos.x, pos.y, shape);
+            
+            if (this.adjustingControl) {
+                this.isDragging = true;
+                this.dragStart = { x: pos.x, y: pos.y };
+            } else {
+                // Bring to front
+                const selected = this.shapes.splice(index, 1)[0];
+                this.shapes.push(selected);
+                this.selectedIndex = this.shapes.length - 1;
+            }
+            this.redraw();
+            if (this.onSelect) this.onSelect(this.shapes[this.selectedIndex]);
+        }
+
+        updateShape(pos) {
+            const shape = this.shapes[this.selectedIndex];
+            const deltaX = pos.x - this.dragStart.x;
+            const deltaY = pos.y - this.dragStart.y;
+
+            if (this.adjustingControl) {
+                switch (shape.type) {
+                    case 'circle':
+                        if (this.adjustingControl === 'radius') {
+                            shape.radius = Math.max(10, shape.radius + deltaX);
+                        }
+                        break;
+                    case 'rect':
+                        if (this.adjustingControl === 'size') {
+                            shape.width = Math.max(10, shape.width + deltaX);
+                            shape.height = Math.max(10, shape.height + deltaY);
+                        }
+                        break;
+                    case 'triangle':
+                        const pointIndex = parseInt(this.adjustingControl.replace('point', ''));
+                        shape.points[pointIndex].x += deltaX;
+                        shape.points[pointIndex].y += deltaY;
+                        break;
+                }
+            } else {
+                switch (shape.type) {
+                    case 'circle':
+                        shape.x += deltaX;
+                        shape.y += deltaY;
+                        break;
+                    case 'rect':
+                        shape.x += deltaX;
+                        shape.y += deltaY;
+                        break;
+                    case 'triangle':
+                        shape.points.forEach(p => {
+                            p.x += deltaX;
+                            p.y += deltaY;
+                        });
+                        break;
+                }
+            }
+
+            this.dragStart = { x: pos.x, y: pos.y };
+            this.redraw();
+        }
+
+        redraw() {
+            this.ctx.fillStyle = this.backgroundColor;
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+            this.shapes.forEach((shape, index) => {
+                this.ctx.fillStyle = shape.color;
+                this.ctx.globalAlpha = index === this.selectedIndex ? 0.7 : 1.0;
+
+                switch (shape.type) {
+                    case 'circle':
+                        this.ctx.beginPath();
+                        this.ctx.arc(shape.x, shape.y, shape.radius, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        break;
+                    case 'rect':
+                        this.ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
+                        break;
+                    case 'triangle':
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(shape.points[0].x, shape.points[0].y);
+                        shape.points.forEach(p => this.ctx.lineTo(p.x, p.y));
+                        this.ctx.closePath();
+                        this.ctx.fill();
+                        break;
+                }
+
+                if (index === this.selectedIndex) {
+                    this.drawControls(shape);
+                }
+            });
+        }
+
+        drawControls(shape) {
+            this.ctx.fillStyle = '#00ff00';
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = 2;
+
+            switch (shape.type) {
+                case 'circle':
+                    const controlX = shape.x + shape.radius;
+                    this.ctx.beginPath();
+                    this.ctx.arc(controlX, shape.y, this.controlSize/2, 0, Math.PI*2);
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                    break;
+                case 'rect':
+                    this.ctx.fillRect(
+                        shape.x + shape.width - this.controlSize/2,
+                        shape.y + shape.height - this.controlSize/2,
+                        this.controlSize,
+                        this.controlSize
+                    );
+                    break;
+                case 'triangle':
+                    shape.points.forEach(point => {
+                        this.ctx.beginPath();
+                        this.ctx.arc(point.x, point.y, this.controlSize/2, 0, Math.PI*2);
+                        this.ctx.fill();
+                        this.ctx.stroke();
+                    });
+                    break;
+            }
+        }
+
+        findShape(x, y) {
+            for (let i = this.shapes.length - 1; i >= 0; i--) {
+                const shape = this.shapes[i];
+                let isInside = false;
+                
+                switch(shape.type) {
+                    case 'circle':
+                        isInside = Math.hypot(x - shape.x, y - shape.y) <= shape.radius;
+                        break;
+                    case 'rect':
+                        isInside = x >= shape.x && x <= shape.x + shape.width &&
+                                y >= shape.y && y <= shape.y + shape.height;
+                        break;
+                    case 'triangle':
+                        isInside = this.isPointInTriangle(x, y, shape.points);
+                        break;
+                }
+                
+                if (isInside) return i;
+            }
+            return -1;
+        }
+
+        getControlPoint(x, y, shape) {
+            switch(shape.type) {
+                case 'circle':
+                    const cx = shape.x + shape.radius;
+                    if (Math.hypot(x - cx, y - shape.y) < this.controlSize) return 'radius';
+                    break;
+                case 'rect':
+                    const rx = shape.x + shape.width;
+                    const ry = shape.y + shape.height;
+                    if (Math.abs(x - rx) < this.controlSize && 
+                    Math.abs(y - ry) < this.controlSize) return 'size';
+                    break;
+                case 'triangle':
+                    for (let i = 0; i < shape.points.length; i++) {
+                        const p = shape.points[i];
+                        if (Math.hypot(x - p.x, y - p.y) < this.controlSize) return `point${i}`;
+                    }
+                    break;
+            }
+            return null;
+        }
+
+        isPointInTriangle(x, y, points) {
+            const [p0, p1, p2] = points;
+            const area = 0.5 * (-p1.y * p2.x + p0.y * (-p1.x + p2.x) + p0.x * (p1.y - p2.y) + p1.x * p2.y);
+            const s = 1 / (2 * area) * (p0.y * p2.x - p0.x * p2.y + (p2.y - p0.y) * x + (p0.x - p2.x) * y);
+            const t = 1 / (2 * area) * (p0.x * p1.y - p0.y * p1.x + (p0.y - p1.y) * x + (p1.x - p0.x) * y);
+            return s > 0 && t > 0 && (1 - s - t) > 0;
+        }
+
+        randomColor() {
+            const hue = Math.random() * 360;
+            return `hsl(${hue}, 70%, 60%)`;
+        }
+
+        resizeCanvas() {
+            this.canvas.width = window.innerWidth;
+            this.canvas.height = window.innerHeight;
+            this.redraw();
+        }
+
+        setBackgroundColor(color) {
+            this.backgroundColor = color;
+            this.redraw();
+        }
+
+        clearCanvas() {
+            this.shapes = [];
+            this.selectedIndex = -1;
+            this.redraw();
+        }
+
+        deleteSelected() {
+            if (this.selectedIndex === -1) return;
+            this.shapes.splice(this.selectedIndex, 1);
+            this.selectedIndex = -1;
+            this.redraw();
+        }
     }
 
-    updateShape(pos) {
-        const shape = this.shapes[this.selectedIndex];
-        // 形状更新逻辑...
-        this.redraw();
+
+    class PropertyPanel {
+        constructor(panelId, canvasManager) {
+            this.panel = document.getElementById(panelId);
+            this.header = this.panel.querySelector('.property-header');
+            this.form = this.panel.querySelector('#property-form');
+            this.canvasManager = canvasManager;
+            this.isVisible = false;
+            this.currentShape = null;
+
+            this.initDrag();
+            this.panel.querySelector('.panel-close').addEventListener('click', () => this.toggle(false));
+            
+            // 注册画布选中事件
+            this.canvasManager.onSelect = (shape) => this.update(shape);
+        }
+
+        toggle(show) {
+            this.isVisible = typeof show === 'boolean' ? show : !this.isVisible;
+            this.panel.style.display = this.isVisible ? 'block' : 'none';
+            if (this.isVisible) this.adjustPosition();
+        }
+
+        update(shape) {
+            this.currentShape = shape;
+            this.form.innerHTML = '';
+            
+            if (!shape) {
+                this.toggle(false);
+                return;
+            }
+
+            this.toggle(true);
+            this.createColorInput(shape);
+            
+            switch(shape.type) {
+                case 'circle':
+                    this.createCircleControls(shape);
+                    break;
+                case 'rect':
+                    this.createRectControls(shape);
+                    break;
+                case 'triangle':
+                    this.createTriangleControls(shape);
+                    break;
+            }
+        }
+
+        createColorInput(shape) {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <label>颜色</label>
+                <input type="color" value="${shape.color}">
+            `;
+            const input = div.querySelector('input');
+            input.addEventListener('input', (e) => {
+                shape.color = e.target.value;
+                this.canvasManager.redraw();
+            });
+            this.form.appendChild(div);
+        }
+
+        createCircleControls(shape) {
+            this.createNumberInput('X坐标', shape.x, v => shape.x = v);
+            this.createNumberInput('Y坐标', shape.y, v => shape.y = v);
+            this.createNumberInput('半径', shape.radius, v => shape.radius = v);
+        }
+
+        createRectControls(shape) {
+            this.createNumberInput('X坐标', shape.x, v => shape.x = v);
+            this.createNumberInput('Y坐标', shape.y, v => shape.y = v);
+            this.createNumberInput('宽度', shape.width, v => shape.width = v);
+            this.createNumberInput('高度', shape.height, v => shape.height = v);
+        }
+
+        createTriangleControls(shape) {
+            shape.points.forEach((point, index) => {
+                this.createNumberInput(`点${index+1} X`, point.x, v => point.x = v);
+                this.createNumberInput(`点${index+1} Y`, point.y, v => point.y = v);
+            });
+        }
+
+        createNumberInput(label, value, onChange) {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <label>${label}</label>
+                <input type="number" value="${value}">
+            `;
+            const input = div.querySelector('input');
+            input.addEventListener('input', (e) => {
+                onChange(parseFloat(e.target.value));
+                this.canvasManager.redraw();
+            });
+            this.form.appendChild(div);
+        }
+
+        adjustPosition() {
+            const panelWidth = this.panel.offsetWidth;
+            const panelHeight = this.panel.offsetHeight;
+            const margin = 20;
+            
+            let left = margin;
+            let top = (window.innerHeight - panelHeight) / 2;
+            
+            // 确保不超出视口
+            if (left + panelWidth > window.innerWidth - margin) {
+                left = window.innerWidth - panelWidth - margin;
+            }
+            if (top + panelHeight > window.innerHeight - margin) {
+                top = window.innerHeight - panelHeight - margin;
+            }
+            
+            this.panel.style.left = `${left}px`;
+            this.panel.style.top = `${top}px`;
+        }
+
+        initDrag() {
+            let isDragging = false;
+            let startX = 0;
+            let startY = 0;
+            let startLeft = 0;
+            let startTop = 0;
+
+            this.header.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                startLeft = parseFloat(this.panel.style.left) || 0;
+                startTop = parseFloat(this.panel.style.top) || 0;
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                
+                let newLeft = startLeft + dx;
+                let newTop = startTop + dy;
+                
+                // 边界限制
+                newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - this.panel.offsetWidth));
+                newTop = Math.max(0, Math.min(newTop, window.innerHeight - this.panel.offsetHeight));
+                
+                this.panel.style.left = `${newLeft}px`;
+                this.panel.style.top = `${newTop}px`;
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+        }
     }
 
-    redraw() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.shapes.forEach((shape, index) => {
-            // 绘制逻辑...
-        });
-    }
-
-    // 其他辅助方法...
-}
-
-class PropertyPanel {
-    constructor(panelId) {
-        this.panel = document.getElementById(panelId);
-        this.header = this.panel.querySelector('.property-header');
-        this.form = this.panel.querySelector('#property-form');
-        this.isVisible = false;
-        
-        this.initDrag();
-        this.panel.querySelector('.panel-close').addEventListener('click', () => this.toggle());
-    }
-
-    toggle() {
-        this.isVisible = !this.isVisible;
-        this.panel.style.display = this.isVisible ? 'block' : 'none';
-    }
-
-    update(shape) {
-        this.form.innerHTML = '';
-        // 根据形状类型生成表单控件...
-    }
-
-    initDrag() {
-        let isDragging = false;
-        this.header.addEventListener('mousedown', () => isDragging = true);
-        
-        document.addEventListener('mousemove', e => {
-            if (!isDragging) return;
-            const rect = this.panel.getBoundingClientRect();
-            this.panel.style.left = `${e.clientX - rect.width/2}px`;
-            this.panel.style.top = `${e.clientY - 20}px`;
-        });
-
-        document.addEventListener('mouseup', () => isDragging = false);
-    }
-}
 
 class GitHubManager {
     constructor(repo, token) {
@@ -723,8 +1041,8 @@ class GitHubManager {
 
 class AppCore {
     constructor() {
-        this.canvasManager = new CanvasManager('mainCanvas');
-        this.propertyPanel = new PropertyPanel('property_panel');
+        this.canvasManager = new CanvasManager('mainCanvas'); 
+        this.propertyPanel = new PropertyPanel('property_panel', this.canvasManager);
         this.ghManager = new GitHubManager('littleflute/s177', 'ghp_2BF...');
         
         this.initUI();
@@ -732,6 +1050,11 @@ class AppCore {
     }
 
     initUI() {
+        // 初始化删除按钮
+        document.querySelector('.delete-btn').addEventListener('click', () => {
+            this.canvasManager.deleteSelected();
+            this.propertyPanel.toggle(false);
+        });
         document.querySelectorAll('.toolbar-btn').forEach(btn => {
             btn.addEventListener('click', e => this.handleToolbarClick(e.target));
         });
@@ -783,6 +1106,6 @@ const app = new AppCore();
 
 <!--
 i4c2.html 重构自 i14.html
-请帮我返回完整的CanvasManager
+请帮我返回完整的 PropertyPanel
 
 -->
