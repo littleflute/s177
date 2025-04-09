@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rubik's Cube Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <style>
+        canvas {
+            display: block;
+            margin: 20px auto;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    <h1 class="text-3xl font-bold text-center py-8">Rubik's Cube Simulation</h1>
+    <canvas id="rubiksCube" width="400" height="400"></canvas>
+    <div class="flex justify-center space-x-4">
+        <button id="rotateX" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Rotate X</button>
+        <button id="rotateY" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Rotate Y</button>
+        <button id="rotateZ" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Rotate Z</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('rubiksCube');
+        const ctx = canvas.getContext('2d');
+
+        const cubeSize = 3;
+        const blockSize = 40;
+        const colors = [
+            'white', 'yellow', 'blue', 'green', 'red', 'orange'
+        ];
+
+        const cube = [];
+        for (let i = 0; i < cubeSize; i++) {
+            cube[i] = [];
+            for (let j = 0; j < cubeSize; j++) {
+                cube[i][j] = [];
+                for (let k = 0; k < cubeSize; k++) {
+                    cube[i][j][k] = [];
+                    for (let face = 0; face < 6; face++) {
+                        cube[i][j][k][face] = face;
+                    }
+                }
+            }
+        }
+
+        function drawCube() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < cubeSize; i++) {
+                for (let j = 0; j < cubeSize; j++) {
+                    for (let k = 0; k < cubeSize; k++) {
+                        const x = (j - k) * blockSize + canvas.width / 2;
+                        const y = (i + j + k) * blockSize / 2 + canvas.height / 4;
+
+                        for (let face = 0; face < 6; face++) {
+                            ctx.fillStyle = colors[cube[i][j][k][face]];
+                            switch (face) {
+                                case 0:
+                                    ctx.fillRect(x, y, blockSize, blockSize);
+                                    break;
+                                case 1:
+                                    ctx.fillRect(x + blockSize, y, blockSize, blockSize);
+                                    break;
+                                case 2:
+                                    ctx.fillRect(x, y + blockSize, blockSize, blockSize);
+                                    break;
+                                case 3:
+                                    ctx.fillRect(x - blockSize, y + blockSize, blockSize, blockSize);
+                                    break;
+                                case 4:
+                                    ctx.fillRect(x - blockSize, y, blockSize, blockSize);
+                                    break;
+                                case 5:
+                                    ctx.fillRect(x + blockSize, y + blockSize, blockSize, blockSize);
+                                    break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function rotateX() {
+            const newCube = JSON.parse(JSON.stringify(cube));
+            for (let j = 0; j < cubeSize; j++) {
+                for (let k = 0; k < cubeSize; k++) {
+                    newCube[0][j][k] = cube[2][j][k];
+                    newCube[1][j][k] = cube[1][j][k];
+                    newCube[2][j][k] = cube[0][j][k];
+                }
+            }
+            for (let i = 0; i < cubeSize; i++) {
+                for (let j = 0; j < cubeSize; j++) {
+                    for (let k = 0; k < cubeSize; k++) {
+                        cube[i][j][k] = newCube[i][j][k];
+                    }
+                }
+            }
+            drawCube();
+        }
+
+        function rotateY() {
+            const newCube = JSON.parse(JSON.stringify(cube));
+            for (let i = 0; i < cubeSize; i++) {
+                for (let k = 0; k < cubeSize; k++) {
+                    newCube[i][0][k] = cube[i][2][k];
+                    newCube[i][1][k] = cube[i][1][k];
+                    newCube[i][2][k] = cube[i][0][k];
+                }
+            }
+            for (let i = 0; i < cubeSize; i++) {
+                for (let j = 0; j < cubeSize; j++) {
+                    for (let k = 0; k < cubeSize; k++) {
+                        cube[i][j][k] = newCube[i][j][k];
+                    }
+                }
+            }
+            drawCube();
+        }
+
+        function rotateZ() {
+            const newCube = JSON.parse(JSON.stringify(cube));
+            for (let i = 0; i < cubeSize; i++) {
+                for (let j = 0; j < cubeSize; j++) {
+                    newCube[i][j][0] = cube[i][j][2];
+                    newCube[i][j][1] = cube[i][j][1];
+                    newCube[i][j][2] = cube[i][j][0];
+                }
+            }
+            for (let i = 0; i < cubeSize; i++) {
+                for (let j = 0; j < cubeSize; j++) {
+                    for (let k = 0; k < cubeSize; k++) {
+                        cube[i][j][k] = newCube[i][j][k];
+                    }
+                }
+            }
+            drawCube();
+        }
+
+        document.getElementById('rotateX').addEventListener('click', rotateX);
+        document.getElementById('rotateY').addEventListener('click', rotateY);
+        document.getElementById('rotateZ').addEventListener('click', rotateZ);
+
+        drawCube();
+    </script>
+</body>
+
+</html>
+    
+<!--
+升级：
+这是一个3维魔方模拟程序，以上实现的不对，请帮我升级一下。
+return all new code.
+-->
