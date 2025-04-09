@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLC 组件测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .test-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .test-header {
+            color: #1a73e8;
+            border-bottom: 2px solid #1a73e8;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            padding: 10px;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+            margin: 5px;
+        }
+
+        .input-group {
+            margin: 10px 0;
+        }
+
+        .instructions {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>BLC 组件测试套件</h1>
+        
+        <!-- 基础功能测试 -->
+        <div class="test-section">
+            <h2 class="test-header">基础功能测试</h2>
+            <div class="button-group">
+                <button onclick="window.blc.toggleWindow()">切换控制面板可见性</button>
+                <button onclick="testDrag()">测试拖拽功能（请手动拖拽窗口）</button>
+            </div>
+        </div>
+
+        <!-- 消息系统测试 -->
+        <div class="test-section">
+            <h2 class="test-header">消息系统测试</h2>
+            <div class="input-group">
+                <input type="text" id="messageInput" placeholder="输入消息内容" value="测试消息内容">
+                <select id="messageType">
+                    <option value="info">信息</option>
+                    <option value="success">成功</option>
+                    <option value="error">错误</option>
+                </select>
+            </div>
+            <div class="button-group">
+                <button onclick="testShowMessage()">显示自定义消息</button>
+                <button onclick="testAutoMessages()">自动生成测试消息</button>
+            </div>
+        </div>
+
+        <!-- 复杂操作测试 -->
+        <div class="test-section">
+            <h2 class="test-header">复杂操作测试</h2>
+            <div class="input-group">
+                <input type="number" id="paramA" value="5">
+                <input type="number" id="paramB" value="3">
+            </div>
+            <div class="button-group">
+                <button onclick="testComplexOperation()">执行复杂操作</button>
+                <button onclick="testErrorHandling()">测试错误处理</button>
+            </div>
+        </div>
+
+        <!-- 版本控制测试 -->
+        <div class="test-section">
+            <h2 class="test-header">版本控制测试</h2>
+            <div class="button-group">
+                <button onclick="testVersionUpgrade()">升级版本</button>
+                <button onclick="showCurrentVersion()">显示当前版本</button>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>测试说明：</h3>
+            <ul>
+                <li>所有测试功能都会触发右侧控制面板的对应操作</li>
+                <li>消息会自动在右上角显示并在2秒后消失</li>
+                <li>拖拽功能请直接拖拽控制面板的标题栏测试</li>
+                <li>版本号显示在控制面板的标题中</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // 测试方法定义
+        function testShowMessage() {
+            const message = document.getElementById('messageInput').value;
+            const type = document.getElementById('messageType').value;
+            window.blc.showMessage(message, type);
+        }
+
+        function testAutoMessages() {
+            const messages = [
+                { text: "系统初始化完成", type: "success" },
+                { text: "网络连接超时", type: "error" },
+                { text: "发现新版本", type: "info" }
+            ];
+            messages.forEach(msg => {
+                window.blc.showMessage(msg.text, msg.type);
+            });
+        }
+
+        async function testComplexOperation() {
+            const a = parseInt(document.getElementById('paramA').value);
+            const b = parseInt(document.getElementById('paramB').value);
+            try {
+                const result = await window.blc.complexOperation(a, b);
+                console.log('操作结果:', result);
+            } catch (error) {
+                console.error('操作失败:', error);
+            }
+        }
+
+        function testErrorHandling() {
+            window.blc.complexOperation('invalid', 'data')
+                .catch(error => console.log('预期的错误捕获:', error.message));
+        }
+
+        function testVersionUpgrade() {
+            window.blc.upgradeVersion();
+        }
+
+        function showCurrentVersion() {
+            alert(`当前版本: ${window.blc.version}`);
+        }
+
+        function testDrag() {
+            window.blc.showMessage('请手动拖拽控制面板标题栏进行测试', 'info');
+        }
+    </script>
+
+    <!-- 组件脚本 -->
+    <script>
+        class BLCTestExample {
+            constructor() {
+                this.windowVisible = false;
+                this.messageQueue = [];
+                this.isDragging = false;
+                this.dragOffset = { x: 0, y: 0 };
+                this.version = '1.0.0'; // 定义版本号
+
+                // 创建宿主元素和Shadow Root
+                this.host = document.createElement('div');
+                this.shadowRoot = this.host.attachShadow({ mode: 'open' });
+                document.body.appendChild(this.host);
+
+                this.initUI();
+                console.log('BLCTestExample upgraded initialized');
+            }
+
+            initUI() {
+                // 添加私有样式
+                const style = document.createElement('style');
+                style.textContent = this._getComponentStyles();
+                this.shadowRoot.appendChild(style);
+
+                // 创建UI组件
+                this.windowElement = this._createWindowElement();
+                this.messageContainer = this._createMessageContainer();
+                this.shadowRoot.append(this.windowElement, this.messageContainer);
+            }
+
+            _createWindowElement() {
+                const window = document.createElement('div');
+                window.className = 'blc-window';
+                window.innerHTML = `
+                    <div class="blc-window-header">
+                        <h3>控制面板 v${this.version}</h3>
+                        <button class="blc-close-btn">&times;</button>
+                        <button class="blc-upgrade-btn">升级版本</button>
+                    </div>
+                    <div class="blc-window-content">
+                        <button class="blc-action-btn" data-action="showMessage">显示消息</button>
+                        <button class="blc-action-btn" data-action="complexOperation">执行操作</button>
+                    </div>
+                `;
+
+                // 事件绑定
+                window.querySelector('.blc-close-btn').addEventListener('click', () => this.toggleWindow());
+                window.querySelectorAll('.blc-action-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => this._handleButtonAction(e.target.dataset.action));
+                });
+                window.querySelector('.blc-upgrade-btn').addEventListener('click', () => this.upgradeVersion());
+
+                // 拖拽功能
+                const header = window.querySelector('.blc-window-header');
+                header.addEventListener('mousedown', this._startDrag.bind(this));
+                header.addEventListener('touchstart', this._startDrag.bind(this));
+
+                return window;
+            }
+
+            _createMessageContainer() {
+                const container = document.createElement('div');
+                container.className = 'blc-message-container';
+                return container;
+            }
+
+            toggleWindow(visible) {
+                this.windowVisible = typeof visible === 'boolean' ? visible : !this.windowVisible;
+                this.windowElement.style.display = this.windowVisible ? 'block' : 'none';
+            }
+
+            showMessage(message, type = 'info') {
+                const messageItem = document.createElement('div');
+                messageItem.className = `blc-message blc-${type}`;
+                messageItem.innerHTML = `
+                    <span class="blc-message-text">${message}</span>
+                    <span class="blc-progress-bar"></span>
+                `;
+
+                this.messageContainer.appendChild(messageItem);
+                this._arrangeMessages();
+
+                setTimeout(() => {
+                    messageItem.classList.add('blc-hide');
+                    setTimeout(() => {
+                        messageItem.remove();
+                        this._arrangeMessages();
+                    }, 300);
+                }, 2000);
+            }
+
+            async complexOperation(a, b) {
+                try {
+                    const result = await this._performComplexCalculation(a, b);
+                    this.showMessage(`操作成功: ${result}`, 'success');
+                    return result;
+                } catch (error) {
+                    this.showMessage(`操作失败: ${error.message}`, 'error');
+                    throw error;
+                }
+            }
+
+            // 私有辅助方法
+            _handleButtonAction(action) {
+                switch (action) {
+                    case 'showMessage':
+                        this.showMessage('这是增强后的消息系统', 'info');
+                        break;
+                    case 'complexOperation':
+                        this.complexOperation(5, 3);
+                        break;
+                }
+            }
+
+            async _performComplexCalculation(a, b) {
+                return new Promise((resolve, reject) => {
+                    setTimeout(() => {
+                        if (typeof a !== 'number' || typeof b !== 'number') {
+                            reject(new Error('参数必须为数字'));
+                        }
+                        resolve(a + b);
+                    }, 1000);
+                });
+            }
+
+            _startDrag(e) {
+                this.isDragging = true;
+                const event = e.touches ? e.touches[0] : e;
+                const rect = this.windowElement.getBoundingClientRect();
+                this.dragOffset = {
+                    x: event.clientX - rect.left,
+                    y: event.clientY - rect.top
+                };
+
+                document.addEventListener('mousemove', this._handleDrag.bind(this));
+                document.addEventListener('touchmove', this._handleDrag.bind(this));
+                document.addEventListener('mouseup', this._stopDrag.bind(this));
+                document.addEventListener('touchend', this._stopDrag.bind(this));
+            }
+
+            _handleDrag(e) {
+                if (!this.isDragging) return;
+                const event = e.touches ? e.touches[0] : e;
+
+                this.windowElement.style.left = `${event.clientX - this.dragOffset.x}px`;
+                this.windowElement.style.top = `${event.clientY - this.dragOffset.y}px`;
+            }
+
+            _stopDrag() {
+                this.isDragging = false;
+                document.removeEventListener('mousemove', this._handleDrag);
+                document.removeEventListener('touchmove', this._handleDrag);
+                document.removeEventListener('mouseup', this._stopDrag);
+                document.removeEventListener('touchend', this._stopDrag);
+            }
+
+            _arrangeMessages() {
+                const messages = Array.from(this.messageContainer.children);
+                messages.forEach((msg, index) => {
+                    msg.style.top = `${index * 60}px`;
+                });
+            }
+
+            _getComponentStyles() {
+                return `
+                    .blc-window {
+                        position: fixed;
+                        top: 50px;
+                        left: 50px;
+                        width: 300px;
+                        background: white;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                        z-index: 1000;
+                        display: none;
+                    }
+
+                    .blc-window-header {
+                        padding: 12px;
+                        background: #f8f9fa;
+                        border-bottom: 1px solid #dee2e6;
+                        cursor: move;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        border-radius: 8px 8px 0 0;
+                    }
+
+                    .blc-close-btn {
+                        background: none;
+                        border: none;
+                        font-size: 1.2em;
+                        cursor: pointer;
+                    }
+
+                    .blc-upgrade-btn {
+                        background: #28a745;
+                        color: white;
+                        border: none;
+                        border-radius: 4px;
+                        padding: 4px 8px;
+                        cursor: pointer;
+                    }
+
+                    .blc-window-content {
+                        padding: 15px;
+                        display: grid;
+                        gap: 10px;
+                    }
+
+                    .blc-action-btn {
+                        padding: 8px;
+                        background: #007bff;
+                        color: white;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        transition: opacity 0.2s;
+                    }
+
+                    .blc-action-btn:hover {
+                        opacity: 0.9;
+                    }
+
+                    .blc-message-container {
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        z-index: 999;
+                    }
+
+                    .blc-message {
+                        position: absolute;
+                        right: 0;
+                        padding: 15px;
+                        min-width: 200px;
+                        border-radius: 4px;
+                        color: white;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 8px;
+                        transition: 0.3s transform, 0.3s opacity;
+                        transform: translateX(0);
+                    }
+
+                    .blc-message.blc-hide {
+                        transform: translateX(100%);
+                        opacity: 0;
+                    }
+
+                    .blc-info { background: #2196F3; }
+                    .blc-success { background: #4CAF50; }
+                    .blc-error { background: #f44336; }
+
+                    .blc-progress-bar {
+                        height: 3px;
+                        background: rgba(255,255,255,0.5);
+                        width: 100%;
+                        animation: progress 2s linear forwards;
+                    }
+
+                    @keyframes progress {
+                        from { width: 100%; }
+                        to { width: 0; }
+                    }
+                `;
+            }
+
+            upgradeVersion() {
+                const [major, minor, patch] = this.version.split('.').map(Number);
+                this.version = `${major}.${minor}.${patch + 1}`;
+                const header = this.windowElement.querySelector('.blc-window-header h3');
+                header.textContent = `控制面板 v${this.version}`;
+                this.showMessage(`版本已升级到 v${this.version}`, 'success');
+            }
+        }
+        if (!window.blc) window.blc = new BLCTestExample();
+    </script>
+</body>
+</html>

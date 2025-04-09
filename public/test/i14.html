@@ -416,39 +416,57 @@
                 });
             }
 
-            async getComments(divID, issueNumber) {
-                try {
-                    const container = document.getElementById(divID);
-                    container.innerHTML = 'Loading comments...';
+            async getComments(divID, issueNumber) { 
+                const container = document.getElementById(divID);
+                container.innerHTML = 'Loading comments...';
 
+                try {
                     const comments = await this.#apiRequest('GET', `issues/${issueNumber}/comments`, null);
                     container.innerHTML = '';
 
-                    if (comments.length === 0) {
-                        container.innerHTML = '<div>No comments yet</div>';
-                        return;
-                    }
-
                     comments.forEach(comment => {
-                        const btn = document.createElement('button');
-                        btn.className = 'issue_btn';
+                        const commentDiv = document.createElement('div'); 
+                        const toolbar = document.createElement('div');
+                        toolbar.className = 'issue_toolbar';
 
-                        const username = comment.user?.login || 'Anonymous';
-                        const preview = comment.body
-                           ? `${comment.body.substring(0, 30).replace(/\n/g, ' ')}...`
-                            : 'No content';
+                        const btns = ["show", "edit", "run"];
+                        btns.forEach(btnText => {
+                            const btn = document.createElement('button');
+                            btn.className = 'issue_btn';
+                            btn.textContent = btnText;
 
-                        btn.textContent = `${username}: ${preview}`;
-                        btn.title = comment.body || '';
-                        btn.onclick = () => window.open(comment.html_url, '_blank');
+                            switch (btnText) {
+                                case "show":
+                                    btn.onclick = () => {
+                                        alert(`Comment by ${comment.user.login}: ${comment.body}`);
+                                    };
+                                    break;
+                                case "edit":
+                                    btn.onclick = () => {
+                                        //code101: show a window to edit comment.
+                                    };
+                                    break;
+                                case "run":
+                                    btn.onclick = () => {
+                                        try {
+                                            const fn = new Function(comment.body);
+                                            fn();
+                                        } catch (e) {
+                                            alert('代码执行错误: ' + e.message);
+                                        }
+                                    };
+                                    break;
+                            }
 
-                        container.appendChild(btn);
+                            toolbar.appendChild(btn);
+                        });
+
+                        commentDiv.appendChild(toolbar);
+                        container.appendChild(commentDiv);
                     });
-
                 } catch (error) {
                     console.error('Failed to fetch comments:', error);
-                    const container = document.getElementById(divID);
-                    container.innerHTML = `<div style="color: #ff4444">Error loading comments: ${error.message}</div>`;
+                    container.innerHTML = 'Error loading comments.';
                 }
             }
 
@@ -716,10 +734,10 @@
 </body>
 
 </html>
-      
+    
 <!--
  升级：
-  renew parseBodyClass
-  let member function to be a button. click the button can run the function.
-  return all new code
---> 
+code code101 ， 
+ return all new code
+-->
+ 
