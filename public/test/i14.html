@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <style>
+        .toolbar-btn.draw-active {
+            background-color: #FF9800 !important;
+            border: 2px solid #FF5722 !important;
+            box-shadow: 0 0 8px rgba(255, 87, 34, 0.6);
+        }
         .purple-btn {
             background-color: #9C27B0;
         }
@@ -456,6 +461,7 @@
 
         class C4XDR177I14 {
             constructor() {
+                this.triangleSizes = [30, 50, 70]; // 三角形尺寸选项
                 this.drawHistory = [];
                 
                 this.drawType = null; // 'circle' 或 'rect'
@@ -523,10 +529,13 @@
                 });
             }
 
-            // 新增绘图类型设置方法
             setDrawType(type) {
                 this.drawType = type;
                 this.showDrawCursor();
+                // 同步按钮状态
+                const activeBtn = [...document.querySelectorAll('.draw-btn')]
+                    .find(btn => btn.dataset.drawType === type);
+                if (activeBtn) this.#updateButtonStates(activeBtn);
             }
 
             // 显示绘图光标提示
@@ -553,9 +562,36 @@
                     case 'rect':
                         this.drawRandomRect(pos.x, pos.y);
                         break;
+                    case 'triangle':
+                        this.drawRandomTriangle(pos.x, pos.y);
+                        break;
                 }
             }
+            drawRandomTriangle(x, y) {
+                const color = this.getRandomColor();
+                const size = this.triangleSizes[Math.floor(Math.random() * this.triangleSizes.length)];
+                
+                // 生成等边三角形顶点坐标
+                const height = size * Math.sqrt(3)/2;
+                const points = [
+                    {x: x, y: y - height/2},        // 顶点
+                    {x: x - size/2, y: y + height/2}, // 左下角
+                    {x: x + size/2, y: y + height/2}  // 右下角
+                ];
 
+                this.drawHistory.push({
+                    type: 'triangle',
+                    points,
+                    color
+                });
+
+                this.ctx.fillStyle = color;
+                this.ctx.beginPath();
+                this.ctx.moveTo(points[0].x, points[0].y);
+                points.forEach(point => this.ctx.lineTo(point.x, point.y));
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
             // 绘制随机圆形
             drawRandomCircle(x, y) {
                 const color = this.getRandomColor();
@@ -623,12 +659,20 @@
                     {
                         color: 'blue-btn',
                         action: () => this.setDrawType('circle'),
-                        text: '⚪ Circle'
+                        text: '⚪ Circle',
+                        type: 'circle'
                     },
                     {
-                        color: 'red-btn',
+                        color: 'blue-btn',
                         action: () => this.setDrawType('rect'),
-                        text: '⬜ Rect'
+                        text: '⬜ Rect',
+                        type: 'Rect'
+                    },
+                    {
+                        color: 'blue-btn',
+                        action: () => this.setDrawType('triangle'),
+                        text: '🔺 Triangle',
+                        type: 'Triangle'
                     },
                     {
                         color: 'yellow-btn',
@@ -637,11 +681,6 @@
                             this.setCanvasColor('#333')
                         },
                         text: 'clear'
-                    },
-                    {
-                        color: 'green-btn',
-                        action: () => this.#showRandomShape(),
-                        text: 'Random Shape'
                     },
                     {
                         color: 'purple-btn',
@@ -656,60 +695,37 @@
                 // 创建5个随机按钮
                 shuffled.slice(0, 5).forEach(config => {
                     const btn = document.createElement('button');
-                    btn.className = `toolbar-btn ${config.color}`;
+                    btn.className = `toolbar-btn ${config.color} draw-btn`;
                     btn.textContent = config.text;
-                    btn.onclick = config.action;
+                    if (config.type) {
+                        btn.dataset.drawType = config.type;
+                    }
+                    // 统一的事件处理
+                    const handleClick = () => {
+                        config.action();
+                        this.#updateButtonStates(btn);
+                    };
                     
-                    // 添加触摸事件支持
+                    
+                    // 桌面端和移动端事件
+                    btn.onclick = handleClick;
                     btn.ontouchstart = (e) => {
                         e.preventDefault();
-                        config.action();
+                        handleClick();
                     };
 
                     toolbar.appendChild(btn);
                 });
             }
-
-            #showRandomShape() {
-                const shapes = ['circle', 'rect', 'triangle'];
-                const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
-                
-                this.ctx.fillStyle = '#FF5722';
-                
-                switch(randomShape) {
-                    case 'circle':
-                        this.ctx.beginPath();
-                        this.ctx.arc(
-                            Math.random() * this.canvas.width,
-                            Math.random() * this.canvas.height,
-                            Math.random() * 50 + 20,
-                            0,
-                            Math.PI * 2
-                        );
-                        this.ctx.fill();
-                        break;
-                        
-                    case 'rect':
-                        this.ctx.fillRect(
-                            Math.random() * this.canvas.width,
-                            Math.random() * this.canvas.height,
-                            Math.random() * 100 + 50,
-                            Math.random() * 100 + 50
-                        );
-                        break;
-                        
-                    case 'triangle':
-                        this.ctx.beginPath();
-                        const x = Math.random() * this.canvas.width;
-                        const y = Math.random() * this.canvas.height;
-                        this.ctx.moveTo(x, y);
-                        this.ctx.lineTo(x + 50, y + 100);
-                        this.ctx.lineTo(x - 50, y + 100);
-                        this.ctx.closePath();
-                        this.ctx.fill();
-                        break;
-                }
+            #updateButtonStates(activeBtn) {
+                // 移除所有绘图按钮的高亮状态
+                document.querySelectorAll('.draw-btn').forEach(btn => {
+                    btn.classList.remove('draw-active');
+                });
+                // 为当前按钮添加高亮
+                activeBtn.classList.add('draw-active');
             }
+
             resizeCanvas() {
                 this.canvas.width = window.innerWidth;
                 this.canvas.height = window.innerHeight;
@@ -732,6 +748,12 @@
                             shape.width,
                             shape.height
                         );
+                    }else if (shape.type === 'triangle') {
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(shape.points[0].x, shape.points[0].y);
+                        shape.points.forEach(point => this.ctx.lineTo(point.x, point.y));
+                        this.ctx.closePath();
+                        this.ctx.fill();
                     }
                 });
             }
@@ -1389,7 +1411,7 @@
     
 <!--
  升级：
- 看不到绘制的圆形 & 矩形
+ after setDrawType , hight light button
  
 
  
