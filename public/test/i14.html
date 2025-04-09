@@ -1284,53 +1284,68 @@
                         color: 'blue-btn',
                         action: () => this.setDrawType('rect'),
                         text: '⬜ Rect',
-                        type: 'Rect'
+                        type: 'rect'
                     },
                     {
                         color: 'blue-btn',
                         action: () => this.setDrawType('triangle'),
                         text: '🔺 Triangle',
-                        type: 'Triangle'
+                        type: 'triangle'
                     },
                     {
                         color: 'yellow-btn',
                         action: () => {
-                            this.drawHistory = []; // 清空历史记录
+                            this.drawHistory = [];
                             this.setCanvasColor('#333')
                         },
-                        text: 'clear'
-                    }, 
+                        text: 'Clear'
+                    },
                     {
                         color: 'green-btn',
                         action: () => this.togglePropertyPanel(),
-                        text: 'togglePP'
-                    }, 
+                        text: 'Props'
+                    },
                     {
                         color: 'red-btn',
-                        action: () => this.deleteSelectedShape(), // 绑定删除方法
-                        text: 'del'
-                    }, 
+                        action: () => this.deleteSelectedShape(),
+                        text: 'Delete'
+                    },
+                    {
+                        color: 'purple-btn',
+                        action: () => this.setCanvasColor('#9C27B0'),
+                        text: 'Purple'
+                    },
+                    {
+                        color: 'blue-btn',
+                        action: () => this.setCanvasColor('#2196F3'),
+                        text: 'Blue'
+                    },
+                    {
+                        color: 'red-btn',
+                        action: () => this.setCanvasColor('#ff4444'),
+                        text: 'Red'
+                    },
+                    {
+                        color: 'yellow-btn',
+                        action: () => this.setCanvasColor('#ffeb3b'),
+                        text: 'Yellow'
+                    }
                 ];
 
-                // 打乱数组顺序
-                const shuffled = buttonConfigs.sort(() => Math.random() - 0.5);
-
-                // 创建5个随机按钮
-                shuffled.slice(0, 5).forEach(config => {
+                // 创建所有按钮（不再随机选择）
+                buttonConfigs.forEach(config => {
                     const btn = document.createElement('button');
                     btn.className = `toolbar-btn ${config.color} draw-btn`;
                     btn.textContent = config.text;
                     if (config.type) {
                         btn.dataset.drawType = config.type;
                     }
-                    // 统一的事件处理
+
                     const handleClick = () => {
                         config.action();
                         this.#updateButtonStates(btn);
                     };
                     
-                    
-                    // 桌面端和移动端事件
                     btn.onclick = handleClick;
                     btn.ontouchstart = (e) => {
                         e.preventDefault();
@@ -1340,6 +1355,7 @@
                     toolbar.appendChild(btn);
                 });
             }
+            
             #updateButtonStates(activeBtn) {
                 // 移除所有绘图按钮的高亮状态
                 document.querySelectorAll('.draw-btn').forEach(btn => {
@@ -2031,8 +2047,8 @@
     
     
 <!--
- 升级： 
- let panelCloseBtn can close propertyPanel
+ 升级：  
+ 用面向对象方法重构代码
  return all new code
 -->
  
