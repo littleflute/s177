@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <style>
+        .control-point {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #ff0000;
+            border-radius: 50%;
+            cursor: pointer;
+        }
         .toolbar-btn.draw-active {
             background-color: #FF9800 !important;
             border: 2px solid #FF5722 !important;
@@ -461,6 +469,7 @@
 
         class C4XDR177I14 {
             constructor() {
+                this.adjustingControl = null;
                 
                 this.selectedShapeIndex = -1;
                 this.isDragging = false;
@@ -543,6 +552,18 @@
                 const index = this.getShapeAtPosition(pos.x, pos.y);
                 if (index !== -1) {
                     this.selectedShapeIndex = index;
+                    const shape = this.drawHistory[index];
+
+                    // 检查是否点击了控制点
+                    const control = this.getControlPointAt(pos.x, pos.y, shape);
+                    if (control) {
+                        this.adjustingControl = control;
+                        this.isDragging = true;
+                        this.dragStartX = pos.x;
+                        this.dragStartY = pos.y;
+                        return;
+                    }
+
                     this.isDragging = true;
                     this.dragStartX = pos.x;
                     this.dragStartY = pos.y;
@@ -557,7 +578,61 @@
                     this.handleCanvasClick(pos);
                 }
             }
+
+            getControlPointAt(x, y, shape) {
+                const controlSize = 10;
+                switch(shape.type) {
+                    case 'circle':
+                        const controlX = shape.x + shape.radius;
+                        const controlY = shape.y;
+                        if (Math.hypot(x - controlX, y - controlY) < controlSize) return 'radius';
+                        break;
+                    case 'rect':
+                        const rectControlX = shape.x + shape.width;
+                        const rectControlY = shape.y + shape.height;
+                        if (Math.abs(x - rectControlX) < controlSize && Math.abs(y - rectControlY) < controlSize) return 'size';
+                        break;
+                    case 'triangle':
+                        for (let i = 0; i < shape.points.length; i++) {
+                            const point = shape.points[i];
+                            if (Math.hypot(x - point.x, y - point.y) < controlSize) return `point${i}`;
+                        }
+                        break;
+                }
+                return null;
+            }
+
             handleCanvasMouseMove(pos) {
+                if (this.isDragging && this.adjustingControl) {
+                    const shape = this.drawHistory[this.selectedShapeIndex];
+                    const dx = pos.x - this.dragStartX;
+                    const dy = pos.y - this.dragStartY;
+
+                    switch(shape.type) {
+                        case 'circle':
+                            if (this.adjustingControl === 'radius') {
+                                shape.radius = Math.max(10, pos.x - shape.x);
+                            }
+                            break;
+                        case 'rect':
+                            if (this.adjustingControl === 'size') {
+                                shape.width = Math.max(10, pos.x - shape.x);
+                                shape.height = Math.max(10, pos.y - shape.y);
+                            }
+                            break;
+                        case 'triangle':
+                            if (this.adjustingControl.startsWith('point')) {
+                                const index = parseInt(this.adjustingControl.replace('point', ''));
+                                shape.points[index].x = pos.x;
+                                shape.points[index].y = pos.y;
+                            }
+                            break;
+                    }
+                    this.redrawCanvas();
+                    this.dragStartX = pos.x;
+                    this.dragStartY = pos.y;
+                }
+
                 if (this.isDragging && this.selectedShapeIndex !== -1) {
                     const shape = this.drawHistory[this.selectedShapeIndex];
                     const dx = pos.x - this.dragStartX;
@@ -588,6 +663,7 @@
 
             handleCanvasMouseUp() {
                 this.isDragging = false;
+                this.adjustingControl = null;
                 this.selectedShapeIndex = -1;
                 this.redrawCanvas();
             }
@@ -677,7 +753,34 @@
                                 break;
                         }
                     }
+                    if (index === this.selectedShapeIndex) {
+                        this.ctx.fillStyle = '#FF0000';
+                        switch(shape.type) {
+                            case 'circle':
+                                this.ctx.beginPath();
+                                this.ctx.arc(shape.x + shape.radius, shape.y, 5, 0, Math.PI*2);
+                                this.ctx.fill();
+                                break;
+                            case 'rect':
+                                this.ctx.fillRect(
+                                    shape.x + shape.width - 5,
+                                    shape.y + shape.height - 5,
+                                    10, 10
+                                );
+                                break;
+                            case 'triangle':
+                                shape.points.forEach(point => {
+                                    this.ctx.beginPath();
+                                    this.ctx.arc(point.x, point.y, 5, 0, Math.PI*2);
+                                    this.ctx.fill();
+                                });
+                                break;
+                        }
+                    }
+
                 });
+
+                
             }
 
 
@@ -1552,7 +1655,7 @@
     
 <!--
  升级：
- 已经画的图行可移动
+ 没有机会对已经画的图形改大小
  return all new code
 -->
  
