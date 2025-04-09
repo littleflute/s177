@@ -18,6 +18,8 @@
             display: none;
             min-width: 250px;
             box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            left: 20px;
+            top: 50%; 
         }
         .property_panel h3 {
             margin: 0 0 10px 0;
@@ -604,37 +606,49 @@
             }
             startPanelDrag(startX, startY) {
                 this.isDraggingPanel = true;
+                // 确保面板定位方式正确
+                this.propertyPanel.style.transform = 'none';
                 const rect = this.propertyPanel.getBoundingClientRect();
+                
+                // 精确计算偏移量
                 this.panelOffsetX = startX - rect.left;
                 this.panelOffsetY = startY - rect.top;
 
-                const onMouseMove = (e) => {
+                // 添加边界限制
+                const panelWidth = rect.width;
+                const panelHeight = rect.height;
+                this.maxX = window.innerWidth - panelWidth;
+                this.maxY = window.innerHeight - panelHeight;
+
+                // 优化事件处理
+                const moveHandler = (e) => {
                     if (!this.isDraggingPanel) return;
-                    this.updatePanelPosition(e.clientX, e.clientY);
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    
+                    // 计算新位置并限制边界
+                    let newX = clientX - this.panelOffsetX;
+                    let newY = clientY - this.panelOffsetY;
+                    
+                    newX = Math.max(0, Math.min(newX, this.maxX));
+                    newY = Math.max(0, Math.min(newY, this.maxY));
+
+                    this.propertyPanel.style.left = `${newX}px`;
+                    this.propertyPanel.style.top = `${newY}px`;
                 };
 
-                const onTouchMove = (e) => {
-                    if (!this.isDraggingPanel) return;
-                    const touch = e.touches[0];
-                    this.updatePanelPosition(touch.clientX, touch.clientY);
-                };
-
-                const onMouseUp = () => {
+                const endHandler = () => {
                     this.isDraggingPanel = false;
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
+                    document.removeEventListener('mousemove', moveHandler);
+                    document.removeEventListener('touchmove', moveHandler);
+                    document.removeEventListener('mouseup', endHandler);
+                    document.removeEventListener('touchend', endHandler);
                 };
 
-                const onTouchEnd = () => {
-                    this.isDraggingPanel = false;
-                    document.removeEventListener('touchmove', onTouchMove);
-                    document.removeEventListener('touchend', onTouchEnd);
-                };
-
-                document.addEventListener('mousemove', onMouseMove);
-                document.addEventListener('mouseup', onMouseUp);
-                document.addEventListener('touchmove', onTouchMove);
-                document.addEventListener('touchend', onTouchEnd);
+                document.addEventListener('mousemove', moveHandler);
+                document.addEventListener('touchmove', moveHandler);
+                document.addEventListener('mouseup', endHandler);
+                document.addEventListener('touchend', endHandler);
             }
             updatePanelPosition(x, y) {
                 const newX = x - this.panelOffsetX;
@@ -773,13 +787,14 @@
             }
 
             showPropertyPanel() {
-                // 初始化位置（首次显示时在右侧中间）
+                // 修改初始化定位逻辑
                 if (!this.propertyPanel.style.left || this.propertyPanel.style.left === 'auto') {
-                    const rect = this.propertyPanel.getBoundingClientRect();
-                    const left = window.innerWidth - rect.width - 20;
-                    const top = (window.innerHeight - rect.height) / 2;
+                    const panelHeight = this.propertyPanel.offsetHeight;
+                    const left = 20;
+                    const top = (window.innerHeight - panelHeight) / 2;
                     this.propertyPanel.style.left = `${left}px`;
                     this.propertyPanel.style.top = `${top}px`;
+                    this.propertyPanel.style.transform = 'none'; // 确保没有transform影响
                 }
                 this.propertyPanel.style.display = 'block';
                 this.updatePropertyForm();
@@ -2015,7 +2030,7 @@
     
 <!--
  升级：
- let property panel be movable
+  propertyPanel  移动时与鼠标不同步
  return all new code
 -->
  
