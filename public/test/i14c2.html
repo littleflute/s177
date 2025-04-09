@@ -1,0 +1,788 @@
+<!--
+i14c2.html
+-->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <style>
+        
+        /* 新增属性面板样式 */
+        .property_panel {
+            position: fixed;
+            background: #333;
+            color: white;
+            padding: 0;
+            border: 1px solid #4CAF50;
+            border-radius: 5px;
+            z-index: 1005;
+            display: none;
+            min-width: 250px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            left: 20px;
+            top: 50%; 
+        }
+        .property_panel h3 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+        }
+
+        .property-header {
+            padding: 10px;
+            cursor: move;
+            background: #4CAF50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .panel-close {
+            cursor: pointer;
+            font-size: 20px;
+            padding: 0 5px;
+        }
+
+        .panel-close:hover {
+            color: #ff4444;
+        }
+        .property_panel label {
+            display: block;
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+
+        .property_panel input,
+        .property_panel select {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+            background: #555;
+            color: white;
+            border: 1px solid #666;
+            border-radius: 3px;
+        }
+
+        .property_panel input[type="color"] {
+            height: 30px;
+            padding: 2px;
+        }
+
+         .control-point {
+            width: 12px;
+            height: 12px;
+            background: #00ff00;
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+        .selected-shape {
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 0.5; }
+            100% { opacity: 0.8; }
+        }
+        .toolbar-btn.draw-active {
+            background-color: #FF9800 !important;
+            border: 2px solid #FF5722 !important;
+            box-shadow: 0 0 8px rgba(255, 87, 34, 0.6);
+        }
+        .purple-btn {
+            background-color: #9C27B0;
+        }
+
+        /* 添加按钮悬停动画 */
+        .toolbar-btn {
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .toolbar-btn:hover {
+            transform: scale(1.1);
+            opacity: 0.9;
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 480px) {
+            .toolbar-btn {
+                padding: 6px 12px;
+                font-size: 14px;
+            }
+        }
+        .bottom_toolbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #333;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 33;
+        }
+
+        .toolbar-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .yellow-btn {
+            background-color: #ffeb3b;
+            color: black;
+        }
+
+        .green-btn {
+            background-color: #4CAF50;
+        }
+
+        .red-btn {
+            background-color: #ff4444;
+        }
+        .blue-btn {
+            background-color: #2196F3;
+        }
+
+        #mainCanvas {
+            position: fixed;
+            top: 50;
+            left: 50;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            background: transparent; /* 改为透明 */
+        } 
+       .mobile_container {
+            position: relative;
+            z-index: 11;
+            max-width: 480px;
+            margin: auto;
+            background-color: transparent; /* 移除原背景色 */
+            min-height: 100vh;
+            color: white;
+        }
+       .topnav {
+            background-color: #333;
+            position: relative;
+        }
+
+       .topnav #myLinks {
+            display: none;
+        }
+
+       .topnav a {
+            color: white;
+            padding: 14px 16px;
+            text-decoration: none;
+            display: block;
+        }
+
+       .topnav a.icon {
+            background: black;
+            position: absolute;
+            right: 0;
+            top: 0;
+        }
+
+       .active {
+            background-color: #4CAF50;
+        }
+
+       .movable-modal {
+            display: none;
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            border: 1px solid #4CAF50;
+            border-radius: 5px;
+            z-index: 1000;
+            width: 300px;
+            user-select: none;
+        }
+
+       .movable-modal-header {
+            padding: 10px;
+            cursor: move;
+            background: #4CAF50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 4px 4px 0 0;
+        }
+
+       .movable-modal-content {
+            padding: 15px;
+        }
+
+       .modal-close {
+            cursor: pointer;
+            font-size: 20px;
+            padding: 0 5px;
+        }
+
+       .modal-close:hover {
+            color: #ff4444;
+        }
+
+       .issue_toolbar {
+            display: flex;
+            overflow-x: auto;
+            gap: 5px;
+            padding: 10px 0;
+            margin: 10px 0;
+            order: -1;
+        }
+
+       .issue_btn {
+            padding: 5px 10px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+       .issue_btn:hover {
+            background: #45a049;
+        }
+
+        /* 新增高亮样式 */
+       .issue_btn.active {
+            background: #ff9800;
+            border: 2px solid #ff5722;
+        }
+
+        /* 新增编辑窗口样式 */
+       .edit-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #333;
+            color: white;
+            border: 1px solid #4CAF50;
+            border-radius: 5px;
+            z-index: 1001;
+            width: 300px;
+            padding: 15px;
+        }
+
+       .edit-modal label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+       .edit-modal input,
+       .edit-modal textarea {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+
+       .edit-modal button {
+            padding: 5px 10px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+        }
+
+       .edit-modal button:hover {
+            background: #45a049;
+        }
+
+        /* 新增 blc 窗口样式 */
+       .blc_window {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #333;
+            color: white;
+            border: 1px solid #4CAF50;
+            border-radius: 5px;
+            z-index: 1002;
+            width: 300px;
+            padding: 15px;
+        }
+
+        /* 新增 appBtn 和 blcBtn 颜色样式 */
+       .app-btn {
+            background-color: #2196F3;
+        }
+
+       .app-btn:hover {
+            background-color: #1976D2;
+        }
+
+       .blc-btn {
+            background-color: #FF9800;
+        }
+
+       .blc-btn:hover {
+            background-color: #F57C00;
+        }
+
+        /* 新增评论编辑窗口样式 */
+       .comment-edit-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #333;
+            color: white;
+            border: 1px solid #4CAF50;
+            border-radius: 5px;
+            z-index: 1003;
+            width: 300px;
+            padding: 15px;
+        }
+
+       .comment-edit-modal label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+       .comment-edit-modal textarea {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+
+       .comment-edit-modal button {
+            padding: 5px 10px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+        }
+
+       .comment-edit-modal button:hover {
+            background: #45a049;
+        }
+
+        /* 新增创建议题窗口样式 */
+       .new-issue-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #333;
+            color: white;
+            border: 1px solid #4CAF50;
+            border-radius: 5px;
+            z-index: 1004;
+            width: 300px;
+            padding: 15px;
+        }
+
+       .new-issue-modal label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+       .new-issue-modal input,
+       .new-issue-modal textarea {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+
+       .new-issue-modal button {
+            padding: 5px 10px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+        }
+
+       .new-issue-modal button:hover {
+            background: #45a049;
+        }
+        .new-comment-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #333;
+            color: white;
+            border: 1px solid #4CAF50;
+            border-radius: 5px;
+            z-index: 1005;
+            width: 300px;
+            padding: 15px;
+        }
+
+       .new-comment-modal label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+       .new-comment-modal textarea {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+            height: 150px;
+        }
+
+       .new-comment-modal button {
+            padding: 5px 10px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+        }
+    </style> 
+</head>
+<body>
+    <!-- 新增属性面板 -->
+    <div id="property_panel" class="property_panel">
+        <div class="property-header">
+            <h3>属性</h3>
+            <span class="panel-close">×</span>
+        </div>
+        <div id="property-form" class="property-content"></div>
+    </div>
+    <!-- 新增底部工具条 -->
+    <div class="bottom_toolbar">
+        <button id="id_4_left_btn" class="toolbar-btn blue-btn" onclick="appCore.setCanvasColor('#2196F3')">Blue</button>
+        <button id="id_4_right_btn" class="toolbar-btn red-btn" onclick="appCore.setCanvasColor('#ff4444')">Red</button>
+        <button id="id_4_center_btn" class="toolbar-btn yellow-btn" onclick="appCore.setCanvasColor('#ffeb3b')">Yellow</button>
+        <button id="id_4_left_btn" class="toolbar-btn blue-btn" onclick="appCore.setCanvasColor('#2196F3')">Blue</button>
+    </div>
+    <div class="mobile_container">
+        <div class="topnav">
+            <div id="id_4_info">
+                <a href="#home" class="active" id="id_4_toggleUI" onclick="appCore.toggleUI();" style="border:1px brown solid;">i14 v1.114</a>
+            </div>
+
+            <div id="myLinks">
+                <a href="https://littleflute.github.io/s177/" target="_blank">s177 Home</a>
+                <a href="https://github.com/littleflute/s177" target="_blank">s177 Repo</a>
+                <a href="i14c1.html" target="_blank">i14c1.html</a>
+            </div>
+            <a href="javascript:void(0);" class="icon" onclick="toggleMenu()">
+                <i class="fa fa-bars"></i>
+            </a>
+        </div>
+            
+        <canvas id="mainCanvas"></canvas>
+    </div>
+
+    <!-- 新增编辑窗口 -->
+    <div id="edit-modal" class="edit-modal">
+        <h2>Edit Issue</h2>
+        <label for="edit-title">Title:</label>
+        <input type="text" id="edit-title">
+        <label for="edit-body">Body:</label>
+        <textarea id="edit-body"></textarea>
+        <button onclick="appCore.updateIssue()">Save Changes</button>
+        <button onclick="appCore.closeEditModal()">Cancel</button>
+    </div>
+
+    <!-- 新增 blc 窗口 -->
+    <div id="blc_window" class="blc_window">
+        <h2>BLc Window</h2>
+        <p id="id_parse_body_as_class">parse issue.body as javascript class. show class name here</p>
+        <ul id="id_parse_member_functions"></ul>
+        <button onclick="appCore.closeBlcWindow()">Close</button>
+    </div>
+
+    <!-- 新增评论编辑窗口 -->
+    <div id="comment-edit-modal" class="comment-edit-modal">
+        <h2>Edit Comment</h2>
+        <label for="comment-edit-body">Comment:</label>
+        <textarea id="comment-edit-body"></textarea>
+        <button onclick="appCore.saveCommentEdit()">Save Changes</button>
+        <button onclick="appCore.closeCommentEditModal()">Cancel</button>
+    </div>
+
+    <!-- 新增创建议题窗口 -->
+    <div id="new-issue-modal" class="new-issue-modal">
+        <h2>New Issue</h2>
+        <label for="new-issue-title">Title:</label>
+        <input type="text" id="new-issue-title">
+        <label for="id_new_issue_body">Body:</label>
+        <textarea id="id_new_issue_body"></textarea>
+        <button onclick="appCore.createNewIssue()">Create Issue</button>
+        <button onclick="appCore.closeNewIssueModal()">Cancel</button>
+        <button id="id_4_run_js_issue_body" onclick="appCore.runJS('id_new_issue_body')" style="float:right;">run</button>
+    </div>
+
+    <div id="new-comment-modal" class="new-comment-modal">
+        <h2>New Comment</h2>
+        <label for="new-comment-body">Comment:</label>
+        <textarea id="new-comment-body"></textarea>
+        <button onclick="appCore.saveNewComment()">Submit</button>
+        <button onclick="appCore.closeNewCommentModal()">Cancel</button>
+        <button onclick="appCore.runJS('new-comment-body')" style="float:right;">Run</button>
+    </div>
+
+
+<script>
+class CanvasManager {
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.shapes = [];
+        this.selectedIndex = -1;
+        this.isDragging = false;
+        this.currentType = null;
+        this.controlSize = 12;
+        
+        this.initEvents();
+        this.resizeCanvas();
+        window.addEventListener('resize', () => this.resizeCanvas());
+    }
+
+    initEvents() {
+        const getPos = e => {
+            const rect = this.canvas.getBoundingClientRect();
+            return {
+                x: (e.touches ? e.touches[0].clientX : e.clientX) - rect.left,
+                y: (e.touches ? e.touches[0].clientY : e.clientY) - rect.top
+            };
+        };
+
+        const eventHandlers = {
+            start: e => {
+                const pos = getPos(e);
+                const shapeIdx = this.findShape(pos.x, pos.y);
+                
+                if (shapeIdx !== -1) {
+                    this.handleSelect(shapeIdx, pos);
+                } else if (this.currentType) {
+                    this.createShape(pos);
+                }
+            },
+            move: e => {
+                if (!this.isDragging) return;
+                const pos = getPos(e);
+                this.updateShape(pos);
+            },
+            end: () => {
+                this.isDragging = false;
+                this.adjustingControl = null;
+            }
+        };
+
+        this.canvas.addEventListener('mousedown', eventHandlers.start);
+        this.canvas.addEventListener('touchstart', eventHandlers.start);
+        document.addEventListener('mousemove', eventHandlers.move);
+        document.addEventListener('touchmove', eventHandlers.move);
+        document.addEventListener('mouseup', eventHandlers.end);
+        document.addEventListener('touchend', eventHandlers.end);
+    }
+
+    createShape(pos) {
+        const types = {
+            circle: () => ({
+                type: 'circle',
+                x: pos.x, y: pos.y,
+                radius: Math.random() * 50 + 20,
+                color: this.randomColor()
+            }),
+            rect: () => ({
+                type: 'rect',
+                x: pos.x - 50, y: pos.y - 50,
+                width: 100, height: 100,
+                color: this.randomColor()
+            }),
+            triangle: () => ({
+                type: 'triangle',
+                points: [
+                    {x: pos.x, y: pos.y - 43},
+                    {x: pos.x - 50, y: pos.y + 43},
+                    {x: pos.x + 50, y: pos.y + 43}
+                ],
+                color: this.randomColor()
+            })
+        };
+        
+        this.shapes.push(types[this.currentType]());
+        this.redraw();
+    }
+
+    handleSelect(index, pos) {
+        this.selectedIndex = index;
+        const shape = this.shapes[index];
+        this.adjustingControl = this.getControlPoint(pos, shape);
+        
+        if (this.adjustingControl) {
+            this.isDragging = true;
+        } else {
+            const selected = this.shapes.splice(index, 1)[0];
+            this.shapes.push(selected);
+            this.selectedIndex = this.shapes.length - 1;
+        }
+        this.redraw();
+    }
+
+    updateShape(pos) {
+        const shape = this.shapes[this.selectedIndex];
+        // 形状更新逻辑...
+        this.redraw();
+    }
+
+    redraw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.shapes.forEach((shape, index) => {
+            // 绘制逻辑...
+        });
+    }
+
+    // 其他辅助方法...
+}
+
+class PropertyPanel {
+    constructor(panelId) {
+        this.panel = document.getElementById(panelId);
+        this.header = this.panel.querySelector('.property-header');
+        this.form = this.panel.querySelector('#property-form');
+        this.isVisible = false;
+        
+        this.initDrag();
+        this.panel.querySelector('.panel-close').addEventListener('click', () => this.toggle());
+    }
+
+    toggle() {
+        this.isVisible = !this.isVisible;
+        this.panel.style.display = this.isVisible ? 'block' : 'none';
+    }
+
+    update(shape) {
+        this.form.innerHTML = '';
+        // 根据形状类型生成表单控件...
+    }
+
+    initDrag() {
+        let isDragging = false;
+        this.header.addEventListener('mousedown', () => isDragging = true);
+        
+        document.addEventListener('mousemove', e => {
+            if (!isDragging) return;
+            const rect = this.panel.getBoundingClientRect();
+            this.panel.style.left = `${e.clientX - rect.width/2}px`;
+            this.panel.style.top = `${e.clientY - 20}px`;
+        });
+
+        document.addEventListener('mouseup', () => isDragging = false);
+    }
+}
+
+class GitHubManager {
+    constructor(repo, token) {
+        this.repo = repo;
+        this.token = token;
+        this.issues = [];
+        this.currentIssue = null;
+    }
+
+    async fetchIssues() {
+        const response = await fetch(`https://api.github.com/repos/${this.repo}/issues`, {
+            headers: {Authorization: `token ${this.token}`}
+        });
+        this.issues = await response.json();
+        return this.issues;
+    }
+
+    async createIssue(title, body) {
+        const response = await fetch(`https://api.github.com/repos/${this.repo}/issues`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `token ${this.token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({title, body})
+        });
+        return response.json();
+    }
+
+    // 其他GitHub操作方法...
+}
+
+class AppCore {
+    constructor() {
+        this.canvasManager = new CanvasManager('mainCanvas');
+        this.propertyPanel = new PropertyPanel('property_panel');
+        this.ghManager = new GitHubManager('littleflute/s177', 'ghp_2BF...');
+        
+        this.initUI();
+        this.loadIssues();
+    }
+
+    initUI() {
+        document.querySelectorAll('.toolbar-btn').forEach(btn => {
+            btn.addEventListener('click', e => this.handleToolbarClick(e.target));
+        });
+        
+        document.getElementById('id_4_toggleUI').addEventListener('click', () => {
+            document.querySelector('.movable-modal').style.display = 'block';
+        });
+    }
+
+    async loadIssues() {
+        await this.ghManager.fetchIssues();
+        this.renderIssueButtons();
+    }
+
+    renderIssueButtons() {
+        const container = document.getElementById('issue_toolbar');
+        this.ghManager.issues.forEach(issue => {
+            const btn = document.createElement('button');
+            btn.className = 'issue_btn';
+            btn.textContent = `#${issue.number}`;
+            btn.addEventListener('click', () => this.selectIssue(issue));
+            container.appendChild(btn);
+        });
+    }
+
+    selectIssue(issue) {
+        this.ghManager.currentIssue = issue;
+        // 更新界面显示...
+    }
+
+    handleToolbarClick(button) {
+        const actions = {
+            'blue-btn': () => this.canvasManager.setColor('#2196F3'),
+            'red-btn': () => this.canvasManager.setColor('#ff4444'),
+            'property-btn': () => this.propertyPanel.toggle()
+            // 其他按钮处理...
+        };
+        
+        const action = actions[button.className.split(' ')[1]];
+        if (action) action();
+    }
+}
+
+// 初始化应用
+const app = new AppCore();
+</script>
+</body>
+</html>
+
+<!--
+i4c2.html 重构自 i14.html
+请帮我返回完整的CanvasManager
+
+-->
