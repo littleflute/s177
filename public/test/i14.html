@@ -545,6 +545,7 @@
 
         class C4XDR177I14 {
             constructor() {
+                this.isPropertyPanelVisible = false;
                 // 属性面板相关元素
                 this.propertyPanel = document.getElementById('property_panel');
                 this.propertyHeader = this.propertyPanel.querySelector('.property-header');
@@ -665,18 +666,28 @@
                 if (this.selectedShapeIndex === -1) return;
                 this.drawHistory.splice(this.selectedShapeIndex, 1);
                 this.selectedShapeIndex = -1;
-                this.hidePropertyPanel();
                 this.redrawCanvas();
+                
+                // 删除后自动隐藏面板
+                if (this.drawHistory.length === 0) {
+                    this.isPropertyPanelVisible = false;
+                    this.propertyPanel.style.display = 'none';
+                }
             }
             togglePropertyPanel() {
-                if (this.propertyPanel.style.display === 'block') {
-                    this.hidePropertyPanel();
-                } else {
-                    this.showPropertyPanel();
+                this.isPropertyPanelVisible = !this.isPropertyPanelVisible;
+                this.propertyPanel.style.display = this.isPropertyPanelVisible ? 'block' : 'none';
+                
+                if (this.isPropertyPanelVisible) {
                     if (this.selectedShapeIndex === -1 && this.drawHistory.length > 0) {
                         this.selectedShapeIndex = this.drawHistory.length - 1;
                     }
                     this.updatePropertyForm();
+                    const panelHeight = this.propertyPanel.offsetHeight;
+                    const left = 20;
+                    const top = (window.innerHeight - panelHeight) / 2;
+                    this.propertyPanel.style.left = `${left}px`;
+                    this.propertyPanel.style.top = `${top}px`;
                 }
             }
 
@@ -739,8 +750,7 @@
                 let control = null;
 
                 // 如果未选中形状，检查所有形状的控制点
-                if (shapeIndex === -1) {
-                    this.showPropertyPanel();
+                if (shapeIndex === -1) { 
                     for (let i = this.drawHistory.length - 1; i >= 0; i--) {
                         const shape = this.drawHistory[i];
                         control = this.getControlPointAt(pos.x, pos.y, shape);
@@ -787,6 +797,7 @@
             }
 
             showPropertyPanel() {
+                if (!this.isPropertyPanelVisible) return;
                 // 修改初始化定位逻辑
                 if (!this.propertyPanel.style.left || this.propertyPanel.style.left === 'auto') {
                     const panelHeight = this.propertyPanel.offsetHeight;
@@ -800,6 +811,7 @@
                 this.updatePropertyForm();
             }
             hidePropertyPanel() {
+                this.isPropertyPanelVisible = false;
                 this.propertyPanel.style.display = 'none';
             }
             updatePropertyForm() {
@@ -1132,13 +1144,7 @@
             }
             // 处理画布点击事件
             handleCanvasClick(pos) {
-                if (!this.drawType) return;
-                const wasVisible = this.propertyPanel.style.display === 'block';
-
-                // 新增：点击绘制新图形时清除选中状态
-                this.selectedShapeIndex = -1;
-                this.hidePropertyPanel();
-                
+                if (!this.drawType) return; 
                 const now = Date.now();
                 if (now - this.lastDrawTime < 300) return;
                 this.lastDrawTime = now;
@@ -1155,11 +1161,7 @@
                         this.drawRandomTriangle(pos.x, pos.y);
                         break;
                 }
-                this.redrawCanvas(); // 新增：绘制后刷新画布
-                if (wasVisible) {
-                    this.selectedShapeIndex = this.drawHistory.length - 1;
-                    this.showPropertyPanel();
-                }
+                this.redrawCanvas();  
             }
             drawRandomTriangle(x, y) {
                 const color = this.getRandomColor();
@@ -2029,8 +2031,8 @@
     
     
 <!--
- 升级：
-  propertyPanel  移动时与鼠标不同步
+ 升级： 
+ let panelCloseBtn can close propertyPanel
  return all new code
 -->
  
