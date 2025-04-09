@@ -187,6 +187,46 @@
        .blc-btn:hover {
             background-color: #F57C00;
         }
+
+        /* 新增评论编辑窗口样式 */
+       .comment-edit-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #333;
+            color: white;
+            border: 1px solid #4CAF50;
+            border-radius: 5px;
+            z-index: 1003;
+            width: 300px;
+            padding: 15px;
+        }
+
+       .comment-edit-modal label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+       .comment-edit-modal textarea {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+
+       .comment-edit-modal button {
+            padding: 5px 10px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+        }
+
+       .comment-edit-modal button:hover {
+            background: #45a049;
+        }
     </style>
 </head>
 
@@ -226,6 +266,15 @@
         <button onclick="appCore.closeBlcWindow()">Close</button>
     </div>
 
+    <!-- 新增评论编辑窗口 -->
+    <div id="comment-edit-modal" class="comment-edit-modal">
+        <h2>Edit Comment</h2>
+        <label for="comment-edit-body">Comment:</label>
+        <textarea id="comment-edit-body"></textarea>
+        <button onclick="appCore.saveCommentEdit()">Save Changes</button>
+        <button onclick="appCore.closeCommentEditModal()">Cancel</button>
+    </div>
+
     <script>
         function toggleMenu() {
             const menu = document.getElementById('myLinks');
@@ -243,6 +292,8 @@
                 this.issuesLoaded = false;
                 this.editModal = document.getElementById('edit-modal');
                 this.blcWindow = document.getElementById('blc_window');
+                this.commentEditModal = document.getElementById('comment-edit-modal');
+                this.currentCommentId = null;
                 this.#injectStyles();
             }
 
@@ -370,6 +421,41 @@
                    .blc-btn:hover {
                         background-color: #F57C00;
                     }
+                    /* 新增评论编辑窗口样式 */
+                   .comment-edit-modal {
+                        display: none;
+                        position: fixed;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        background: #333;
+                        color: white;
+                        border: 1px solid #4CAF50;
+                        border-radius: 5px;
+                        z-index: 1003;
+                        width: 300px;
+                        padding: 15px;
+                    }
+                   .comment-edit-modal label {
+                        display: block;
+                        margin-bottom: 5px;
+                    }
+                   .comment-edit-modal textarea {
+                        width: 100%;
+                        padding: 5px;
+                        margin-bottom: 10px;
+                    }
+                   .comment-edit-modal button {
+                        padding: 5px 10px;
+                        background: #4CAF50;
+                        border: none;
+                        border-radius: 3px;
+                        color: white;
+                        cursor: pointer;
+                    }
+                   .comment-edit-modal button:hover {
+                        background: #45a049;
+                    }
                 `;
                 document.head.appendChild(style);
             }
@@ -443,7 +529,7 @@
                                     break;
                                 case "edit":
                                     btn.onclick = () => {
-                                        //code101: show a window to edit comment.
+                                        this.openCommentEditModal(comment.id, comment.body);
                                     };
                                     break;
                                 case "run":
@@ -726,6 +812,29 @@
 
             closeBlcWindow() {
                 this.blcWindow.style.display = 'none';
+            }
+
+            openCommentEditModal(commentId, commentBody) {
+                this.currentCommentId = commentId;
+                document.getElementById('comment-edit-body').value = commentBody;
+                this.commentEditModal.style.display = 'block';
+            }
+
+            closeCommentEditModal() {
+                this.commentEditModal.style.display = 'none';
+            }
+
+            async saveCommentEdit() {
+                const newCommentBody = document.getElementById('comment-edit-body').value;
+                try {
+                    await this.#apiRequest('PATCH', `issues/comments/${this.currentCommentId}`, { body: newCommentBody });
+                    alert('Comment updated successfully!');
+                    this.closeCommentEditModal();
+                    this.getComments('id_4_comments_current_issue', this.currentIssue);
+                } catch (error) {
+                    console.error('Failed to update comment:', error);
+                    alert('Error updating comment: ' + error.message);
+                }
             }
         }
 
