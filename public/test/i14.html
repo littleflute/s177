@@ -5,20 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <style>
+        .bottom-toolbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #333;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 1000;
+        }
+
+        .toolbar-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .green-btn {
+            background-color: #4CAF50;
+        }
+
+        .red-btn {
+            background-color: #ff4444;
+        }
+        .blue-btn {
+            background-color: #2196F3;
+        }
+
+        #mainCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
         body {
             font-family: Arial, Helvetica, sans-serif;
             margin: 0;
-            background: #333;
-        }
-
+            background: transparent; /* 改为透明 */
+        } 
        .mobile-container {
+            position: relative;
+            z-index: 1;
             max-width: 480px;
             margin: auto;
-            background-color: #555;
+            background-color: transparent; /* 移除原背景色 */
             min-height: 100vh;
             color: white;
         }
-
        .topnav {
             background-color: #333;
             position: relative;
@@ -227,19 +267,102 @@
        .comment-edit-modal button:hover {
             background: #45a049;
         }
+
+        /* 新增创建议题窗口样式 */
+       .new-issue-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #333;
+            color: white;
+            border: 1px solid #4CAF50;
+            border-radius: 5px;
+            z-index: 1004;
+            width: 300px;
+            padding: 15px;
+        }
+
+       .new-issue-modal label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+       .new-issue-modal input,
+       .new-issue-modal textarea {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+
+       .new-issue-modal button {
+            padding: 5px 10px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+        }
+
+       .new-issue-modal button:hover {
+            background: #45a049;
+        }
+        .new-comment-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #333;
+            color: white;
+            border: 1px solid #4CAF50;
+            border-radius: 5px;
+            z-index: 1005;
+            width: 300px;
+            padding: 15px;
+        }
+
+       .new-comment-modal label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+       .new-comment-modal textarea {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+            height: 150px;
+        }
+
+       .new-comment-modal button {
+            padding: 5px 10px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+        }
     </style>
 </head>
 
 <body>
+    <!-- 新增底部工具条 -->
+    <div class="bottom-toolbar">
+        <button id="id_4_left_btn" class="toolbar-btn blue-btn" onclick="appCore.setCanvasColor('#2196F3')">Blue Background</button>
+        <button id="id_4_right_btn" class="toolbar-btn red-btn" onclick="appCore.setCanvasColor('#ff4444')">Red Background</button>
+    </div>
+    <canvas id="mainCanvas"></canvas>
     <div class="mobile-container">
         <div class="topnav">
             <div id="id_4_info">
-                <a href="#home" class="active" id="id_4_toggleUI" onclick="appCore.toggleUI();" style="border:1px brown solid;">i14 v1.113</a>
+                <a href="#home" class="active" id="id_4_toggleUI" onclick="appCore.toggleUI();" style="border:1px brown solid;">i14 v1.114</a>
             </div>
 
             <div id="myLinks">
                 <a href="https://littleflute.github.io/s177/" target="_blank">s177 Home</a>
                 <a href="https://github.com/littleflute/s177" target="_blank">s177 Repo</a>
+                <a href="i14c1.html" target="_blank">i14c1.html</a>
             </div>
             <a href="javascript:void(0);" class="icon" onclick="toggleMenu()">
                 <i class="fa fa-bars"></i>
@@ -275,6 +398,27 @@
         <button onclick="appCore.closeCommentEditModal()">Cancel</button>
     </div>
 
+    <!-- 新增创建议题窗口 -->
+    <div id="new-issue-modal" class="new-issue-modal">
+        <h2>New Issue</h2>
+        <label for="new-issue-title">Title:</label>
+        <input type="text" id="new-issue-title">
+        <label for="id_new_issue_body">Body:</label>
+        <textarea id="id_new_issue_body"></textarea>
+        <button onclick="appCore.createNewIssue()">Create Issue</button>
+        <button onclick="appCore.closeNewIssueModal()">Cancel</button>
+        <button id="id_4_run_js_issue_body" onclick="appCore.runJS('id_new_issue_body')" style="float:right;">run</button>
+    </div>
+
+    <div id="new-comment-modal" class="new-comment-modal">
+        <h2>New Comment</h2>
+        <label for="new-comment-body">Comment:</label>
+        <textarea id="new-comment-body"></textarea>
+        <button onclick="appCore.saveNewComment()">Submit</button>
+        <button onclick="appCore.closeNewCommentModal()">Cancel</button>
+        <button onclick="appCore.runJS('new-comment-body')" style="float:right;">Run</button>
+    </div>
+
     <script>
         function toggleMenu() {
             const menu = document.getElementById('myLinks');
@@ -283,6 +427,8 @@
 
         class C4XDR177I14 {
             constructor() {
+                this.backgroundColor = '#333'; // 初始化背景色
+                this.initializeCanvas();
                 this.currentRepo = 's177';
                 this.currentIssue = 0;
                 this.modal = null;
@@ -293,8 +439,40 @@
                 this.editModal = document.getElementById('edit-modal');
                 this.blcWindow = document.getElementById('blc_window');
                 this.commentEditModal = document.getElementById('comment-edit-modal');
+                this.newIssueModal = document.getElementById('new-issue-modal');
+                this.newCommentModal = document.getElementById('new-comment-modal');
                 this.currentCommentId = null;
                 this.#injectStyles();
+            }
+            // 新增背景色设置方法
+            setCanvasColor(color) {
+                this.backgroundColor = color;
+                this.resizeCanvas();
+                this.drawSample(); // 如果需要保留图形请保留这行
+            }
+            initializeCanvas() {
+                this.canvas = document.getElementById('mainCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                window.addEventListener('resize', () => this.resizeCanvas());
+                this.resizeCanvas();
+                
+                // 初始绘制示例
+                this.drawSample();
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                this.ctx.fillStyle = this.backgroundColor;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            drawSample() {
+                // 示例绘制代码
+                this.ctx.fillStyle = '#4CAF50';
+                this.ctx.beginPath();
+                this.ctx.arc(this.canvas.width/2, this.canvas.height/2, 50, 0, Math.PI*2);
+                this.ctx.fill();
             }
 
             #injectStyles() {
@@ -456,6 +634,42 @@
                    .comment-edit-modal button:hover {
                         background: #45a049;
                     }
+                    /* 新增创建议题窗口样式 */
+                   .new-issue-modal {
+                        display: none;
+                        position: fixed;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        background: #333;
+                        color: white;
+                        border: 1px solid #4CAF50;
+                        border-radius: 5px;
+                        z-index: 1004;
+                        width: 300px;
+                        padding: 15px;
+                    }
+                   .new-issue-modal label {
+                        display: block;
+                        margin-bottom: 5px;
+                    }
+                   .new-issue-modal input,
+                   .new-issue-modal textarea {
+                        width: 100%;
+                        padding: 5px;
+                        margin-bottom: 10px;
+                    }
+                   .new-issue-modal button {
+                        padding: 5px 10px;
+                        background: #4CAF50;
+                        border: none;
+                        border-radius: 3px;
+                        color: white;
+                        cursor: pointer;
+                    }
+                   .new-issue-modal button:hover {
+                        background: #45a049;
+                    }
                 `;
                 document.head.appendChild(style);
             }
@@ -481,7 +695,8 @@
                             <div id="id_4_comments_current_issue">
                             </div>
                         </div>
-                        <button onclick="appCore.toggleUI()">Close Window</button>
+                        <button onclick="appCore.openNewIssueModal()">New Issue</button>
+                        <button onclick="appCore.openNewCommentModal()">New Comment</button>
                     </div>
                 `;
 
@@ -502,6 +717,31 @@
                 });
             }
 
+            openNewCommentModal() {
+                document.getElementById('new-comment-body').value = '';
+                this.newCommentModal.style.display = 'block';
+            }
+
+            closeNewCommentModal() {
+                this.newCommentModal.style.display = 'none';
+            }
+            async saveNewComment() {
+                const commentBody = document.getElementById('new-comment-body').value;
+                if (!commentBody.trim()) {
+                    alert('Comment content cannot be empty!');
+                    return;
+                }
+
+                try {
+                    await this.#apiRequest('POST', `issues/${this.currentIssue}/comments`, { body: commentBody });
+                    alert('Comment created successfully!');
+                    this.closeNewCommentModal();
+                    this.getComments('id_4_comments_current_issue', this.currentIssue);
+                } catch (error) {
+                    console.error('Failed to create comment:', error);
+                    alert('Error creating comment: ' + error.message);
+                }
+            }
             async getComments(divID, issueNumber) { 
                 const container = document.getElementById(divID);
                 container.innerHTML = 'Loading comments...';
@@ -836,6 +1076,40 @@
                     alert('Error updating comment: ' + error.message);
                 }
             }
+
+            openNewIssueModal() {
+                this.newIssueModal.style.display = 'block';
+            }
+
+            closeNewIssueModal() {
+                this.newIssueModal.style.display = 'none';
+            }
+
+            runJS(idTa){
+                const js = document.getElementById(idTa).value;
+                try {
+                    const fn = new Function(js);
+                    fn();
+                } catch (e) {
+                    alert('代码执行错误: ' + e.message);
+                }
+            }
+
+            async createNewIssue() {
+                const title = document.getElementById('new-issue-title').value;
+                const body = document.getElementById('id_new_issue_body').value;
+                const data = { title, body };
+
+                try {
+                    await this.#apiRequest('POST', 'issues', data);
+                    alert('New issue created successfully!');
+                    this.closeNewIssueModal();
+                    this.fetchAndDisplayIssues();
+                } catch (error) {
+                    console.error('Failed to create new issue:', error);
+                    alert('Error creating new issue: ' + error.message);
+                }
+            }
         }
 
         const appCore = new C4XDR177I14();
@@ -844,9 +1118,11 @@
 
 </html>
     
+    
 <!--
  升级：
-code code101 ， 
+ id_4_left_btn  change to blue color
+ 
  return all new code
 -->
  
