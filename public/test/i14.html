@@ -5,13 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <style>
-        .control-point {
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            background: #ff0000;
-            border-radius: 50%;
-            cursor: pointer;
+         .control-point {
+            width: 12px;
+            height: 12px;
+            background: #00ff00;
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+        .selected-shape {
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 0.5; }
+            100% { opacity: 0.8; }
         }
         .toolbar-btn.draw-active {
             background-color: #FF9800 !important;
@@ -469,6 +476,8 @@
 
         class C4XDR177I14 {
             constructor() {
+                this.isTouchDevice = 'ontouchstart' in window;
+                this.controlPointSize = this.isTouchDevice ? 20 : 12;
                 this.adjustingControl = null;
                 
                 this.selectedShapeIndex = -1;
@@ -549,6 +558,11 @@
                 this.canvas.addEventListener('touchend', () => this.handleCanvasMouseUp());
             }
             handleCanvasMouseDown(pos) {
+                if (this.isTouchDevice) {
+                    pos.x -= this.controlPointSize/2;
+                    pos.y -= this.controlPointSize/2;
+                }
+                
                 const index = this.getShapeAtPosition(pos.x, pos.y);
                 if (index !== -1) {
                     this.selectedShapeIndex = index;
@@ -561,6 +575,7 @@
                         this.isDragging = true;
                         this.dragStartX = pos.x;
                         this.dragStartY = pos.y;
+                        this.redrawCanvas(); // 新增：立即重绘画布
                         return;
                     }
 
@@ -572,15 +587,14 @@
                     const selected = this.drawHistory.splice(index, 1)[0];
                     this.drawHistory.push(selected);
                     this.selectedShapeIndex = this.drawHistory.length - 1;
-                    this.redrawCanvas();
-                }else if (this.drawType) {
-                    // 新增：在空白处点击时绘制新图形
+                    this.redrawCanvas(); // 新增：立即重绘画布
+                } else if (this.drawType) {
                     this.handleCanvasClick(pos);
                 }
             }
 
             getControlPointAt(x, y, shape) {
-                const controlSize = 10;
+                const controlSize = this.controlPointSize;
                 switch(shape.type) {
                     case 'circle':
                         const controlX = shape.x + shape.radius;
@@ -590,7 +604,8 @@
                     case 'rect':
                         const rectControlX = shape.x + shape.width;
                         const rectControlY = shape.y + shape.height;
-                        if (Math.abs(x - rectControlX) < controlSize && Math.abs(y - rectControlY) < controlSize) return 'size';
+                        if (Math.abs(x - rectControlX) < controlSize && 
+                           Math.abs(y - rectControlY) < controlSize) return 'size';
                         break;
                     case 'triangle':
                         for (let i = 0; i < shape.points.length; i++) {
@@ -603,60 +618,62 @@
             }
 
             handleCanvasMouseMove(pos) {
-                if (this.isDragging && this.adjustingControl) {
-                    const shape = this.drawHistory[this.selectedShapeIndex];
-                    const dx = pos.x - this.dragStartX;
-                    const dy = pos.y - this.dragStartY;
+                if (!this.isDragging) return;
 
-                    switch(shape.type) {
+                const currentX = pos.x;
+                const currentY = pos.y;
+                const deltaX = currentX - this.dragStartX;
+                const deltaY = currentY - this.dragStartY;
+
+                if (this.adjustingControl) {
+                    // 调整控制点
+                    const shape = this.drawHistory[this.selectedShapeIndex];
+                    
+                    switch (shape.type) {
                         case 'circle':
                             if (this.adjustingControl === 'radius') {
-                                shape.radius = Math.max(10, pos.x - shape.x);
+                                shape.radius = Math.max(10, shape.radius + deltaX);
                             }
                             break;
+                            
                         case 'rect':
                             if (this.adjustingControl === 'size') {
-                                shape.width = Math.max(10, pos.x - shape.x);
-                                shape.height = Math.max(10, pos.y - shape.y);
+                                shape.width = Math.max(10, shape.width + deltaX);
+                                shape.height = Math.max(10, shape.height + deltaY);
                             }
                             break;
+                            
                         case 'triangle':
-                            if (this.adjustingControl.startsWith('point')) {
-                                const index = parseInt(this.adjustingControl.replace('point', ''));
-                                shape.points[index].x = pos.x;
-                                shape.points[index].y = pos.y;
-                            }
+                            const pointIndex = parseInt(this.adjustingControl.replace('point', ''));
+                            shape.points[pointIndex].x += deltaX;
+                            shape.points[pointIndex].y += deltaY;
                             break;
                     }
+                    
+                    this.dragStartX = currentX;
+                    this.dragStartY = currentY;
                     this.redrawCanvas();
-                    this.dragStartX = pos.x;
-                    this.dragStartY = pos.y;
-                }
-
-                if (this.isDragging && this.selectedShapeIndex !== -1) {
+                } else if (this.selectedShapeIndex !== -1) {
+                    // 移动整个图形
                     const shape = this.drawHistory[this.selectedShapeIndex];
-                    const dx = pos.x - this.dragStartX;
-                    const dy = pos.y - this.dragStartY;
-
-                    switch(shape.type) {
+                    
+                    switch (shape.type) {
                         case 'circle':
-                            shape.x += dx;
-                            shape.y += dy;
-                            break;
                         case 'rect':
-                            shape.x += dx;
-                            shape.y += dy;
+                            shape.x += deltaX;
+                            shape.y += deltaY;
                             break;
+                            
                         case 'triangle':
                             shape.points.forEach(point => {
-                                point.x += dx;
-                                point.y += dy;
+                                point.x += deltaX;
+                                point.y += deltaY;
                             });
                             break;
                     }
-
-                    this.dragStartX = pos.x;
-                    this.dragStartY = pos.y;
+                    
+                    this.dragStartX = currentX;
+                    this.dragStartY = currentY;
                     this.redrawCanvas();
                 }
             }
@@ -705,10 +722,13 @@
             }
 
             redrawCanvas() {
-                this.ctx.fillStyle = this.backgroundColor;
+                this.ctx.fillStyle = this.backgroundColor ;
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
                 
                 this.drawHistory.forEach((shape, index) => {
+                    // 修改：始终显示选中状态，不依赖拖动状态
+                    this.ctx.globalAlpha = index === this.selectedShapeIndex ? 0.7 : 1.0; 
+
                     this.ctx.fillStyle = shape.color;
                     
                     // 绘制图形
@@ -732,53 +752,59 @@
 
                     // 绘制选中高亮
                     if (index === this.selectedShapeIndex) {
-                        this.ctx.strokeStyle = '#FF0000';
-                        this.ctx.lineWidth = 2;
+                        const controlSize = this.controlPointSize;
+                        const halfSize = controlSize / 2;
                         
+                        this.ctx.fillStyle = '#00ff00';
+                        this.ctx.strokeStyle = '#ffffff';
+                        this.ctx.lineWidth = 2;
+
                         switch(shape.type) {
                             case 'circle':
+                                const controlX = shape.x + shape.radius;
                                 this.ctx.beginPath();
-                                this.ctx.arc(shape.x, shape.y, shape.radius, 0, Math.PI * 2);
-                                this.ctx.stroke();
-                                break;
-                            case 'rect':
-                                this.ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
-                                break;
-                            case 'triangle':
-                                this.ctx.beginPath();
-                                this.ctx.moveTo(shape.points[0].x, shape.points[0].y);
-                                shape.points.forEach(p => this.ctx.lineTo(p.x, p.y));
-                                this.ctx.closePath();
-                                this.ctx.stroke();
-                                break;
-                        }
-                    }
-                    if (index === this.selectedShapeIndex) {
-                        this.ctx.fillStyle = '#FF0000';
-                        switch(shape.type) {
-                            case 'circle':
-                                this.ctx.beginPath();
-                                this.ctx.arc(shape.x + shape.radius, shape.y, 5, 0, Math.PI*2);
+                                this.ctx.arc(controlX, shape.y, halfSize, 0, Math.PI*2);
                                 this.ctx.fill();
+                                this.ctx.stroke();
                                 break;
                             case 'rect':
                                 this.ctx.fillRect(
-                                    shape.x + shape.width - 5,
-                                    shape.y + shape.height - 5,
-                                    10, 10
+                                    shape.x + shape.width - halfSize,
+                                    shape.y + shape.height - halfSize,
+                                    controlSize,
+                                    controlSize
                                 );
                                 break;
                             case 'triangle':
                                 shape.points.forEach(point => {
                                     this.ctx.beginPath();
-                                    this.ctx.arc(point.x, point.y, 5, 0, Math.PI*2);
+                                    this.ctx.arc(point.x, point.y, halfSize, 0, Math.PI*2);
                                     this.ctx.fill();
+                                    this.ctx.stroke();
                                 });
                                 break;
                         }
                     }
-
                 });
+
+                // 添加网格背景
+                this.ctx.globalAlpha = 0.2;
+                this.ctx.strokeStyle = '#ffffff';
+                this.ctx.lineWidth = 0.5;
+                const gridSize = 20;
+                for (let x = 0; x < this.canvas.width; x += gridSize) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, 0);
+                    this.ctx.lineTo(x, this.canvas.height);
+                    this.ctx.stroke();
+                }
+                for (let y = 0; y < this.canvas.height; y += gridSize) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y);
+                    this.ctx.lineTo(this.canvas.width, y);
+                    this.ctx.stroke();
+                }
+                this.ctx.globalAlpha = 1.0;
 
                 
             }
@@ -887,16 +913,14 @@
 
             // 新增背景色设置方法
             setCanvasColor(color) {
-                this.backgroundColor = color;
-                this.resizeCanvas();
-                this.drawSample(); // 如果需要保留图形请保留这行
+                this.backgroundColor = color; 
+                this.redrawCanvas(); // 直接调用重绘
             }
             initializeCanvas() {
                 this.canvas = document.getElementById('mainCanvas');
                 this.ctx = this.canvas.getContext('2d');
                 window.addEventListener('resize', () => this.resizeCanvas());
-                this.resizeCanvas();
-                this.drawSample();
+                this.resizeCanvas(); 
                 this.#initBottomToolbar();
             }
 
@@ -1655,7 +1679,7 @@
     
 <!--
  升级：
- 没有机会对已经画的图形改大小
+ 当鼠标点在控制点的时候，应该马上就绘制控制点，不要等到移动的时候才出现。
  return all new code
 -->
  
