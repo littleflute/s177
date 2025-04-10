@@ -4,150 +4,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rubik's Cube Simulation</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <title>3D Rubik's Cube</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        canvas {
-            display: block;
-            margin: 20px auto;
-            border: 1px solid #ccc;
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #scene-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        #toolbar {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            text-align: center;
+        }
+
+        #toggle-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
         }
     </style>
 </head>
 
-<body class="bg-gray-100">
-    <h1 class="text-3xl font-bold text-center py-8">Rubik's Cube Simulation</h1>
-    <canvas id="rubiksCube" width="400" height="400"></canvas>
-    <div class="flex justify-center space-x-4">
-        <button id="rotateX" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Rotate X</button>
-        <button id="rotateY" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Rotate Y</button>
-        <button id="rotateZ" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Rotate Z</button>
+<body>
+    <div id="scene-container"></div>
+    <div id="toolbar">
+        <button id="toggle-button">停止转动</button>
+        <button id="rotate-layer-1">旋转第一层</button>
+        <button id="rotate-layer-2">旋转第二层</button>
+        <button id="rotate-layer-3">旋转第三层</button>
     </div>
-
     <script>
-        const canvas = document.getElementById('rubiksCube');
-        const ctx = canvas.getContext('2d');
+        // 创建场景
+        const scene = new THREE.Scene();
 
-        const cubeSize = 3;
-        const blockSize = 40;
+        // 创建相机
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+
+        // 创建渲染器
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('scene-container').appendChild(renderer.domElement);
+
+        // 定义魔方方块的颜色
         const colors = [
-            'white', 'yellow', 'blue', 'green', 'red', 'orange'
+            0xff0000, 0x00ff00, 0x0000ff,
+            0xffff00, 0xffa500, 0xffffff
         ];
 
-        const cube = [];
-        for (let i = 0; i < cubeSize; i++) {
-            cube[i] = [];
-            for (let j = 0; j < cubeSize; j++) {
-                cube[i][j] = [];
-                for (let k = 0; k < cubeSize; k++) {
-                    cube[i][j][k] = [];
-                    for (let face = 0; face < 6; face++) {
-                        cube[i][j][k][face] = face;
+        // 定义魔方方块的大小
+        const cubeSize = 0.9;
+        const gap = 0.1;
+
+        // 存储每层的方块
+        const layers = [
+            [],
+            [],
+            []
+        ];
+
+        // 创建魔方
+        for (let z = -1; z <= 1; z++) {
+            const layerIndex = z + 1;
+            for (let x = -1; x <= 1; x++) {
+                for (let y = -1; y <= 1; y++) {
+                    const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+                    const materials = [];
+                    for (let i = 0; i < 6; i++) {
+                        materials.push(new THREE.MeshBasicMaterial({ color: colors[i] }));
                     }
+                    const cube = new THREE.Mesh(geometry, materials);
+                    cube.position.set(x * (cubeSize + gap), y * (cubeSize + gap), z * (cubeSize + gap));
+                    scene.add(cube);
+                    layers[layerIndex].push(cube);
                 }
             }
         }
 
-        function drawCube() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let isRotating = true;
 
-            for (let i = 0; i < cubeSize; i++) {
-                for (let j = 0; j < cubeSize; j++) {
-                    for (let k = 0; k < cubeSize; k++) {
-                        const x = (j - k) * blockSize + canvas.width / 2;
-                        const y = (i + j + k) * blockSize / 2 + canvas.height / 4;
-
-                        for (let face = 0; face < 6; face++) {
-                            ctx.fillStyle = colors[cube[i][j][k][face]];
-                            switch (face) {
-                                case 0:
-                                    ctx.fillRect(x, y, blockSize, blockSize);
-                                    break;
-                                case 1:
-                                    ctx.fillRect(x + blockSize, y, blockSize, blockSize);
-                                    break;
-                                case 2:
-                                    ctx.fillRect(x, y + blockSize, blockSize, blockSize);
-                                    break;
-                                case 3:
-                                    ctx.fillRect(x - blockSize, y + blockSize, blockSize, blockSize);
-                                    break;
-                                case 4:
-                                    ctx.fillRect(x - blockSize, y, blockSize, blockSize);
-                                    break;
-                                case 5:
-                                    ctx.fillRect(x + blockSize, y + blockSize, blockSize, blockSize);
-                                    break;
-                            }
-                        }
-                    }
-                }
+        // 动画循环
+        function animate() {
+            if (isRotating) {
+                // 旋转魔方
+                scene.rotation.x += 0.01;
+                scene.rotation.y += 0.01;
             }
+
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
         }
 
-        function rotateX() {
-            const newCube = JSON.parse(JSON.stringify(cube));
-            for (let j = 0; j < cubeSize; j++) {
-                for (let k = 0; k < cubeSize; k++) {
-                    newCube[0][j][k] = cube[2][j][k];
-                    newCube[1][j][k] = cube[1][j][k];
-                    newCube[2][j][k] = cube[0][j][k];
+        animate();
+
+        const toggleButton = document.getElementById('toggle-button');
+        toggleButton.addEventListener('click', function () {
+            isRotating = !isRotating;
+            this.textContent = isRotating ? '停止转动' : '开始转动';
+        });
+
+        const rotateLayer1Button = document.getElementById('rotate-layer-1');
+        rotateLayer1Button.addEventListener('click', function () {
+            rotateLayer(layers[0]);
+        });
+
+        const rotateLayer2Button = document.getElementById('rotate-layer-2');
+        rotateLayer2Button.addEventListener('click', function () {
+            rotateLayer(layers[1]);
+        });
+
+        const rotateLayer3Button = document.getElementById('rotate-layer-3');
+        rotateLayer3Button.addEventListener('click', function () {
+            rotateLayer(layers[2]);
+        });
+
+        function rotateLayer(layer) {
+            const rotationSpeed = 0.05;
+            const targetRotation = Math.PI / 2;
+            let currentRotation = 0;
+
+            function performRotation() {
+                if (currentRotation < targetRotation) {
+                    const delta = Math.min(rotationSpeed, targetRotation - currentRotation);
+                    layer.forEach(cube => {
+                        cube.rotation.z += delta;
+                    });
+                    currentRotation += delta;
+                    requestAnimationFrame(performRotation);
                 }
             }
-            for (let i = 0; i < cubeSize; i++) {
-                for (let j = 0; j < cubeSize; j++) {
-                    for (let k = 0; k < cubeSize; k++) {
-                        cube[i][j][k] = newCube[i][j][k];
-                    }
-                }
-            }
-            drawCube();
+
+            performRotation();
         }
-
-        function rotateY() {
-            const newCube = JSON.parse(JSON.stringify(cube));
-            for (let i = 0; i < cubeSize; i++) {
-                for (let k = 0; k < cubeSize; k++) {
-                    newCube[i][0][k] = cube[i][2][k];
-                    newCube[i][1][k] = cube[i][1][k];
-                    newCube[i][2][k] = cube[i][0][k];
-                }
-            }
-            for (let i = 0; i < cubeSize; i++) {
-                for (let j = 0; j < cubeSize; j++) {
-                    for (let k = 0; k < cubeSize; k++) {
-                        cube[i][j][k] = newCube[i][j][k];
-                    }
-                }
-            }
-            drawCube();
-        }
-
-        function rotateZ() {
-            const newCube = JSON.parse(JSON.stringify(cube));
-            for (let i = 0; i < cubeSize; i++) {
-                for (let j = 0; j < cubeSize; j++) {
-                    newCube[i][j][0] = cube[i][j][2];
-                    newCube[i][j][1] = cube[i][j][1];
-                    newCube[i][j][2] = cube[i][j][0];
-                }
-            }
-            for (let i = 0; i < cubeSize; i++) {
-                for (let j = 0; j < cubeSize; j++) {
-                    for (let k = 0; k < cubeSize; k++) {
-                        cube[i][j][k] = newCube[i][j][k];
-                    }
-                }
-            }
-            drawCube();
-        }
-
-        document.getElementById('rotateX').addEventListener('click', rotateX);
-        document.getElementById('rotateY').addEventListener('click', rotateY);
-        document.getElementById('rotateZ').addEventListener('click', rotateZ);
-
-        drawCube();
     </script>
 </body>
 
@@ -155,6 +160,8 @@
     
 <!--
 升级：
-这是一个3维魔方模拟程序，以上实现的不对，请帮我升级一下。
+ 
+魔方旋转逻辑不对，应该是模仿真实的魔方旋转方式旋转 
+
 return all new code.
 -->

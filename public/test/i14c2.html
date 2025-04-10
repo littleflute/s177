@@ -540,6 +540,10 @@ i14c2.html
 
 
 <script>
+    function toggleMenu() {
+        const menu = document.getElementById('myLinks');
+        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    }
     class CanvasManager {
         constructor(canvasId) {
             this.canvas = document.getElementById(canvasId);
@@ -794,26 +798,29 @@ i14c2.html
         }
 
         getControlPoint(x, y, shape) {
+            const checkDistance = (x1, y1, x2, y2) => {
+                return Math.hypot(x1 - x2, y1 - y2) < this.controlSize;
+            };
+        
             switch(shape.type) {
                 case 'circle':
-                    const cx = shape.x + shape.radius;
-                    if (Math.hypot(x - cx, y - shape.y) < this.controlSize) return 'radius';
-                    break;
+                const controlX = shape.x + shape.radius;
+                return checkDistance(x, y, controlX, shape.y) ? 'radius' : null;
+                
                 case 'rect':
-                    const rx = shape.x + shape.width;
-                    const ry = shape.y + shape.height;
-                    if (Math.abs(x - rx) < this.controlSize && 
-                    Math.abs(y - ry) < this.controlSize) return 'size';
-                    break;
+                const rectControlX = shape.x + shape.width;
+                const rectControlY = shape.y + shape.height;
+                return checkDistance(x, y, rectControlX, rectControlY) ? 'size' : null;
+                
                 case 'triangle':
-                    for (let i = 0; i < shape.points.length; i++) {
-                        const p = shape.points[i];
-                        if (Math.hypot(x - p.x, y - p.y) < this.controlSize) return `point${i}`;
-                    }
-                    break;
+                for (let i = 0; i < shape.points.length; i++) {
+                    const p = shape.points[i];
+                    if (checkDistance(x, y, p.x, p.y)) return `point${i}`;
+                }
+                return null;
             }
             return null;
-        }
+            }
 
         isPointInTriangle(x, y, points) {
             const [p0, p1, p2] = points;
@@ -939,15 +946,18 @@ i14c2.html
             const div = document.createElement('div');
             div.innerHTML = `
                 <label>${label}</label>
-                <input type="number" value="${value}">
+                <input type="number" value="${value}" step="0.1">
             `;
             const input = div.querySelector('input');
-            input.addEventListener('input', (e) => {
-                onChange(parseFloat(e.target.value));
+            input.addEventListener('input', () => {
+                const newValue = parseFloat(input.value);
+                if (!isNaN(newValue)) {
+                onChange(newValue);
                 this.canvasManager.redraw();
+                }
             });
             this.form.appendChild(div);
-        }
+            }
 
         adjustPosition() {
             const panelWidth = this.panel.offsetWidth;
@@ -1021,31 +1031,28 @@ i14c2.html
             const url = `${this.baseUrl}/${this.repo}/${endpoint}`;
             const headers = {
                 'Authorization': `token ${this.token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/vnd.github.v3+json'
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json'
             };
-
+        
             try {
                 const response = await fetch(url, {
-                    method,
-                    headers,
-                    body: data ? JSON.stringify(data) : null
+                method,
+                headers,
+                body: data ? JSON.stringify(data) : null
                 });
-
+        
                 if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(`HTTP ${response.status}: ${error.message}`);
+                const errorData = await response.json();
+                throw new Error(errorData.message || `HTTP ${response.status}`);
                 }
-
-                return response.headers.get('content-type')?.includes('json') 
-                    ? response.json()
-                    : response.text();
+        
+                return await response.json();
             } catch (error) {
-                console.error('API Request Failed:', error);
+                console.error('API Error:', error);
                 throw error;
             }
-        }
-
+            }
         // Issues
         async fetchIssues(state = 'open', page = 1, perPage = 100) {
             return this.#request('GET', 
@@ -1094,10 +1101,7 @@ i14c2.html
         }
 
         async updateComment(commentId, body) {
-            return this.#request('PATCH', 
-                `issues/comments/${commentId}`, 
-                { body }
-            );
+            return this.#request('PATCH', `issues/comments/${commentId}`, { body });
         }
 
         async deleteComment(commentId) {
@@ -1174,74 +1178,523 @@ i14c2.html
     }
 
 
-class C4MainApp {
-    constructor() {
-        this.canvasManager = new CanvasManager('mainCanvas'); 
-        this.propertyPanel = new PropertyPanel('property_panel', this.canvasManager);
-        const xdToken = "ghp_2BF" + "JztcBlHHOkBybs" + "UVJZGHQ4S" + "wvFR0poLqc";
-        this.ghManager = new GitHubManager('littleflute/s177', xdToken);
-        
-        this.initUI();
-        this.loadIssues();
+    class C4MainApp {
+        constructor() {
+            // 核心模块初始化
+            this.canvasManager = new CanvasManager('mainCanvas');
+            this.propertyPanel = new PropertyPanel('property_panel', this.canvasManager);
+            this.ghManager = new GitHubManager('littleflute/s177', this.#getToken());
+            
+            // 状态管理
+            this.currentIssue = null;
+            this.currentComment = null;
+            this.isUIEnabled = true;
+
+            // UI初始化
+            this.#initCanvasToolbar();
+            this.#initGitHubUI();
+            this.#initEventListeners();
+            this.#loadInitialData();
+        }
+
+        // 私有方法
+        #getToken() {
+            return "ghp_2BF" + "JztcBlHHOkBybs" + "UVJZGHQ4S" + "wvFR0poLqc";
+        }
+
+        #initCanvasToolbar() {
+            const toolbar = document.querySelector('.bottom_toolbar');
+            const buttons = [
+                { type: 'circle', text: '⚪ Circle', color: 'blue' },
+                { type: 'rect', text: '⬜ Rect', color: 'blue' },
+                { type: 'triangle', text: '🔺 Triangle', color: 'blue' },
+                { action: 'clear', text: 'Clear', color: 'yellow' },
+                { action: 'props', text: 'Props', color: 'green' },
+                { action: 'delete', text: 'Delete', color: 'red' },
+                { color: 'purple', text: 'Purple' },
+                { color: 'blue', text: 'Blue' },
+                { color: 'red', text: 'Red' },
+                { color: 'yellow', text: 'Yellow' }
+            ];
+
+            buttons.forEach(config => {
+                const btn = document.createElement('button');
+                btn.className = `toolbar-btn ${config.color}-btn`;
+                btn.textContent = config.text;
+                
+                if (config.type) {
+                    btn.addEventListener('click', () => 
+                        this.canvasManager.currentType = config.type);
+                } else if (config.action) {
+                    btn.addEventListener('click', () => 
+                        this.#handleCanvasAction(config.action));
+                } else if (config.color) {
+                    btn.addEventListener('click', () => 
+                        this.canvasManager.setBackgroundColor(config.color));
+                }
+
+                toolbar.appendChild(btn);
+            });
+        }
+
+        #handleCanvasAction(action) {
+            switch(action) {
+                case 'clear':
+                    this.canvasManager.clearCanvas();
+                    break;
+                case 'props':
+                    this.propertyPanel.toggle();
+                    break;
+                case 'delete':
+                    this.canvasManager.deleteSelected();
+                    break;
+            }
+        }
+
+        #initGitHubUI() {
+            this.#createModalStructure();
+            this.#initIssueHandlers();
+            this.#initCommentHandlers();
+        }
+
+        #createModalStructure() {
+            const modalHTML = `
+            <div class="movable-modal">
+                <div class="movable-modal-header">
+                    <span>GitHub Control</span>
+                    <span class="modal-close">×</span>
+                </div>
+                <div class="movable-modal-content">
+                    <div class="issue-toolbar" id="issue_toolbar"></div>
+                    <div id="current_issue_info">
+                        <p>Current Repo: <span id="current_repo">s177</span></p>
+                        <p>Current Issue: <span id="current_issue_num">-</span></p>
+                        <div id="issue_actions"></div>
+                        <div id="issue_comments"></div>
+                    </div>
+                    <button class="new-issue-btn">New Issue</button>
+                    <button class="new-comment-btn">New Comment</button>
+                </div>
+            </div>`;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        #initIssueHandlers() {
+            document.querySelector('.new-issue-btn').addEventListener('click', () => 
+                this.#showDialog('new-issue-modal'));
+            
+            document.getElementById('create_issue_btn').addEventListener('click', async () => {
+                const title = document.getElementById('new_issue_title').value;
+                const body = document.getElementById('new_issue_body').value;
+                await this.ghManager.createIssue(title, body);
+                this.#refreshIssueList();
+            });
+        }
+
+        #initCommentHandlers() {
+            document.querySelector('.new-comment-btn').addEventListener('click', () => 
+                this.#showDialog('new-comment-modal'));
+            
+            document.getElementById('create_comment_btn').addEventListener('click', async () => {
+                const body = document.getElementById('new_comment_body').value;
+                await this.ghManager.createComment(this.currentIssue.number, body);
+                this.#refreshComments();
+            });
+        }
+
+        #initEventListeners() {
+            // 模态窗口拖动处理
+            const modal = document.querySelector('.movable-modal');
+            const header = modal.querySelector('.movable-modal-header');
+            
+            let isDragging = false;
+            let startX = 0, startY = 0, startLeft = 0, startTop = 0;
+
+            header.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                const rect = modal.getBoundingClientRect();
+                startLeft = rect.left;
+                startTop = rect.top;
+                modal.style.transition = 'none';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                
+                let newLeft = startLeft + dx;
+                let newTop = startTop + dy;
+                
+                // Boundary check
+                newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - modal.offsetWidth));
+                newTop = Math.max(0, Math.min(newTop, window.innerHeight - modal.offsetHeight));
+                
+                modal.style.left = `${newLeft}px`;
+                modal.style.top = `${newTop}px`;
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                modal.style.transition = 'all 0.3s ease';
+            });
+        }
+
+        async #loadInitialData() {
+            try {
+                this.ghManager.issues = await this.ghManager.getAllIssues();
+                this.#refreshIssueList();
+                this.#initIssueSelection();
+            } catch (error) {
+                console.error('Initial data loading failed:', error);
+                alert('Failed to load initial data. Check console for details.');
+            }
+        }
+        #initIssueSelection() {
+            document.querySelectorAll('.issue_btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    // 移除所有按钮的高亮
+                    document.querySelectorAll('.issue_btn').forEach(b => b.classList.remove('active'));
+                    // 添加当前按钮高亮
+                    e.target.classList.add('active');
+                    
+                    // 获取issue编号并加载详情
+                    const issueNumber = parseInt(e.target.textContent.replace('#', ''));
+                    this.#loadIssueDetails(issueNumber);
+                });
+            });
+        }
+        #updateActionButtons() {
+            this.actionContainer.innerHTML = ''; // 清空旧按钮
+
+            if (!this.currentIssue) return;
+
+            // 解析issue标题
+            const { title } = this.currentIssue;
+
+            // 添加blc按钮
+            if (title.includes('blc:')) {
+                this.#createActionButton('BLC', () => this.#handleBlcAction());
+            }
+
+            // 添加app按钮
+            if (title.includes('app:')) {
+                this.#createActionButton('APP', () => this.#runIssueCode());
+            }
+        }
+        async #loadIssueDetails(issueNumber) {
+            try {
+                this.currentIssue = await this.ghManager.getIssue(issueNumber);
+                
+                // 更新UI显示
+                document.getElementById('current_issue_num').textContent = issueNumber;
+                
+                // 更新操作按钮
+                this.#updateActionButtons();
+                
+                // 加载评论
+                await this.#refreshComments();
+                
+                // 解析类信息（如果存在）
+                const classInfo = this.ghManager.parseIssueBody(this.currentIssue.body);
+                if (classInfo) {
+                    this.#updateClassInfo(classInfo);
+                }
+            } catch (error) {
+                console.error('Error loading issue details:', error);
+                alert('无法加载Issue详情');
+            }
+        }
+        #updateClassInfo(classInfo) {
+                const classElement = document.getElementById('id_parse_body_as_class');
+                const memberFunctionsElement = document.getElementById('id_parse_member_functions');
+                
+                if (classInfo && classInfo.className) {
+                    classElement.innerHTML = `解析到的类名: <strong>${classInfo.className}</strong>`;
+                    
+                    memberFunctionsElement.innerHTML = '';
+                    classInfo.methods.forEach(func => {
+                        const button = this.#createMethodButton(func);
+                        const li = document.createElement('li');
+                        li.appendChild(button);
+                        memberFunctionsElement.appendChild(li);
+                    });
+                } else {
+                    classElement.textContent = '在issue内容中未找到JavaScript类定义';
+                    memberFunctionsElement.innerHTML = '<li>未找到成员函数</li>';
+                }
+        }
+        #createMethodButton(funcName) {
+                const button = document.createElement('button');
+                button.className = 'issue_btn';
+                button.textContent = funcName;
+                button.onclick = () => this.#executeClassMethod(funcName);
+                return button;
+        }
+        #refreshIssueList() {
+            const toolbar = document.getElementById('issue_toolbar');
+            toolbar.innerHTML = '';
+
+            this.ghManager.issues.forEach(issue => {
+                const btn = document.createElement('button');
+                btn.className = 'issue_btn';
+                btn.textContent = `#${issue.number}`;
+                btn.addEventListener('click', () => this.#selectIssue(issue));
+                toolbar.appendChild(btn);
+            });
+        }
+        #updateClassInfoDisplay(classInfo) {
+            const classElement = document.getElementById('id_parse_body_as_class');
+            const memberFunctionsElement = document.getElementById('id_parse_member_functions');
+            
+            // 清空现有内容
+            classElement.innerHTML = '';
+            memberFunctionsElement.innerHTML = '';
+
+            if (classInfo && classInfo.className) {
+                // 显示类名
+                classElement.innerHTML = `解析到的类名: <strong>${classInfo.className}</strong>`;
+                
+                // 显示成员函数
+                classInfo.methods.forEach(method => {
+                    const li = document.createElement('li');
+                    
+                    // 创建执行按钮
+                    const button = document.createElement('button');
+                    button.className = 'issue_btn';
+                    button.textContent = method;
+                    button.onclick = async () => {
+                        try {
+                            // 动态执行类方法
+                            const instance = new Function(
+                                'return new ' + classInfo.className + '()'
+                            )();
+                            
+                            if (typeof instance[method] === 'function') {
+                                await instance[method]();
+                            }
+                        } catch (e) {
+                            alert(`执行 ${method} 失败: ${e.message}`);
+                        }
+                    };
+
+                    // 创建查看源码按钮
+                    const codeBtn = document.createElement('button');
+                    codeBtn.className = 'issue_btn';
+                    codeBtn.textContent = '查看源码';
+                    codeBtn.style.marginLeft = '8px';
+                    codeBtn.onclick = () => {
+                        const code = this.#findMethodCode(method);
+                        alert(`方法源码:\n\n${code}`);
+                    };
+
+                    li.appendChild(button);
+                    li.appendChild(codeBtn);
+                    memberFunctionsElement.appendChild(li);
+                });
+            } else {
+                classElement.textContent = '在issue内容中未找到JavaScript类定义';
+                memberFunctionsElement.innerHTML = '<li>未找到成员函数</li>';
+            }
+        }
+        #findMethodCode(methodName) {
+            const body = this.currentIssue.body;
+            const regex = new RegExp(
+                `(?:async\\s+)?(?:static\\s+)?${methodName}\\s*\\([^)]*\\)\\s*{[\\s\\S]*?}`, 
+                'gm'
+            );
+            const match = regex.exec(body);
+            return match ? match[0] : '未找到源码';
+        }
+        async #selectIssue(issue) {
+            try {
+                this.currentIssue = await this.ghManager.getIssue(issue.number);
+                
+                // 更新UI显示
+                document.getElementById('current_issue_num').textContent = this.currentIssue.number;
+                
+                // 解析并显示类信息
+                const classInfo = this.ghManager.parseIssueBody(this.currentIssue.body);
+                if (classInfo) {
+                    this.#updateClassInfoDisplay(classInfo);
+                }
+                
+                // 加载评论
+                this.#refreshComments();
+            } catch (error) {
+                console.error('加载Issue失败:', error);
+                alert('无法加载Issue详情');
+            }
+            }
+
+            #createActionButton(text, handler) {
+                const btn = document.createElement('button');
+                btn.className = 'action-btn';
+                btn.textContent = text;
+                btn.addEventListener('click', handler);
+                this.actionContainer.appendChild(btn);
+            }
+
+        async #handleBlcAction() {
+            const classInfo = this.ghManager.parseIssueBody(this.currentIssue.body);
+            if (!classInfo) return;
+
+            const blcWindow = document.getElementById('blc_window');
+            blcWindow.querySelector('#class_name').textContent = classInfo.className;
+            
+            const methodList = blcWindow.querySelector('#class_methods');
+            methodList.innerHTML = '';
+            
+            classInfo.methods.forEach(method => {
+                const li = document.createElement('li');
+                const btn = document.createElement('button');
+                btn.textContent = method;
+                btn.addEventListener('click', () => this.#executeClassMethod(classInfo.className, method));
+                li.appendChild(btn);
+                methodList.appendChild(li);
+            });
+
+            blcWindow.style.display = 'block';
+        }
+        #runCode(code) {
+            try {
+                const fn = new Function(code);
+                const result = fn();
+                
+                if (result instanceof Promise) {
+                result.catch(e => {
+                    console.error('异步错误:', e);
+                    alert(`执行错误: ${e.message}`);
+                });
+                }
+            } catch (e) {
+                console.error('执行错误:', e);
+                alert(`执行错误: ${e.message}`);
+            }
+        }
+
+        async #executeClassMethod(className, methodName) {
+            try {
+                const instance = new Function(`
+                    ${this.currentIssue.body}
+                    return new ${className}();
+                `)();
+                
+                if (typeof instance[methodName] === 'function') {
+                    await instance[methodName]();
+                }
+            } catch (error) {
+                console.error('Method execution failed:', error);
+                alert(`Error executing ${methodName}: ${error.message}`);
+            }
+        }
+
+        #runIssueCode() {
+            try {
+                const fn = new Function(this.currentIssue.body);
+                fn();
+            } catch (error) {
+                console.error('Code execution failed:', error);
+                alert('Error executing issue code: ' + error.message);
+            }
+        }
+
+        async #refreshComments() {
+            const commentsDiv = document.getElementById('issue_comments');
+            commentsDiv.innerHTML = 'Loading comments...';
+
+            try {
+                const comments = await this.ghManager.getComments(this.currentIssue.number);
+                commentsDiv.innerHTML = '';
+
+                comments.forEach(comment => {
+                    const commentDiv = document.createElement('div');
+                    commentDiv.className = 'comment';
+                    commentDiv.innerHTML = `
+                        <div class="comment-header">
+                            <span>${comment.user.login}</span>
+                            <div class="comment-actions">
+                                <button class="edit-comment">Edit</button>
+                                <button class="run-comment">Run</button>
+                            </div>
+                        </div>
+                        <div class="comment-body">${comment.body}</div>
+                    `;
+
+                    commentDiv.querySelector('.edit-comment').addEventListener('click', () => 
+                        this.#editComment(comment));
+                    
+                    commentDiv.querySelector('.run-comment').addEventListener('click', () => 
+                        this.#runCommentCode(comment.body));
+
+                    commentsDiv.appendChild(commentDiv);
+                });
+            } catch (error) {
+                commentsDiv.innerHTML = 'Failed to load comments';
+                console.error('Comment loading error:', error);
+            }
+        }
+
+        #editComment(comment) {
+            this.currentComment = comment;
+            document.getElementById('edit_comment_body').value = comment.body;
+            this.#showDialog('comment-edit-modal');
+        }
+
+        async #saveCommentEdit() {
+            try {
+                await this.ghManager.updateComment(
+                    this.currentComment.id,
+                    document.getElementById('edit_comment_body').value
+                );
+                this.#refreshComments();
+                this.#hideDialog('comment-edit-modal');
+            } catch (error) {
+                console.error('Comment update failed:', error);
+                alert('Failed to update comment: ' + error.message);
+            }
+        }
+
+        #runCommentCode(code) {
+            try {
+                const fn = new Function(code);
+                fn();
+            } catch (error) {
+                console.error('Comment code execution failed:', error);
+                alert('Code error: ' + error.message);
+            }
+        }
+
+        #showDialog(dialogId) {
+            document.getElementById(dialogId).style.display = 'block';
+        }
+
+        #hideDialog(dialogId) {
+            document.getElementById(dialogId).style.display = 'none';
+        }
+
+        // 公共接口方法
+        toggleUI() {
+            this.isUIEnabled = !this.isUIEnabled;
+            document.querySelector('.movable-modal').style.display = 
+                this.isUIEnabled ? 'block' : 'none';
+        }
+
+        setCanvasColor(color) {
+            this.canvasManager.setBackgroundColor(color);
+        }
     }
 
-    initUI() {
-        // 初始化删除按钮
-        document.querySelector('.delete-btn').addEventListener('click', () => {
-            this.canvasManager.deleteSelected();
-            this.propertyPanel.toggle(false);
-        });
-        document.querySelectorAll('.toolbar-btn').forEach(btn => {
-            btn.addEventListener('click', e => this.handleToolbarClick(e.target));
-        });
-        
-        document.getElementById('id_4_toggleUI').addEventListener('click', () => {
-            document.querySelector('.movable-modal').style.display = 'block';
-        });
-    }
-
-    async loadIssues() {
-        await this.ghManager.fetchIssues();
-        this.renderIssueButtons();
-    }
-
-    renderIssueButtons() {
-        const container = document.getElementById('issue_toolbar');
-        this.ghManager.issues.forEach(issue => {
-            const btn = document.createElement('button');
-            btn.className = 'issue_btn';
-            btn.textContent = `#${issue.number}`;
-            btn.addEventListener('click', () => this.selectIssue(issue));
-            container.appendChild(btn);
-        });
-    }
-
-    selectIssue(issue) {
-        this.ghManager.currentIssue = issue;
-        // 更新界面显示...
-    }
-
-    handleToolbarClick(button) {
-        const actions = {
-            'blue-btn': () => this.canvasManager.setColor('#2196F3'),
-            'red-btn': () => this.canvasManager.setColor('#ff4444'),
-            'property-btn': () => this.propertyPanel.toggle()
-            // 其他按钮处理...
-        };
-        
-        const action = actions[button.className.split(' ')[1]];
-        if (action) action();
-    }
-}
-
-// 初始化应用
-const appCore = new C4MainApp();
+    // 初始化应用
+    const appCore = new C4MainApp();
 </script>
 </body>
 </html>
 
 <!--
 i4c2.html 重构自 i14.html
-请帮我返回完整的 C4MainApp
+need to code : updateClassInfoDisplay
 
 -->
