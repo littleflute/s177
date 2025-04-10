@@ -16,15 +16,37 @@
             padding: 10px 20px; margin: 5px;
             font-size: 16px; cursor: pointer;
         }
+        #dialog {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            border: 1px solid #ccc;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            display: none;
+        }
+        #dialog-header {
+            cursor: move;
+            background-color: #f0f0f0;
+            padding: 10px;
+            margin: -20px -20px 20px -20px;
+        }
     </style>
 </head>
 <body>
     <div id="scene-container"></div>
     <div id="toolbar">
         <button id="toggle-button">停止转动</button>
-        <button id="rotate-layer-1">旋转第一层</button>
-        <button id="rotate-layer-2">旋转第二层</button>
-        <button id="rotate-layer-3">旋转第三层</button>
+        <button id="rotate-front">旋转前面</button>
+        <button id="rotate-middle">旋转中间层</button>
+        <button id="rotate-back">旋转后面</button>
+        <button id="open-dialog">打开对话框</button>
+    </div>
+    <div id="dialog">
+        <div id="dialog-header">拖动我</div>
+        <p>这是一个可移动的对话框。</p>
     </div>
     <script>
         const scene = new THREE.Scene();
@@ -86,8 +108,8 @@
             this.textContent = isRotating ? '停止转动' : '开始转动';
         });
 
-        // 层旋转函数
-        function rotateLayer(layerGroup, axis = 'y', angle = Math.PI/2) {
+        // 层旋转函数（改进版）
+        function rotateLayer(layerGroup, axis = 'z', angle = Math.PI/2) {
             if(layerGroup.rotating) return;
             layerGroup.rotating = true;
             
@@ -103,32 +125,102 @@
                 if(progress < 1) {
                     requestAnimationFrame(update);
                 } else {
-                    // 更新立方体位置数据（重要！）
+                    // 计算旋转后的新位置
+                    const rotationMatrix = new THREE.Matrix4().makeRotationAxis(
+                        new THREE.Vector3(
+                            axis === 'x' ? 1 : 0,
+                            axis === 'y' ? 1 : 0,
+                            axis === 'z' ? 1 : 0
+                        ), 
+                        angle
+                    );
+                    
+                    // 更新立方体位置并重置层组旋转
                     layerGroup.children.forEach(cube => {
-                        cube.position.applyAxisAngle(
-                            new THREE.Vector3(axis === 'x' ? 1 : 0, axis === 'y' ? 1 : 0, axis === 'z' ? 1 : 0),
-                            angle
-                        );
+                        cube.position.applyMatrix4(rotationMatrix);
                     });
                     layerGroup.rotation[axis] = 0;
+
+                    // 更新颜色以反映真实的魔方旋转
+                    updateColors(layerGroup, axis, angle);
+
                     layerGroup.rotating = false;
                 }
             }
             update();
         }
 
-        // 绑定按钮事件
-        document.getElementById('rotate-layer-1').addEventListener('click', () => rotateLayer(layers[0]));
-        document.getElementById('rotate-layer-2').addEventListener('click', () => rotateLayer(layers[1]));
-        document.getElementById('rotate-layer-3').addEventListener('click', () => rotateLayer(layers[2]));
+        // 更新颜色函数
+        function updateColors(layerGroup, axis, angle) {
+            layerGroup.children.forEach(cube => {
+                const oldMaterials = cube.material.slice();
+                if (axis === 'z') {
+                    if (angle === -Math.PI / 2) {
+                        cube.material[0] = oldMaterials[3];
+                        cube.material[3] = oldMaterials[5];
+                        cube.material[5] = oldMaterials[2];
+                        cube.material[2] = oldMaterials[0];
+                    } else if (angle === Math.PI / 2) {
+                        cube.material[0] = oldMaterials[2];
+                        cube.material[2] = oldMaterials[5];
+                        cube.material[5] = oldMaterials[3];
+                        cube.material[3] = oldMaterials[0];
+                    }
+                }
+                // 可以添加更多轴和角度的处理
+            });
+        }
+
+        // 绑定按钮事件（修正旋转轴和方向）
+        document.getElementById('rotate-front').addEventListener('click', 
+            () => rotateLayer(layers[0], 'z', -Math.PI/2)); // 前面顺时针旋转
+        document.getElementById('rotate-middle').addEventListener('click', 
+            () => rotateLayer(layers[1], 'z', -Math.PI/2)); // 中间层顺时针旋转
+        document.getElementById('rotate-back').addEventListener('click', 
+            () => rotateLayer(layers[2], 'z', Math.PI/2)); // 后面逆时针旋转保持视觉一致
+
+        // 打开/关闭对话框按钮事件
+        const openDialogButton = document.getElementById('open-dialog');
+        const dialog = document.getElementById('dialog');
+        openDialogButton.addEventListener('click', function() {
+            if (dialog.style.display === 'none' || dialog.style.display === '') {
+                dialog.style.display = 'block';
+                this.textContent = '关闭对话框';
+            } else {
+                dialog.style.display = 'none';
+                this.textContent = '打开对话框';
+            }
+        });
+
+        // 使对话框可移动
+        const dialogHeader = document.getElementById('dialog-header');
+        let isDragging = false;
+        let offsetX, offsetY;
+
+        dialogHeader.addEventListener('mousedown', function(e) {
+            isDragging = true;
+            offsetX = e.clientX - dialog.offsetLeft;
+            offsetY = e.clientY - dialog.offsetTop;
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (isDragging) {
+                dialog.style.left = (e.clientX - offsetX) + 'px';
+                dialog.style.top = (e.clientY - offsetY) + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', function() {
+            isDragging = false;
+        });
     </script>
 </body>
-</html>
-    
+</html>    
 <!--
 升级：
  
-魔方旋转逻辑不对，应该是模仿真实的魔方旋转方式旋转 
+模拟真实的魔方旋转。 
+就是转完以后，颜色应该反映真实的魔方旋转情况。
 
 return all new code.
 -->
