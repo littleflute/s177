@@ -1,47 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Rubik's Cube</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-        }
-
-        #scene-container {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-        }
-
+        body { margin: 0; overflow: hidden; }
+        #scene-container { position: absolute; width: 100%; height: 100%; }
         #toolbar {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            text-align: center;
+            position: fixed; bottom: 0; width: 100%;
+            background: rgba(0,0,0,0.7); padding: 10px; text-align: center;
         }
-
-        #toggle-button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
         button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            margin: 5px;
+            padding: 10px 20px; margin: 5px;
+            font-size: 16px; cursor: pointer;
         }
     </style>
 </head>
-
 <body>
     <div id="scene-container"></div>
     <div id="toolbar">
@@ -51,111 +27,102 @@
         <button id="rotate-layer-3">旋转第三层</button>
     </div>
     <script>
-        // 创建场景
         const scene = new THREE.Scene();
-
-        // 创建相机
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.z = 5;
-
-        // 创建渲染器
-        const renderer = new THREE.WebGLRenderer();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.getElementById('scene-container').appendChild(renderer.domElement);
 
-        // 定义魔方方块的颜色
-        const colors = [
-            0xff0000, 0x00ff00, 0x0000ff,
-            0xffff00, 0xffa500, 0xffffff
-        ];
+        // 灯光设置
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
 
-        // 定义魔方方块的大小
-        const cubeSize = 0.9;
-        const gap = 0.1;
+        // 魔方参数
+        const CUBE_SIZE = 1;
+        const GAP = 0.1;
+        const SPACING = CUBE_SIZE + GAP;
+        const layers = [];
+        const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xffa500, 0xffffff];
 
-        // 存储每层的方块
-        const layers = [
-            [],
-            [],
-            []
-        ];
+        // 创建3个层组（前、中、后）
+        for(let z = -1; z <= 1; z++) {
+            const layerGroup = new THREE.Group();
+            layerGroup.position.z = z * SPACING;
+            scene.add(layerGroup);
+            layers[z+1] = layerGroup;
 
-        // 创建魔方
-        for (let z = -1; z <= 1; z++) {
-            const layerIndex = z + 1;
-            for (let x = -1; x <= 1; x++) {
-                for (let y = -1; y <= 1; y++) {
-                    const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-                    const materials = [];
-                    for (let i = 0; i < 6; i++) {
-                        materials.push(new THREE.MeshBasicMaterial({ color: colors[i] }));
-                    }
+            // 填充每个层的立方体
+            for(let x = -1; x <= 1; x++) {
+                for(let y = -1; y <= 1; y++) {
+                    const geometry = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
+                    const materials = colors.map(color => new THREE.MeshPhongMaterial({ color }));
                     const cube = new THREE.Mesh(geometry, materials);
-                    cube.position.set(x * (cubeSize + gap), y * (cubeSize + gap), z * (cubeSize + gap));
-                    scene.add(cube);
-                    layers[layerIndex].push(cube);
+                    cube.position.set(x*SPACING, y*SPACING, 0);
+                    layerGroup.add(cube);
                 }
             }
         }
 
+        camera.position.z = 8;
         let isRotating = true;
 
         // 动画循环
         function animate() {
-            if (isRotating) {
-                // 旋转魔方
-                scene.rotation.x += 0.01;
-                scene.rotation.y += 0.01;
-            }
-
-            renderer.render(scene, camera);
             requestAnimationFrame(animate);
+            if(isRotating) {
+                scene.rotation.x += 0.005;
+                scene.rotation.y += 0.005;
+            }
+            renderer.render(scene, camera);
         }
-
         animate();
 
-        const toggleButton = document.getElementById('toggle-button');
-        toggleButton.addEventListener('click', function () {
+        // 控制按钮
+        document.getElementById('toggle-button').addEventListener('click', function() {
             isRotating = !isRotating;
             this.textContent = isRotating ? '停止转动' : '开始转动';
         });
 
-        const rotateLayer1Button = document.getElementById('rotate-layer-1');
-        rotateLayer1Button.addEventListener('click', function () {
-            rotateLayer(layers[0]);
-        });
-
-        const rotateLayer2Button = document.getElementById('rotate-layer-2');
-        rotateLayer2Button.addEventListener('click', function () {
-            rotateLayer(layers[1]);
-        });
-
-        const rotateLayer3Button = document.getElementById('rotate-layer-3');
-        rotateLayer3Button.addEventListener('click', function () {
-            rotateLayer(layers[2]);
-        });
-
-        function rotateLayer(layer) {
-            const rotationSpeed = 0.05;
-            const targetRotation = Math.PI / 2;
-            let currentRotation = 0;
-
-            function performRotation() {
-                if (currentRotation < targetRotation) {
-                    const delta = Math.min(rotationSpeed, targetRotation - currentRotation);
-                    layer.forEach(cube => {
-                        cube.rotation.z += delta;
+        // 层旋转函数
+        function rotateLayer(layerGroup, axis = 'y', angle = Math.PI/2) {
+            if(layerGroup.rotating) return;
+            layerGroup.rotating = true;
+            
+            const start = performance.now();
+            const duration = 500;
+            const startRotation = layerGroup.rotation[axis];
+            
+            function update() {
+                const elapsed = performance.now() - start;
+                const progress = Math.min(elapsed/duration, 1);
+                layerGroup.rotation[axis] = startRotation + angle*progress;
+                
+                if(progress < 1) {
+                    requestAnimationFrame(update);
+                } else {
+                    // 更新立方体位置数据（重要！）
+                    layerGroup.children.forEach(cube => {
+                        cube.position.applyAxisAngle(
+                            new THREE.Vector3(axis === 'x' ? 1 : 0, axis === 'y' ? 1 : 0, axis === 'z' ? 1 : 0),
+                            angle
+                        );
                     });
-                    currentRotation += delta;
-                    requestAnimationFrame(performRotation);
+                    layerGroup.rotation[axis] = 0;
+                    layerGroup.rotating = false;
                 }
             }
-
-            performRotation();
+            update();
         }
+
+        // 绑定按钮事件
+        document.getElementById('rotate-layer-1').addEventListener('click', () => rotateLayer(layers[0]));
+        document.getElementById('rotate-layer-2').addEventListener('click', () => rotateLayer(layers[1]));
+        document.getElementById('rotate-layer-3').addEventListener('click', () => rotateLayer(layers[2]));
     </script>
 </body>
-
 </html>
     
 <!--
