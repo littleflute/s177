@@ -1,21 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Rubik's Cube</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; }
-        #scene-container { position: absolute; width: 100%; height: 100%; }
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #scene-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
         #toolbar {
-            position: fixed; bottom: 0; width: 100%;
-            background: rgba(0,0,0,0.7); padding: 10px; text-align: center;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            text-align: center;
         }
+
         button {
-            padding: 10px 20px; margin: 5px;
-            font-size: 16px; cursor: pointer;
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            cursor: pointer;
         }
+
         #dialog {
             position: absolute;
             top: 50%;
@@ -26,8 +44,56 @@
             border: 1px solid #ccc;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
             display: none;
+            width: 300px;
+            height: 400px;
+            box-sizing: border-box;
+            overflow-y: auto;
         }
+
         #dialog-header {
+            cursor: move;
+            background-color: #f0f0f0;
+            padding: 10px;
+            margin: -20px -20px 20px -20px;
+        }
+
+        #color-text {
+            margin-top: 10px;
+        }
+
+        #dialog-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #dialog-toolbar button {
+            flex: 0 0 calc(50% - 10px);
+            box-sizing: border-box;
+        }
+
+        #rotation-dialog {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: white;
+            padding: 20px;
+            border: 1px solid #ccc;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            display: none;
+            width: 250px;
+            height: 300px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        #rotation-dialog button {
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        #rotation-dialog-header {
             cursor: move;
             background-color: #f0f0f0;
             padding: 10px;
@@ -35,192 +101,314 @@
         }
     </style>
 </head>
+
 <body>
     <div id="scene-container"></div>
     <div id="toolbar">
-        <button id="toggle-button">停止转动</button>
+        <button id="toggle-button">开始转动</button>
         <button id="rotate-front">旋转前面</button>
         <button id="rotate-middle">旋转中间层</button>
         <button id="rotate-back">旋转后面</button>
         <button id="open-dialog">打开对话框</button>
+        <button id="open-rotation-dialog">打开旋转控制对话框</button>
     </div>
     <div id="dialog">
         <div id="dialog-header">拖动我</div>
         <p>这是一个可移动的对话框。</p>
+        <div id="dialog-toolbar">
+            <button id="show-front-color">显示前面颜色</button>
+            <button id="show-second-color">显示第 2 面颜色</button>
+            <button id="show-third-color">显示第 3 面颜色</button>
+            <button id="show-fourth-color">显示第 4 面颜色</button>
+            <button id="show-fifth-color">显示第 5 面颜色</button>
+            <button id="show-sixth-color">显示第 6 面颜色</button>
+        </div>
+        <p id="color-text">颜色信息将显示在这里</p>
+    </div>
+    <div id="rotation-dialog">
+        <div id="rotation-dialog-header">拖动我</div>
+        <button id="rotate-front-clockwise">前面顺时针旋转</button>
+        <button id="rotate-front-counterclockwise">前面逆时针旋转</button>
+        <button id="rotate-middle-clockwise">中间层顺时针旋转</button>
+        <button id="rotate-middle-counterclockwise">中间层逆时针旋转</button>
+        <button id="rotate-back-clockwise">后面顺时针旋转</button>
+        <button id="rotate-back-counterclockwise">后面逆时针旋转</button>
     </div>
     <script>
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.getElementById('scene-container').appendChild(renderer.domElement);
+        class RubiksCube {
+            constructor() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                document.getElementById('scene-container').appendChild(this.renderer.domElement);
 
-        // 灯光设置
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        scene.add(ambientLight);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(5, 5, 5);
-        scene.add(directionalLight);
-
-        // 魔方参数
-        const CUBE_SIZE = 1;
-        const GAP = 0.1;
-        const SPACING = CUBE_SIZE + GAP;
-        const layers = [];
-        const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xffa500, 0xffffff];
-
-        // 创建3个层组（前、中、后）
-        for(let z = -1; z <= 1; z++) {
-            const layerGroup = new THREE.Group();
-            layerGroup.position.z = z * SPACING;
-            scene.add(layerGroup);
-            layers[z+1] = layerGroup;
-
-            // 填充每个层的立方体
-            for(let x = -1; x <= 1; x++) {
-                for(let y = -1; y <= 1; y++) {
-                    const geometry = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
-                    const materials = colors.map(color => new THREE.MeshPhongMaterial({ color }));
-                    const cube = new THREE.Mesh(geometry, materials);
-                    cube.position.set(x*SPACING, y*SPACING, 0);
-                    layerGroup.add(cube);
-                }
+                this.setupLights();
+                this.setupCube();
+                this.camera.position.z = 8;
+                this.isRotating = false;
+                this.animate();
+                this.setupControls();
             }
-        }
 
-        camera.position.z = 8;
-        let isRotating = true;
-
-        // 动画循环
-        function animate() {
-            requestAnimationFrame(animate);
-            if(isRotating) {
-                scene.rotation.x += 0.005;
-                scene.rotation.y += 0.005;
+            setupLights() {
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                this.scene.add(ambientLight);
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(5, 5, 5);
+                this.scene.add(directionalLight);
             }
-            renderer.render(scene, camera);
-        }
-        animate();
 
-        // 控制按钮
-        document.getElementById('toggle-button').addEventListener('click', function() {
-            isRotating = !isRotating;
-            this.textContent = isRotating ? '停止转动' : '开始转动';
-        });
+            setupCube() {
+                const CUBE_SIZE = 1;
+                const GAP = 0.1;
+                const SPACING = CUBE_SIZE + GAP;
+                this.layers = [];
+                const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xffa500, 0xffffff];
+                this.colorNames = {
+                    0xff0000: '红色',
+                    0x00ff00: '绿色',
+                    0x0000ff: '蓝色',
+                    0xffff00: '黄色',
+                    0xffa500: '橙色',
+                    0xffffff: '白色'
+                };
 
-        // 层旋转函数（改进版）
-        function rotateLayer(layerGroup, axis = 'z', angle = Math.PI/2) {
-            if(layerGroup.rotating) return;
-            layerGroup.rotating = true;
-            
-            const start = performance.now();
-            const duration = 500;
-            const startRotation = layerGroup.rotation[axis];
-            
-            function update() {
-                const elapsed = performance.now() - start;
-                const progress = Math.min(elapsed/duration, 1);
-                layerGroup.rotation[axis] = startRotation + angle*progress;
-                
-                if(progress < 1) {
-                    requestAnimationFrame(update);
-                } else {
-                    // 计算旋转后的新位置
-                    const rotationMatrix = new THREE.Matrix4().makeRotationAxis(
-                        new THREE.Vector3(
-                            axis === 'x' ? 1 : 0,
-                            axis === 'y' ? 1 : 0,
-                            axis === 'z' ? 1 : 0
-                        ), 
-                        angle
-                    );
-                    
-                    // 更新立方体位置并重置层组旋转
-                    layerGroup.children.forEach(cube => {
-                        cube.position.applyMatrix4(rotationMatrix);
-                    });
-                    layerGroup.rotation[axis] = 0;
+                for (let z = -1; z <= 1; z++) {
+                    const layerGroup = new THREE.Group();
+                    layerGroup.position.z = z * SPACING;
+                    this.scene.add(layerGroup);
+                    this.layers[z + 1] = layerGroup;
 
-                    // 更新颜色以反映真实的魔方旋转
-                    updateColors(layerGroup, axis, angle);
-
-                    layerGroup.rotating = false;
-                }
-            }
-            update();
-        }
-
-        // 更新颜色函数
-        function updateColors(layerGroup, axis, angle) {
-            layerGroup.children.forEach(cube => {
-                const oldMaterials = cube.material.slice();
-                if (axis === 'z') {
-                    if (angle === -Math.PI / 2) {
-                        cube.material[0] = oldMaterials[3];
-                        cube.material[3] = oldMaterials[5];
-                        cube.material[5] = oldMaterials[2];
-                        cube.material[2] = oldMaterials[0];
-                    } else if (angle === Math.PI / 2) {
-                        cube.material[0] = oldMaterials[2];
-                        cube.material[2] = oldMaterials[5];
-                        cube.material[5] = oldMaterials[3];
-                        cube.material[3] = oldMaterials[0];
+                    for (let x = -1; x <= 1; x++) {
+                        for (let y = -1; y <= 1; y++) {
+                            const geometry = new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
+                            const materials = [];
+                            for (let i = 0; i < 6; i++) {
+                                if (i === 2) {
+                                    materials[i] = new THREE.MeshPhongMaterial({ color: 0x0000ff });
+                                } else {
+                                    materials[i] = new THREE.MeshPhongMaterial({ color: colors[i] });
+                                }
+                            }
+                            const cube = new THREE.Mesh(geometry, materials);
+                            cube.position.set(x * SPACING, y * SPACING, 0);
+                            layerGroup.add(cube);
+                        }
                     }
                 }
-                // 可以添加更多轴和角度的处理
-            });
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                if (this.isRotating) {
+                    this.scene.rotation.x += 0.005;
+                    this.scene.rotation.y += 0.005;
+                }
+                this.renderer.render(this.scene, this.camera);
+            }
+
+            setupControls() {
+                document.getElementById('toggle-button').addEventListener('click', () => {
+                    this.isRotating = !this.isRotating;
+                    const button = document.getElementById('toggle-button');
+                    button.textContent = this.isRotating ? '停止转动' : '开始转动';
+                });
+
+                document.getElementById('rotate-front').addEventListener('click', () => this.rotateLayer(this.layers[0], 'z', -Math.PI / 2));
+                document.getElementById('rotate-middle').addEventListener('click', () => this.rotateLayer(this.layers[1], 'z', -Math.PI / 2));
+                document.getElementById('rotate-back').addEventListener('click', () => this.rotateLayer(this.layers[2], 'z', Math.PI / 2));
+            }
+
+            rotateLayer(layerGroup, axis = 'z', angle = Math.PI / 2) {
+                if (layerGroup.rotating) return;
+                layerGroup.rotating = true;
+
+                const start = performance.now();
+                const duration = 500;
+                const startRotation = layerGroup.rotation[axis];
+
+                const update = () => {
+                    const elapsed = performance.now() - start;
+                    const progress = Math.min(elapsed / duration, 1);
+                    layerGroup.rotation[axis] = startRotation + angle * progress;
+
+                    if (progress < 1) {
+                        requestAnimationFrame(update);
+                    } else {
+                        const rotationMatrix = new THREE.Matrix4().makeRotationAxis(
+                            new THREE.Vector3(
+                                axis === 'x' ? 1 : 0,
+                                axis === 'y' ? 1 : 0,
+                                axis === 'z' ? 1 : 0
+                            ),
+                            angle
+                        );
+
+                        layerGroup.children.forEach(cube => {
+                            cube.position.applyMatrix4(rotationMatrix);
+                        });
+                        layerGroup.rotation[axis] = 0;
+
+                        this.updateColors(layerGroup, axis, angle);
+
+                        layerGroup.rotating = false;
+                    }
+                };
+                update();
+            }
+
+            updateColors(layerGroup, axis, angle) {
+                layerGroup.children.forEach(cube => {
+                    const oldMaterials = cube.material.slice();
+                    if (axis === 'z') {
+                        if (angle === -Math.PI / 2) {
+                            cube.material[0] = oldMaterials[3];
+                            cube.material[3] = oldMaterials[5];
+                            cube.material[5] = oldMaterials[2];
+                            cube.material[2] = oldMaterials[0];
+                        } else if (angle === Math.PI / 2) {
+                            cube.material[0] = oldMaterials[2];
+                            cube.material[2] = oldMaterials[5];
+                            cube.material[5] = oldMaterials[3];
+                            cube.material[3] = oldMaterials[0];
+                        }
+                    } else if (axis === 'x') {
+                        if (angle === -Math.PI / 2) {
+                            cube.material[1] = oldMaterials[0];
+                            cube.material[0] = oldMaterials[4];
+                            cube.material[4] = oldMaterials[3];
+                            cube.material[3] = oldMaterials[1];
+                        } else if (angle === Math.PI / 2) {
+                            cube.material[1] = oldMaterials[3];
+                            cube.material[3] = oldMaterials[4];
+                            cube.material[4] = oldMaterials[0];
+                            cube.material[0] = oldMaterials[1];
+                        }
+                    } else if (axis === 'y') {
+                        if (angle === -Math.PI / 2) {
+                            cube.material[1] = oldMaterials[2];
+                            cube.material[2] = oldMaterials[4];
+                            cube.material[4] = oldMaterials[5];
+                            cube.material[5] = oldMaterials[1];
+                        } else if (angle === Math.PI / 2) {
+                            cube.material[1] = oldMaterials[5];
+                            cube.material[5] = oldMaterials[4];
+                            cube.material[4] = oldMaterials[2];
+                            cube.material[2] = oldMaterials[1];
+                        }
+                    }
+                });
+            }
         }
 
-        // 绑定按钮事件（修正旋转轴和方向）
-        document.getElementById('rotate-front').addEventListener('click', 
-            () => rotateLayer(layers[0], 'z', -Math.PI/2)); // 前面顺时针旋转
-        document.getElementById('rotate-middle').addEventListener('click', 
-            () => rotateLayer(layers[1], 'z', -Math.PI/2)); // 中间层顺时针旋转
-        document.getElementById('rotate-back').addEventListener('click', 
-            () => rotateLayer(layers[2], 'z', Math.PI/2)); // 后面逆时针旋转保持视觉一致
-
-        // 打开/关闭对话框按钮事件
-        const openDialogButton = document.getElementById('open-dialog');
-        const dialog = document.getElementById('dialog');
-        openDialogButton.addEventListener('click', function() {
-            if (dialog.style.display === 'none' || dialog.style.display === '') {
-                dialog.style.display = 'block';
-                this.textContent = '关闭对话框';
-            } else {
-                dialog.style.display = 'none';
-                this.textContent = '打开对话框';
+        class Dialog {
+            constructor(dialogId, openButtonId) {
+                this.dialog = document.getElementById(dialogId);
+                this.openButton = document.getElementById(openButtonId);
+                this.setupOpenClose();
             }
-        });
 
-        // 使对话框可移动
-        const dialogHeader = document.getElementById('dialog-header');
-        let isDragging = false;
-        let offsetX, offsetY;
-
-        dialogHeader.addEventListener('mousedown', function(e) {
-            isDragging = true;
-            offsetX = e.clientX - dialog.offsetLeft;
-            offsetY = e.clientY - dialog.offsetTop;
-        });
-
-        document.addEventListener('mousemove', function(e) {
-            if (isDragging) {
-                dialog.style.left = (e.clientX - offsetX) + 'px';
-                dialog.style.top = (e.clientY - offsetY) + 'px';
+            setupOpenClose() {
+                this.openButton.addEventListener('click', () => {
+                    if (this.dialog.style.display === 'none' || this.dialog.style.display === '') {
+                        this.dialog.style.display = 'block';
+                        this.openButton.textContent = `关闭${this.dialog.id === 'dialog' ? '对话框' : '旋转控制对话框'}`;
+                    } else {
+                        this.dialog.style.display = 'none';
+                        this.openButton.textContent = `打开${this.dialog.id === 'dialog' ? '对话框' : '旋转控制对话框'}`;
+                    }
+                });
             }
-        });
+        }
 
-        document.addEventListener('mouseup', function() {
-            isDragging = false;
-        });
+        class MovableDialog extends Dialog {
+            constructor(dialogId, openButtonId, headerId) {
+                super(dialogId, openButtonId);
+                this.header = document.getElementById(headerId);
+                this.setupDragging();
+            }
+
+            setupDragging() {
+                let isDragging = false;
+                let offsetX, offsetY;
+
+                this.header.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    offsetX = e.clientX - this.dialog.offsetLeft;
+                    offsetY = e.clientY - this.dialog.offsetTop;
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (isDragging) {
+                        this.dialog.style.left = (e.clientX - offsetX) + 'px';
+                        this.dialog.style.top = (e.clientY - offsetY) + 'px';
+                    }
+                });
+
+                document.addEventListener('mouseup', () => {
+                    isDragging = false;
+                });
+            }
+        }
+
+        class ColorDialog extends MovableDialog {
+            constructor() {
+                super('dialog', 'open-dialog', 'dialog-header');
+                this.colorText = document.getElementById('color-text');
+                this.faceIndices = [2, 0, 4, 5, 3, 1];
+                this.faceNames = ['前面', '第 2 面', '第 3 面', '第 4 面', '第 5 面', '第 6 面'];
+                this.setupColorButtons();
+            }
+
+            setupColorButtons() {
+                const showColorButtons = [
+                    'show-front-color',
+                    'show-second-color',
+                    'show-third-color',
+                    'show-fourth-color',
+                    'show-fifth-color',
+                    'show-sixth-color'
+                ];
+
+                showColorButtons.forEach((buttonId, index) => {
+                    const button = document.getElementById(buttonId);
+                    button.addEventListener('click', () => {
+                        const frontLayer = rubiksCube.layers[0];
+                        const frontCube = frontLayer.children[4];
+                        const faceColor = frontCube.material[this.faceIndices[index]].color.getHex();
+                        const colorName = rubiksCube.colorNames[faceColor];
+                        this.colorText.textContent = `${this.faceNames[index]}颜色为：${colorName}`;
+                    });
+                });
+            }
+        }
+
+        class RotationControlDialog extends MovableDialog {
+            constructor() {
+                super('rotation-dialog', 'open-rotation-dialog', 'rotation-dialog-header');
+                this.setupRotationButtons();
+            }
+
+            setupRotationButtons() {
+                document.getElementById('rotate-front-clockwise').addEventListener('click', () => rubiksCube.rotateLayer(rubiksCube.layers[0], 'z', -Math.PI / 2));
+                document.getElementById('rotate-front-counterclockwise').addEventListener('click', () => rubiksCube.rotateLayer(rubiksCube.layers[0], 'z', Math.PI / 2));
+                document.getElementById('rotate-middle-clockwise').addEventListener('click', () => rubiksCube.rotateLayer(rubiksCube.layers[1], 'z', -Math.PI / 2));
+                document.getElementById('rotate-middle-counterclockwise').addEventListener('click', () => rubiksCube.rotateLayer(rubiksCube.layers[1], 'z', Math.PI / 2));
+                document.getElementById('rotate-back-clockwise').addEventListener('click', () => rubiksCube.rotateLayer(rubiksCube.layers[2], 'z', -Math.PI / 2));
+                document.getElementById('rotate-back-counterclockwise').addEventListener('click', () => rubiksCube.rotateLayer(rubiksCube.layers[2], 'z', Math.PI / 2));
+            }
+        }
+
+        const rubiksCube = new RubiksCube();
+        const colorDialog = new ColorDialog();
+        const rotationControlDialog = new RotationControlDialog();
     </script>
 </body>
+
 </html>    
 <!--
 升级：
- 
-模拟真实的魔方旋转。 
-就是转完以后，颜色应该反映真实的魔方旋转情况。
-
+  添加旋转控制对话框
 return all new code.
 -->

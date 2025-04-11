@@ -477,7 +477,7 @@ i14.html
     <div class="mobile_container">
         <div class="topnav">
             <div id="id_4_info">
-                <a href="#home" class="active" id="id_4_toggleUI" onclick="appCore.toggleUI();" style="border:1px brown solid;">i14 v1.21</a>
+                <a href="#home" class="active" id="id_4_toggleUI" onclick="appCore.toggleUI();" style="border:1px brown solid;">i14 v1.22</a>
             </div>
 
             <div id="myLinks">
@@ -550,6 +550,8 @@ i14.html
 
         class C4XDR177I14 {
             constructor() {
+                this.windows = {}; // 存储窗口实例
+                this.fns = ["getIssue2ta","addBtn2tb"]; 
                 this.isPropertyPanelVisible = false;
                 // 属性面板相关元素
                 this.propertyPanel = document.getElementById('property_panel');
@@ -595,6 +597,193 @@ i14.html
                 this.currentCommentId = null;
                 this.#injectStyles();
             }
+ 
+            createMovableWnd(id, title = 'Window', content = '', options = {}) {
+                // 如果窗口已存在则不再创建
+                if (this.windows[id]) return;
+                
+                // 创建窗口元素
+                const windowDiv = document.createElement('div');
+                windowDiv.className = 'movable-window';
+                windowDiv.id = id;
+                windowDiv.innerHTML = `
+                    <div class="movable-header">
+                        <h3>${title}</h3>
+                        <span class="window-close">×</span>
+                    </div>
+                    <div class="window-content">${content}</div>
+                `;
+
+                // 应用自定义样式
+                Object.assign(windowDiv.style, {
+                    width: options.width || '300px',
+                    height: options.height || '400px',
+                    left: options.x ? `${options.x}px` : '50%',
+                    top: options.y ? `${options.y}px` : '50%',
+                    display: 'none'
+                });
+
+                // 添加到DOM
+                document.body.appendChild(windowDiv);
+                
+                // 初始化窗口功能
+                this.#initWindowBehavior(windowDiv);
+                
+                // 存储窗口引用
+                this.windows[id] = {
+                    element: windowDiv,
+                    visible: false,
+                    x: 0,
+                    y: 0
+                };
+            }
+            // 在 #initWindowBehavior 方法中修改拖动处理逻辑
+            #initWindowBehavior(windowElement) {
+                const header = windowElement.querySelector('.movable-header');
+                const closeBtn = windowElement.querySelector('.window-close');
+
+                // 关闭按钮事件
+                closeBtn.addEventListener('click', () => {
+                    this.toggleWnd(windowElement.id, false);
+                });
+
+                // 拖动处理逻辑（修复后的版本）
+                const startDrag = (clientX, clientY) => {
+                    // 移除transform影响
+                    windowElement.style.transform = 'none';
+                    const rect = windowElement.getBoundingClientRect();
+                    
+                    // 计算精确偏移量（考虑滚动位置）
+                    const offsetX = clientX - rect.left + window.scrollX;
+                    const offsetY = clientY - rect.top + window.scrollY;
+
+                    const moveHandler = (e) => {
+                        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                        
+                        // 计算新位置（考虑滚动偏移）
+                        const newX = clientX - offsetX + window.scrollX;
+                        const newY = clientY - offsetY + window.scrollY;
+
+                        // 应用新位置
+                        windowElement.style.left = `${newX}px`;
+                        windowElement.style.top = `${newY}px`;
+                    };
+
+                    const endHandler = () => {
+                        document.removeEventListener('mousemove', moveHandler);
+                        document.removeEventListener('touchmove', moveHandler);
+                        document.removeEventListener('mouseup', endHandler);
+                        document.removeEventListener('touchend', endHandler);
+                    };
+
+                    document.addEventListener('mousemove', moveHandler);
+                    document.addEventListener('touchmove', moveHandler);
+                    document.addEventListener('mouseup', endHandler);
+                    document.addEventListener('touchend', endHandler);
+                };
+
+                // 桌面端事件
+                header.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    startDrag(e.clientX, e.clientY);
+                });
+
+                // 移动端事件
+                header.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    startDrag(touch.clientX, touch.clientY);
+                });
+            }
+            updateWindowContent(id, html) {
+                if (appCore.windows[id]) {
+                    appCore.windows[id].element.querySelector('.window-content').innerHTML = html;
+                }
+            }
+            toggleWnd(id, forceState) {
+                const wnd = this.windows[id];
+                if (!wnd) return;
+
+                // 确定新的显示状态
+                const newState = typeof forceState === 'boolean' ? 
+                    forceState : 
+                    !wnd.visible;
+
+                // 更新状态
+                wnd.element.style.display = newState ? 'block' : 'none';
+                wnd.visible = newState;
+
+                // 如果是首次显示且没有位置信息，则居中
+                if (newState && !wnd.x && !wnd.y) {
+                    const rect = wnd.element.getBoundingClientRect();
+                    wnd.element.style.left = `${window.innerWidth/2 - rect.width/2}px`;
+                    wnd.element.style.top = `${window.innerHeight/2 - rect.height/2}px`;
+                }
+            }
+
+            parseObj2div(obj, divID) {
+                const container = document.getElementById(divID);
+                if (!container) {
+                    console.error(`Div #${divID} not found`);
+                    return;
+                }
+                container.innerHTML = ''; // 清空容器
+
+                // 确保obj有fns数组
+                if (!Array.isArray(obj.fns)) {
+                    console.error('Object does not have a valid fns array');
+                    return;
+                }
+
+                // 遍历fns数组中的每个方法名
+                obj.fns.forEach(methodName => {
+                    const method = obj[methodName];
+                    if (typeof method !== 'function') {
+                        console.warn(`${methodName} is not a function`);
+                        return;
+                    }
+
+                    // 创建按钮
+                    const btn = document.createElement('button');
+                    btn.className = 'issue_btn';
+                    btn.textContent = methodName;
+
+                    // 绑定点击事件，确保this正确
+                    btn.onclick = () => {
+                        try {
+                            method.call(obj); // 正确绑定this到obj
+                        } catch (e) {
+                            alert(`执行 ${methodName} 错误: ${e.message}`);
+                        }
+                    };
+
+                    container.appendChild(btn);
+                });
+            }
+            async getIssue2ta(issueNumber, textareaId) {
+                try {
+                    // 通过 API 获取指定 Issue
+                    const issue = await this.#apiRequest('GET', `issues/${issueNumber}`, null);
+                    
+                    // 获取目标 textarea 元素
+                    const textarea = document.getElementById(textareaId);
+                    if (!textarea) {
+                        throw new Error(`找不到 ID 为 ${textareaId} 的文本框`);
+                    }
+                    
+                    // 将 Issue 内容填充到文本框
+                    textarea.value = issue.body || '';
+                    
+                    // 添加成功提示（可选）
+                    console.log(`已加载 Issue #${issueNumber} 内容到 ${textareaId}`);
+                } catch (error) {
+                    console.error('获取 Issue 失败:', error);
+                    alert(`错误: ${error.message}`);
+                }
+            }
+ 
+
             #initPropertyPanelEvents() {
                 // 关闭按钮事件
                 this.panelCloseBtn.addEventListener('click', () => this.hidePropertyPanel());
@@ -1603,6 +1792,50 @@ i14.html
                         background: #45a049;
                     }
                 `;
+
+                const styleMovalbeWnd = `
+                    .movable-window {
+                        position: fixed;
+                        background: #333;
+                        color: white;
+                        border: 1px solid #4CAF50;
+                        border-radius: 5px;
+                        z-index: 1005;
+                        min-width: 250px;
+                        box-shadow: 0 0 10px rgba(0,0,0,0.5); 
+                        left: 50px;  /* 默认位置 */
+                        top: 50px;
+                    }
+
+                    .movable-header {
+                        padding: 10px;
+                        cursor: move;
+                        background: #4CAF50;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        border-radius: 5px 5px 0 0;
+                    }
+
+                    .window-close {
+                        cursor: pointer;
+                        font-size: 20px;
+                        padding: 0 5px;
+                    }
+
+                    .window-close:hover {
+                        color: #ff4444;
+                    }
+
+                    .window-content {
+                        padding: 15px;
+                        max-height: 80vh;
+                        overflow-y: auto;
+                    }
+                    `;
+                
+                style.textContent += styleMovalbeWnd;
+
                 document.head.appendChild(style);
             }
 
@@ -1628,7 +1861,8 @@ i14.html
                             </div>
                         </div>
                         <button onclick="appCore.openNewIssueModal()">New Issue</button>
-                        <button onclick="appCore.openNewCommentModal()">New Comment</button>
+                        <button onclick="appCore.openNewCommentModal()">New Comment</button> 
+                        <button onclick="testBtn()">test:createMovableWnd</button> 
                     </div>
                 `;
 
@@ -2045,9 +2279,25 @@ i14.html
         }
 
         const appCore = new C4XDR177I14();
+        function testBtn() {
+            // 创建测试窗口
+            appCore.createMovableWnd(
+                'id4TestWnd', 
+                'Test Window', 
+                '<p>Hello, World!</p><p>Drag the header to move</p>',
+                { width: '300px', height: '200px' }
+            );
+            //code13:  test updateWindowContent
+             
+            appCore.toggleWnd('id4TestWnd');
+        }
     </script>
 </body>
 
 </html>
-    
+<!--
+ to code code13
+
  
+
+-->
