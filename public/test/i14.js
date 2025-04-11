@@ -1,171 +1,133 @@
-class C4XDR177I14 {
-    constructor() {
-        // 在构造函数中添加窗口管理对象
-        this.windows = {}; // 存储窗口实例
-        // ...其他原有代码不变...
-    }
-
-    // 创建可移动窗口方法
-    createMoveableWnd(id, title = 'Window', content = '', options = {}) {
-        // 如果窗口已存在则不再创建
-        if (this.windows[id]) return;
-        
-        // 创建窗口元素
-        const windowDiv = document.createElement('div');
-        windowDiv.className = 'movable-window';
-        windowDiv.id = id;
-        windowDiv.innerHTML = `
-            <div class="movable-header">
-                <h3>${title}</h3>
-                <span class="window-close">×</span>
-            </div>
-            <div class="window-content">${content}</div>
-        `;
-
-        // 应用自定义样式
-        Object.assign(windowDiv.style, {
-            width: options.width || '300px',
-            height: options.height || '400px',
-            left: options.x ? `${options.x}px` : '50%',
-            top: options.y ? `${options.y}px` : '50%',
-            display: 'none'
-        });
-
-        // 添加到DOM
-        document.body.appendChild(windowDiv);
-        
-        // 初始化窗口功能
-        this.#initWindowBehavior(windowDiv);
-        
-        // 存储窗口引用
-        this.windows[id] = {
-            element: windowDiv,
-            visible: false,
-            x: 0,
-            y: 0
-        };
-    }
-
-    // 初始化窗口行为（拖动和关闭）
-    #initWindowBehavior(windowElement) {
-        const header = windowElement.querySelector('.movable-header');
-        const closeBtn = windowElement.querySelector('.window-close');
-
-        // 关闭按钮事件
-        closeBtn.addEventListener('click', () => {
-            this.toggleWnd(windowElement.id, false);
-        });
-
-        // 拖动处理逻辑（复用属性面板的拖动逻辑）
-        const startDrag = (clientX, clientY) => {
-            const rect = windowElement.getBoundingClientRect();
-            const offsetX = clientX - rect.left;
-            const offsetY = clientY - rect.top;
-
-            const moveHandler = (e) => {
-                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                
-                // 计算新位置并限制边界
-                const newX = clientX - offsetX;
-                const newY = clientY - offsetY;
-
-                windowElement.style.left = `${newX}px`;
-                windowElement.style.top = `${newY}px`;
-                this.windows[windowElement.id].x = newX;
-                this.windows[windowElement.id].y = newY;
-            };
-
-            const endHandler = () => {
-                document.removeEventListener('mousemove', moveHandler);
-                document.removeEventListener('touchmove', moveHandler);
-                document.removeEventListener('mouseup', endHandler);
-                document.removeEventListener('touchend', endHandler);
-            };
-
-            document.addEventListener('mousemove', moveHandler);
-            document.addEventListener('touchmove', moveHandler);
-            document.addEventListener('mouseup', endHandler);
-            document.addEventListener('touchend', endHandler);
-        };
-
-        // 桌面端事件
-        header.addEventListener('mousedown', (e) => {
-            startDrag(e.clientX, e.clientY);
-        });
-
-        // 移动端事件
-        header.addEventListener('touchstart', (e) => {
-            const touch = e.touches[0];
-            startDrag(touch.clientX, touch.clientY);
-        });
-    }
-
-    // 切换窗口显示状态
-    toggleWnd(id, forceState) {
-        const wnd = this.windows[id];
-        if (!wnd) return;
-
-        // 确定新的显示状态
-        const newState = typeof forceState === 'boolean' ? 
-            forceState : 
-            !wnd.visible;
-
-        // 更新状态
-        wnd.element.style.display = newState ? 'block' : 'none';
-        wnd.visible = newState;
-
-        // 如果是首次显示且没有位置信息，则居中
-        if (newState && !wnd.x && !wnd.y) {
-            const rect = wnd.element.getBoundingClientRect();
-            wnd.element.style.left = `${window.innerWidth/2 - rect.width/2}px`;
-            wnd.element.style.top = `${window.innerHeight/2 - rect.height/2}px`;
-        }
-    }
-
+oTest.test1 = async function() {
+    // 创建容器结构
+    const newContent = `
+      <div style="padding:10px;">
+        <h3>Repository Issues</h3>
+        <div id="id4IssueList" style="margin-bottom:20px;"></div>
+        <textarea id="id4TaInSandbox" 
+                  style="width:100%; height:200px; background:#333; color:white;"></textarea>
+        <div style="margin-top:10px;">
+          <button onclick="runTestCode()" 
+                  style="padding:5px 10px; background:#4CAF50; color:white; border:none; border-radius:3px;">
+            Run Code
+          </button>
+          <button onclick="analyzeCode()" 
+                  style="padding:5px 10px; background:#2196F3; color:white; border:none; border-radius:3px;">
+            Analyze
+          </button>
+        </div>
+        <div id="id4AnalysisResult" style="margin-top:10px;"></div>
+      </div>
+    `;
     
-    // ...其他原有代码保持不变...
-}
-
-// 添加样式到头部
-const style = document.createElement('style');
-style.textContent = `
-.movable-window {
-    position: fixed;
-    background: #333;
-    color: white;
-    border: 1px solid #4CAF50;
-    border-radius: 5px;
-    z-index: 1005;
-    min-width: 250px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.5);
-    transform: translate(-50%, -50%);
-}
-
-.movable-header {
-    padding: 10px;
-    cursor: move;
-    background: #4CAF50;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-radius: 5px 5px 0 0;
-}
-
-.window-close {
-    cursor: pointer;
-    font-size: 20px;
-    padding: 0 5px;
-}
-
-.window-close:hover {
-    color: #ff4444;
-}
-
-.window-content {
-    padding: 15px;
-    max-height: 80vh;
-    overflow-y: auto;
-}
-`;
-document.head.appendChild(style);
+    appCore.updateWindowContent('id4TestWnd', newContent);
+  
+    // 获取并显示Issues
+    try {
+      const issues = await appCore._C4XDR177I14__apiRequest('GET', 'issues?per_page=100', null);
+      const container = document.querySelector('#id4IssueList');
+      
+      // 创建表格显示
+      const table = document.createElement('table');
+      table.style.width = '100%';
+      table.innerHTML = `
+        <thead>
+          <tr style="background:#444; color:#4CAF50;">
+            <th style="padding:8px;">#</th>
+            <th style="padding:8px;">Title</th>
+            <th style="padding:8px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="id4IssueTbody"></tbody>
+      `;
+      
+      const tbody = table.querySelector('#id4IssueTbody');
+      issues.forEach(issue => {
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid #666';
+        
+        row.innerHTML = `
+          <td style="padding:6px;">${issue.number}</td>
+          <td style="padding:6px;">${issue.title}</td>
+          <td style="padding:6px;">
+            <button class="issue-btn" data-number="${issue.number}" 
+                    style="padding:3px 6px; margin:2px; background:#666;">
+              Load
+            </button>
+          </td>
+        `;
+        
+        // 添加点击事件
+        row.querySelector('button').addEventListener('click', () => {
+          appCore.getIssue2ta(issue.number, 'id4TaInSandbox');
+        });
+        
+        tbody.appendChild(row);
+      });
+      
+      container.innerHTML = '';
+      container.appendChild(table);
+      
+    } catch (error) {
+      console.error('Failed to load issues:', error);
+      document.querySelector('#id4IssueList').innerHTML = 
+        `<div style="color:#ff4444;">Error loading issues: ${error.message}</div>`;
+    }
+  };
+  
+  // 代码执行函数
+  window.runTestCode = function() {
+    const jsCode = document.getElementById('id4TaInSandbox').value;
+    try {
+      const fn = new Function(jsCode);
+      const result = fn();
+      if (result !== undefined) {
+        alert('Execution result: ' + JSON.stringify(result));
+      }
+    } catch (e) {
+      alert('Execution Error: ' + e.message);
+    }
+  };
+  
+  // 代码分析函数
+  window.analyzeCode = function() {
+    const code = document.getElementById('id4TaInSandbox').value;
+    const analysisResult = document.getElementById('id4AnalysisResult');
+    
+    try {
+      // 提取类信息
+      const classMatch = code.match(/class (\w+)/);
+      const classes = classMatch ? [classMatch[1]] : [];
+      
+      // 提取函数信息
+      const functionMatches = code.matchAll(/(?:function|async)\s+(\w+)|(\w+)\s*\(/g);
+      const functions = [...functionMatches]
+        .map(m => m[1] || m[2])
+        .filter(f => f && !['if', 'for', 'while'].includes(f));
+      
+      // 构建分析报告
+      const report = `
+        <div style="background:#222; padding:10px; border-radius:4px;">
+          <h4 style="color:#4CAF50; margin:0 0 10px 0;">Code Analysis</h4>
+          ${classes.length ? `
+            <div>Classes Found: 
+              ${classes.map(c => `<span style="color:#2196F3;">${c}</span>`).join(', ')}
+            </div>
+          ` : ''}
+          ${functions.length ? `
+            <div>Functions Found: 
+              ${functions.map(f => `<span style="color:#9C27B0;">${f}()</span>`).join(', ')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+      
+      analysisResult.innerHTML = report;
+    } catch (e) {
+      analysisResult.innerHTML = `
+        <div style="color:#ff4444;">
+          Analysis Error: ${e.message}
+        </div>
+      `;
+    }
+  };
