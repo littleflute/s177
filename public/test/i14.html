@@ -2284,78 +2284,115 @@ i14.html
         oTest.test1 = async function() {
     // 创建容器结构
     const newContent = `
-      <div style="padding:10px;">
-        <h3>Repository Issues</h3>
-        <div id="id4IssueList" style="margin-bottom:20px;"></div> 
-        <div style="margin-top:10px;">
-          <button onclick="runTestCode()" 
-                  style="padding:5px 10px; background:#4CAF50; color:white; border:none; border-radius:3px;">
-            Run Code
-          </button>
-          <button onclick="analyzeCode()" 
-                  style="padding:5px 10px; background:#2196F3; color:white; border:none; border-radius:3px;">
-            Analyze
-          </button>
+        <div style="padding:10px;">
+            <h3>Repository Issues</h3>
+            <div id="id4IssueList" style="margin-bottom:20px;"></div>
+            <textarea id="id4TaInSandbox" 
+                     style="width:100%; height:200px; background:#222; color:#fff; padding:10px;"></textarea>
         </div>
-        <div id="id4AnalysisResult" style="margin-top:10px;"></div>
-      </div>
     `;
     
     appCore.updateWindowContent('id4TestWnd', newContent);
-  
+
     // 获取并显示Issues
     try {
-      const issues = await appCore.apiRequest('GET', 'issues?per_page=100', null);
-      const container = document.querySelector('#id4IssueList');
-      
-      // 创建表格显示
-      const table = document.createElement('table');
-      table.style.width = '100%';
-      table.innerHTML = `
-        <thead>
-          <tr style="background:#444; color:#4CAF50;">
-            <th style="padding:8px;">#</th>
-            <th style="padding:8px;">Title</th>
-            <th style="padding:8px;">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="id4IssueTbody"></tbody>
-      `;
-      
-      const tbody = table.querySelector('#id4IssueTbody');
-      issues.forEach(issue => {
-        const row = document.createElement('tr');
-        row.style.borderBottom = '1px solid #666';
-        
-        row.innerHTML = `
-          <td style="padding:6px;">${issue.number}</td>
-          <td style="padding:6px;">${issue.title}</td>
-          <td style="padding:6px;">
-            <button class="issue-btn" data-number="${issue.number}" 
-                    style="padding:3px 6px; margin:2px; background:#666;">
-              Load
-            </button>
-          </td>
-        `;
-        
-        // 添加点击事件
-        row.querySelector('button').addEventListener('click', () => {
-          appCore.getIssue2ta(issue.number, 'id4TaInSandbox');
+        const issues = await appCore.apiRequest('GET', 'issues?per_page=100', null);
+        const container = document.querySelector('#id4IssueList');
+        container.innerHTML = '';
+
+        // 创建按钮列表容器
+        const btnContainer = document.createElement('div');
+        btnContainer.style.display = 'flex';
+        btnContainer.style.flexWrap = 'wrap';
+        btnContainer.style.gap = '8px';
+
+        // 为每个issue创建按钮
+        issues.forEach(issue => {
+            // 创建issue按钮
+            const issueBtn = document.createElement('button');
+            issueBtn.className = 'issue-btn';
+            issueBtn.style.cssText = `
+                padding: 6px 12px;
+                background: #444;
+                color: #4CAF50;
+                border: 1px solid #4CAF50;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: all 0.3s;
+            `;
+            issueBtn.innerHTML = `#${issue.number}`;
+            
+            // 创建详情容器
+            const detailContainer = document.createElement('div');
+            detailContainer.style.display = 'none';
+            detailContainer.style.padding = '10px';
+            detailContainer.style.background = '#333';
+            detailContainer.style.borderRadius = '4px';
+            detailContainer.style.marginTop = '8px';
+            detailContainer.innerHTML = `
+                <h4 style="margin:0 0 10px 0; color:#4CAF50;">${issue.title}</h4>
+                <div style="margin-bottom:10px;">${issue.body || 'No content'}</div>
+                <div class="comments-container" style="margin-top:10px;"></div>
+            `;
+
+            // 添加点击事件
+            issueBtn.addEventListener('click', async () => {
+                // 切换显示状态
+                const isShowing = detailContainer.style.display !== 'none';
+                detailContainer.style.display = isShowing ? 'none' : 'block';
+                
+                // 如果首次展开，加载评论
+                if (!isShowing && !detailContainer.dataset.loaded) {
+                    try {
+                        const comments = await appCore.apiRequest(
+                            'GET', 
+                            `issues/${issue.number}/comments`, 
+                            null
+                        );
+                        
+                        const commentsContainer = detailContainer.querySelector('.comments-container');
+                        commentsContainer.innerHTML = '<h5 style="margin:0 0 8px 0; color:#2196F3;">Comments:</h5>';
+                        
+                        comments.forEach(comment => {
+                            const commentBtn = document.createElement('button');
+                            commentBtn.style.cssText = `
+                                padding: 4px 8px;
+                                margin: 4px;
+                                background: #666;
+                                color: #fff;
+                                border: none;
+                                border-radius: 3px;
+                                cursor: pointer;
+                            `;
+                            commentBtn.textContent = `@${comment.user.login}`;
+                            
+                            commentBtn.addEventListener('click', () => {
+                                document.getElementById('id4TaInSandbox').value = comment.body;
+                            });
+                            
+                            commentsContainer.appendChild(commentBtn);
+                        });
+                        
+                        detailContainer.dataset.loaded = true;
+                    } catch (error) {
+                        commentsContainer.innerHTML = `<div style="color:#ff4444;">Error loading comments</div>`;
+                    }
+                }
+            });
+
+            // 创建容器包装
+            const wrapper = document.createElement('div');
+            wrapper.appendChild(issueBtn);
+            wrapper.appendChild(detailContainer);
+            btnContainer.appendChild(wrapper);
         });
+
+        container.appendChild(btnContainer);
         
-        tbody.appendChild(row);
-      });
-      
-      container.innerHTML = '';
-      container.appendChild(table);
-      
     } catch (error) {
-      console.error('Failed to load issues:', error);
-      document.querySelector('#id4IssueList').innerHTML = 
-        `<div style="color:#ff4444;">Error loading issues: ${error.message}</div>`;
+        container.innerHTML = `<div style="color:#ff4444;">Error loading issues: ${error.message}</div>`;
     }
-  };
-  
+};
   // 代码执行函数
   window.runTestCode = function() {
     const jsCode = document.getElementById('id4TaInSandbox').value;
@@ -2412,6 +2449,7 @@ i14.html
       `;
     }
   };
+
     function testBtn() {
         // 创建测试窗口
         appCore.createMovableWnd(
@@ -2441,8 +2479,9 @@ i14.html
 
 </html>
 <!--
- to code oTest.test1
+ to refactor: oTest.test1
 
- 
+  
+ 每一个 issue  共享一个详情显示区。点某一个按钮的时候，高亮这个按钮
 
 -->
