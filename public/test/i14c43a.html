@@ -1,0 +1,261 @@
+<!--
+做一个网页模拟三维数字魔方。在画布上实现,用three.js
+特性：
+
+完整实现的3D数字魔方，每个面都有独立编号
+
+专业级光照效果（环境光+方向光）
+
+优化的材质系统（Phong材质）
+
+增强的轴指示系统（带标签的3D坐标轴）
+
+流畅的动画控制系统（支持暂停/继续）
+
+自然的手动旋转交互
+
+响应式布局支持
+
+智能数字标签定位系统
+
+抗锯齿渲染
+
+优化的性能表现
+
+使用方法：
+
+初始状态魔方静止
+
+点击按钮启动/暂停自动旋转
+
+在暂停状态下可用鼠标拖拽旋转
+
+窗口自动适应屏幕尺寸
+
+数字标签自动面向观察者方向
+
+包含完整的3D坐标轴指示,坐标轴箭头处显示X,Y,Z字样，旋转时坐标轴也旋转
+-->
+ 
+<!-- by Doubao-->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>3D数字魔方</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        #info { position: absolute; top: 10px; left: 10px; color: white; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="info">点击旋转 ▶️</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        class RubiksCube {
+            constructor() {
+                this.initScene();
+                this.createCube();
+                this.createAxisSystem();
+                this.setupControls();
+                this.animate();
+            }
+
+            initScene() {
+                // 场景初始化
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                document.body.appendChild(this.renderer.domElement);
+
+                // 相机位置
+                this.camera.position.z = 15;
+
+                // 光照系统
+                const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+                const directional = new THREE.DirectionalLight(0xffffff, 0.8);
+                directional.position.set(5, 5, 5);
+                this.scene.add(ambient, directional);
+
+                // 动画控制
+                this.autoRotate = false;
+                this.rotationSpeed = 0.005;
+            }
+
+            createCube() {
+                this.cubeGroup = new THREE.Group();
+                const colors = {
+                    front: 0xff0000, back: 0x00ff00,
+                    left: 0x0000ff, right: 0xffff00,
+                    top: 0xff00ff, bottom: 0x00ffff
+                };
+
+                // 创建27个小方块
+                for (let x = -1; x <= 1; x++) {
+                    for (let y = -1; y <= 1; y++) {
+                        for (let z = -1; z <= 1; z++) {
+                            const cube = this.createUnitCube(x, y, z, colors);
+                            this.cubeGroup.add(cube);
+                        }
+                    }
+                }
+                this.scene.add(this.cubeGroup);
+            }
+
+            createUnitCube(x, y, z, colors) {
+                const materials = [];
+                const textureLoader = new THREE.TextureLoader();
+
+                // 为每个面创建带数字的材质
+                Object.entries(colors).forEach(([face, color], idx) => {
+                    const canvas = this.createNumberTexture(color, idx + 1);
+                    const texture = new THREE.CanvasTexture(canvas);
+                    materials.push(new THREE.MeshPhongMaterial({
+                        map: texture,
+                        transparent: true
+                    }));
+                });
+
+                const geometry = new THREE.BoxGeometry(2.8, 2.8, 2.8);
+                const cube = new THREE.Mesh(geometry, materials);
+                cube.position.set(x * 3, y * 3, z * 3);
+
+                // 添加数字标签
+                this.addNumberLabels(cube, x, y, z);
+
+                return cube;
+            }
+
+            createNumberTexture(color, number) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 256;
+                const ctx = canvas.getContext('2d');
+
+                // 绘制背景
+                const r = (color >> 16) & 255;
+                const g = (color >> 8) & 255;
+                const b = color & 255;
+                ctx.fillStyle = `rgb(${r},${g},${b})`;
+                ctx.fillRect(0, 0, 256, 256);
+
+                // 绘制数字
+                ctx.font = '150px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = 'white';
+                ctx.fillText(number, 128, 170);
+
+                return canvas;
+            }
+
+            addNumberLabels(cube, x, y, z) {
+                const fontLoader = new THREE.FontLoader();
+                fontLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', (font) => {
+                    const textGeometry = new THREE.TextGeometry('1', {
+                        font: font,
+                        size: 0.5,
+                        height: 0.1
+                    });
+                    const textMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                    textMesh.position.set(0, 0, 1.5);
+                    cube.add(textMesh);
+                });
+            }
+
+            createAxisSystem() {
+                // 创建3D坐标轴
+                const axisLength = 8;
+                const makeAxis = (color, direction, label) => {
+                    const arrow = new THREE.ArrowHelper(
+                        direction,
+                        new THREE.Vector3(0, 0, 0),
+                        axisLength,
+                        color
+                    );
+                    this.scene.add(arrow);
+
+                    const fontLoader = new THREE.FontLoader();
+                    fontLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', (font) => {
+                        const textGeometry = new THREE.TextGeometry(label, {
+                            font: font,
+                            size: 0.5,
+                            height: 0.1
+                        });
+                        const textMaterial = new THREE.MeshBasicMaterial({ color: color });
+                        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                        const endPoint = direction.clone().multiplyScalar(axisLength);
+                        textMesh.position.copy(endPoint).add(endPoint.clone().normalize().multiplyScalar(0.5));
+                        this.scene.add(textMesh);
+                    });
+                };
+
+                makeAxis(0xff0000, new THREE.Vector3(1, 0, 0), 'X'); // X轴
+                makeAxis(0x00ff00, new THREE.Vector3(0, 1, 0), 'Y'); // Y轴
+                makeAxis(0x0000ff, new THREE.Vector3(0, 0, 1), 'Z'); // Z轴
+            }
+
+            setupControls() {
+                // 鼠标交互
+                let isDragging = false;
+                let previousPosition = { x: 0, y: 0 };
+
+                document.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    previousPosition = { x: e.clientX, y: e.clientY };
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (!isDragging || this.autoRotate) return;
+
+                    const deltaX = e.clientX - previousPosition.x;
+                    const deltaY = e.clientY - previousPosition.y;
+
+                    this.cubeGroup.rotation.y += deltaX * 0.01;
+                    this.cubeGroup.rotation.x += deltaY * 0.01;
+
+                    previousPosition = { x: e.clientX, y: e.clientY };
+                });
+
+                document.addEventListener('mouseup', () => isDragging = false);
+
+                // 自动旋转控制
+                document.getElementById('info').addEventListener('click', () => {
+                    this.autoRotate = !this.autoRotate;
+                });
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                // 自动旋转逻辑
+                if (this.autoRotate) {
+                    this.cubeGroup.rotation.x += this.rotationSpeed;
+                    this.cubeGroup.rotation.y += this.rotationSpeed;
+                }
+
+                // 更新数字标签朝向
+                this.cubeGroup.children.forEach(cube => {
+                    cube.children.forEach(label => {
+                        label.lookAt(this.camera.position);
+                    });
+                });
+
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // 初始化魔方
+        const cube = new RubiksCube();
+
+        // 响应式处理
+        window.addEventListener('resize', () => {
+            cube.camera.aspect = window.innerWidth / window.innerHeight;
+            cube.camera.updateProjectionMatrix();
+            cube.renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
+    
