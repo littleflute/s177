@@ -16,6 +16,20 @@
             width: 100%;
             height: 100%;
         }
+
+        #pause-button {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background - color 0.3s ease;
+        }
+
+        #pause-button:hover {
+            background - color: #e0e0e0;
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
@@ -23,6 +37,7 @@
 
 <body>
     <div id="scene-container"></div>
+    <button id="pause-button">暂停旋转</button>
     <script>
         // 创建场景
         const scene = new THREE.Scene();
@@ -54,26 +69,42 @@
         const cubeSize = 1;
         const cubeSpacing = 0.1;
         const cubeGroup = new THREE.Group();
-        for (let x = -1; x <= 1; x++) {
-            for (let y = -1; y <= 1; y++) {
-                for (let z = -1; z <= 1; z++) {
-                    const cube = new THREE.Mesh(geometry, materials);
-                    cube.position.set(
-                        x * (cubeSize + cubeSpacing),
-                        y * (cubeSize + cubeSpacing),
-                        z * (cubeSize + cubeSpacing)
-                    );
-                    cubeGroup.add(cube);
+        let faceIndex = 1;
+        const loader = new THREE.FontLoader();
+        loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
+            for (let x = -1; x <= 1; x++) {
+                for (let y = -1; y <= 1; y++) {
+                    for (let z = -1; z <= 1; z++) {
+                        const cube = new THREE.Mesh(geometry, materials);
+                        cube.position.set(
+                            x * (cubeSize + cubeSpacing),
+                            y * (cubeSize + cubeSpacing),
+                            z * (cubeSize + cubeSpacing)
+                        );
+                        cubeGroup.add(cube);
+
+                        const number = faceIndex * 10 + ((x + 1) * 3 + (y + 1) + 1);
+                        const textGeometry = new THREE.TextGeometry(number.toString(), {
+                            font: font,
+                            size: 0.2,
+                            height: 0.01
+                        });
+                        const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+                        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                        textMesh.position.copy(cube.position);
+                        textMesh.position.add(new THREE.Vector3(0, 0, cubeSize / 2 + 0.05));
+                        cubeGroup.add(textMesh);
+                    }
                 }
+                faceIndex++;
             }
-        }
+        });
 
         // 添加坐标轴
         const axesHelper = new THREE.AxesHelper(5); // 5 是坐标轴的长度
         cubeGroup.add(axesHelper);
 
         // 创建用于绘制文本的材质和字体加载器
-        const loader = new THREE.FontLoader();
         loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
             // 轴标签
             const axisLabels = ['X', 'Y', 'Z'];
@@ -112,10 +143,25 @@
            .repeat(Infinity)
            .start();
 
+        let isPaused = false;
+        const pauseButton = document.getElementById('pause-button');
+        pauseButton.addEventListener('click', () => {
+            if (isPaused) {
+                tween.resume();
+                pauseButton.textContent = '暂停旋转';
+            } else {
+                tween.pause();
+                pauseButton.textContent = '继续旋转';
+            }
+            isPaused = !isPaused;
+        });
+
         // 渲染循环
         function animate(time) {
             requestAnimationFrame(animate);
-            TWEEN.update(time); // 传入时间参数，确保 Tween 精确更新
+            if (!isPaused) {
+                TWEEN.update(time); // 传入时间参数，确保 Tween 精确更新
+            }
 
             renderer.render(scene, camera);
         }
