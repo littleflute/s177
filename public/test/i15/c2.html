@@ -15,7 +15,6 @@
                 this.isDragging = false;
                 this.offset = [0, 0];
 
-                // 创建窗口元素
                 this.element = document.createElement('div');
                 this.element.className = 'window';
                 this.element.style.width = `${width}px`;
@@ -28,7 +27,6 @@
                 this.element.style.top = '20px';
                 this.element.style.zIndex = '2222';
 
-                // 标题栏
                 this.titleBar = document.createElement('div');
                 this.titleBar.className = 'title-bar';
                 this.titleBar.textContent = title;
@@ -37,7 +35,6 @@
                 this.titleBar.style.padding = '5px';
                 this.titleBar.style.cursor = 'move';
 
-                // 画布容器
                 this.canvasContainer = document.createElement('div');
                 this.canvasContainer.className = 'canvas-container';
                 this.canvasContainer.style.position = 'relative';
@@ -48,7 +45,6 @@
                 this.ctx = this.canvas.getContext('2d');
                 this.canvasContainer.appendChild(this.canvas);
 
-                // 工具条
                 this.toolbar = document.createElement('div');
                 this.toolbar.className = 'toolbar';
                 this.toolbar.style.background = '#aaa';
@@ -63,7 +59,6 @@
                 this.element.append(this.titleBar, this.canvasContainer, this.toolbar);
                 document.body.appendChild(this.element);
 
-                // 事件绑定
                 this.titleBar.addEventListener('mousedown', e => this.startDrag(e));
                 document.addEventListener('mousemove', e => this.doDrag(e));
                 document.addEventListener('mouseup', () => this.stopDrag());
@@ -108,7 +103,6 @@
                 this.rotationEnabled = false;
                 this.scale = 100;
 
-                // 生成27个小立方体的中心坐标
                 const positions = [-2/3, 0, 2/3];
                 this.cubeCenters = [];
                 for (let x of positions) {
@@ -119,7 +113,6 @@
                     }
                 }
 
-                // 小立方体局部顶点（边长为2/3）
                 this.localVertices = [
                     [-1/3, -1/3, -1/3], [1/3, -1/3, -1/3],
                     [1/3, 1/3, -1/3], [-1/3, 1/3, -1/3],
@@ -128,9 +121,9 @@
                 ];
 
                 this.faces = [
-                    [0, 1, 2, 3], [1, 5, 6, 2],  // 前、右
-                    [5, 4, 7, 6], [4, 0, 3, 7],  // 后、左
-                    [3, 2, 6, 7], [4, 5, 1, 0]   // 上、下
+                    [0, 1, 2, 3], [1, 5, 6, 2],
+                    [5, 4, 7, 6], [4, 0, 3, 7],
+                    [3, 2, 6, 7], [4, 5, 1, 0]
                 ];
 
                 this.faceColors = [
@@ -145,6 +138,22 @@
             initControls() {
                 this.addButton('旋转', () => this.toggleRotation());
                 this.addButton('属性', () => this.showPropertyPanel());
+                this.addButton('Y转90', () => {
+                    if (!this.rotationEnabled) {
+                        this.angle += Math.PI / 2;
+                    }
+                });
+                this.addButton('Y转15', () => {
+                    if (!this.rotationEnabled) {
+                        this.angle += Math.PI / 12;
+                    }
+                });
+                // 新增Y转45按钮
+                this.addButton('Y转45', () => {
+                    if (!this.rotationEnabled) {
+                        this.angle += Math.PI / 4;
+                    }
+                });
             }
 
             toggleRotation() {
@@ -188,20 +197,13 @@
 
             rotate(vertex) {
                 const [x, y, z] = vertex;
-                const cosX = Math.cos(this.angle);
-                const sinX = Math.sin(this.angle);
                 const cosY = Math.cos(this.angle);
                 const sinY = Math.sin(this.angle);
 
-                // X轴旋转
-                const y1 = y * cosX - z * sinX;
-                const z1 = y * sinX + z * cosX;
+                const x1 = x * cosY + z * sinY;
+                const z1 = -x * sinY + z * cosY;
 
-                // Y轴旋转
-                const x1 = x * cosY + z1 * sinY;
-                const z2 = -x * sinY + z1 * cosY;
-
-                return [x1, y1, z2];
+                return [x1, y, z1];
             }
 
             draw() {
@@ -249,12 +251,11 @@
                         return { points, centerZ, color: this.faceColors[index] };
                     });
 
-                    // 根据Z排序面
                     faceData.sort((a, b) => b.centerZ - a.centerZ);
 
                     faceData.forEach(({ points, color }) => {
                         const normal = this.calculateNormal(points);
-                        if (normal[2] < 0) return; // 背面剔除
+                        if (normal[2] < 0) return;
 
                         this.ctx.beginPath();
                         points.forEach((v, i) => {
@@ -301,9 +302,8 @@
     </script>
 </body>
 </html>
-    
 <!--
-   添加一个按钮，当不旋转时生效，可以让魔方绕Y轴顺时针转90度
+   添加一个按钮，当不旋转时生效，可以让魔方绕Y轴顺时针转15度
 
 return all new code
 -->
