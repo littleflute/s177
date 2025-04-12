@@ -37,7 +37,7 @@
 包含完整的3D坐标轴指示,坐标轴箭头处显示X,Y,Z字样，旋转时坐标轴也旋转
 -->
  
-<!-- by Doubao-->
+<!-- by Doubao v1,2 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -174,7 +174,7 @@
                         axisLength,
                         color
                     );
-                    this.scene.add(arrow);
+                    this.cubeGroup.add(arrow);
 
                     const fontLoader = new THREE.FontLoader();
                     fontLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', (font) => {
@@ -187,7 +187,7 @@
                         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
                         const endPoint = direction.clone().multiplyScalar(axisLength);
                         textMesh.position.copy(endPoint).add(endPoint.clone().normalize().multiplyScalar(0.5));
-                        this.scene.add(textMesh);
+                        this.cubeGroup.add(textMesh);
                     });
                 };
 
