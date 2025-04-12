@@ -54,12 +54,12 @@
 
         // 定义每个面的颜色
         const materials = [
-            new THREE.MeshBasicMaterial({ color: 0xff0000 }), // 红色
-            new THREE.MeshBasicMaterial({ color: 0x00ff00 }), // 绿色
-            new THREE.MeshBasicMaterial({ color: 0x0000ff }), // 蓝色
-            new THREE.MeshBasicMaterial({ color: 0xffff00 }), // 黄色
-            new THREE.MeshBasicMaterial({ color: 0xff00ff }), // 紫色
-            new THREE.MeshBasicMaterial({ color: 0x00ffff })  // 青色
+            new THREE.MeshBasicMaterial({ color: 0xff0000 }),
+            new THREE.MeshBasicMaterial({ color: 0x00ff00 }),
+            new THREE.MeshBasicMaterial({ color: 0x0000ff }),
+            new THREE.MeshBasicMaterial({ color: 0xffff00 }),
+            new THREE.MeshBasicMaterial({ color: 0xff00ff }),
+            new THREE.MeshBasicMaterial({ color: 0x00ffff })
         ];
 
         // 创建几何体
@@ -70,6 +70,8 @@
         const cubeSpacing = 0.1;
         const cubeGroup = new THREE.Group();
         const loader = new THREE.FontLoader();
+        
+        // 加载字体并创建魔方块和数字
         loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
             // 前面（红色）：11-19
             for (let y = -1; y <= 1; y++) {
@@ -83,19 +85,9 @@
                     cubeGroup.add(cube);
 
                     const number = 10 + ((y + 1) * 3 + (z + 1) + 1);
-                    const textGeometry = new THREE.TextGeometry(number.toString(), {
-                        font: font,
-                        size: 0.2,
-                        height: 0.01
-                    });
-                    const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-                    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-                    textMesh.position.copy(cube.position);
-                    textMesh.position.add(new THREE.Vector3(cubeSize / 2 + 0.05, 0, 0));
-                    cubeGroup.add(textMesh);
+                    createText(font, number, cube.position, new THREE.Vector3(cubeSize / 2 + 0.05, 0, 0));
                 }
             }
-
             // 右面（绿色）：21-29
             for (let x = -1; x <= 1; x++) {
                 for (let z = -1; z <= 1; z++) {
@@ -120,7 +112,6 @@
                     cubeGroup.add(textMesh);
                 }
             }
-
             // 顶部（蓝色）：31-39
             for (let x = -1; x <= 1; x++) {
                 for (let y = -1; y <= 1; y++) {
@@ -145,7 +136,6 @@
                     cubeGroup.add(textMesh);
                 }
             }
-
             // 底部（黄色）：41-49
             for (let x = -1; x <= 1; x++) {
                 for (let y = -1; y <= 1; y++) {
@@ -170,7 +160,6 @@
                     cubeGroup.add(textMesh);
                 }
             }
-
             // 左面（紫色）：51-59
             for (let x = -1; x <= 1; x++) {
                 for (let z = -1; z <= 1; z++) {
@@ -220,24 +209,17 @@
                     cubeGroup.add(textMesh);
                 }
             }
-            
+
+            // more... 其他面的创建代码保持不变...
         });
 
         // 添加坐标轴
-        const axesHelper = new THREE.AxesHelper(5); // 5 是坐标轴的长度
+        const axesHelper = new THREE.AxesHelper(5);
         cubeGroup.add(axesHelper);
 
-        // 创建用于绘制文本的材质和字体加载器
+        // 创建轴标签
         loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
-            // 轴标签
-            const axisLabels = ['X', 'Y', 'Z'];
-            const axisPositions = [
-                new THREE.Vector3(5, 0, 0),
-                new THREE.Vector3(0, 5, 0),
-                new THREE.Vector3(0, 0, 5)
-            ];
-
-            axisLabels.forEach((label, index) => {
+            ['X', 'Y', 'Z'].forEach((label, index) => {
                 const textGeometry = new THREE.TextGeometry(label, {
                     font: font,
                     size: 0.5,
@@ -245,62 +227,92 @@
                 });
                 const textMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
                 const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-                textMesh.position.copy(axisPositions[index]);
+                textMesh.position.set(5 * (index === 0 ? 1 : 0), 5 * (index === 1 ? 1 : 0), 5 * (index === 2 ? 1 : 0));
                 cubeGroup.add(textMesh);
             });
         });
 
         scene.add(cubeGroup);
 
-        // 定义旋转目标
-        const targetRotation = {
-            x: 2 * Math.PI,
-            y: 2 * Math.PI,
-            z: 0
-        };
+        // 鼠标控制变量
+        let isMouseDown = false;
+        let mouseX = 0;
+        let mouseY = 0;
 
-        // 创建 Tween 动画
-        const tween = new TWEEN.Tween(cubeGroup.rotation)
-           .to(targetRotation, 8000) // 增加动画时间到 8000 毫秒，让旋转更慢更平滑
-           .easing(TWEEN.Easing.Cubic.InOut) // 更换缓动函数为 Cubic.InOut
-           .repeat(Infinity)
-           .start();
+        // 鼠标事件处理
+        sceneContainer.addEventListener('mousedown', (e) => {
+            if (!isPaused) return;
+            isMouseDown = true;
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
 
+        sceneContainer.addEventListener('mousemove', (e) => {
+            if (!isMouseDown || !isPaused) return;
+            const deltaX = e.clientX - mouseX;
+            const deltaY = e.clientY - mouseY;
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            cubeGroup.rotation.y += deltaX * 0.005;
+            cubeGroup.rotation.x += deltaY * 0.005;
+        });
+
+        sceneContainer.addEventListener('mouseup', () => isMouseDown = false);
+
+        // 动画控制
+        let tween = createNewTween();
         let isPaused = false;
-        const pauseButton = document.getElementById('pause-button');
-        pauseButton.addEventListener('click', () => {
-            if (isPaused) {
-                tween.resume();
-                pauseButton.textContent = '暂停旋转';
-            } else {
-                tween.pause();
-                pauseButton.textContent = '继续旋转';
-            }
+        
+        function createNewTween() {
+            return new TWEEN.Tween(cubeGroup.rotation)
+                .to({ 
+                    x: cubeGroup.rotation.x + Math.PI*2,
+                    y: cubeGroup.rotation.y + Math.PI*2 
+                }, 8000)
+                .easing(TWEEN.Easing.Cubic.InOut)
+                .onComplete(() => tween = createNewTween())
+                .start();
+        }
+
+        document.getElementById('pause-button').addEventListener('click', () => {
             isPaused = !isPaused;
+            isPaused ? tween.stop() : tween.start();
+            this.textContent = isPaused ? '继续旋转' : '暂停旋转';
         });
 
         // 渲染循环
         function animate(time) {
             requestAnimationFrame(animate);
-            if (!isPaused) {
-                TWEEN.update(time); // 传入时间参数，确保 Tween 精确更新
-            }
-
+            TWEEN.update(time);
             renderer.render(scene, camera);
         }
-
         animate();
 
-        // 处理窗口大小变化
+        // 窗口大小调整处理
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
+
+        // 创建文本的通用函数
+        function createText(font, number, position, offset) {
+            const textGeometry = new THREE.TextGeometry(number.toString(), {
+                font: font,
+                size: 0.2,
+                height: 0.01
+            });
+            const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+            textMesh.position.copy(position).add(offset);
+            cubeGroup.add(textMesh);
+        }
     </script>
 </body>
-
 </html>
+
 <!--
-升级这个程序，在暂停状态鼠标也可以旋转。
+
+初始不要旋转
+return all new code
 -->
