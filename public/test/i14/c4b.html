@@ -52,4 +52,239 @@
 
 包含完整的3D坐标轴指示,坐标轴箭头处显示X,Y,Z字样，旋转时坐标轴也旋转
 -->
- 
+<!DOCTYPE html>
+<html>
+<head>
+    <title>3D数字魔方</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        .label {
+            color: black;
+            font-size: 20px;
+            font-family: Arial;
+            font-weight: bold;
+            pointer-events: none;
+        }
+        #toggleRotate {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <button id="toggleRotate">切换旋转</button>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
+
+    <script>
+        let scene, camera, renderer, labelRenderer;
+        let cubeGroup;
+        let autoRotate = true;
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+
+        init();
+        animate();
+
+        function init() {
+            // 初始化场景
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.set(5, 5, 5);
+
+            // 初始化WebGL渲染器
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // 初始化CSS2D渲染器
+            labelRenderer = new CSS2DRenderer();
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.domElement.style.position = 'absolute';
+            labelRenderer.domElement.style.top = '0';
+            document.body.appendChild(labelRenderer.domElement);
+
+            // 创建魔方组
+            cubeGroup = new THREE.Group();
+            scene.add(cubeGroup);
+
+            // 创建各面
+            createFace(11, 0xff0000, 'front');  // 前面-红色
+            createFace(21, 0x0000ff, 'right');  // 右面-蓝色
+            createFace(31, 0x00ff00, 'top');   // 顶面-绿色
+            createFace(41, 0xffa500, 'back');   // 后面-橙色
+            createFace(51, 0xffff00, 'bottom'); // 底面-黄色
+            createFace(61, 0x800080, 'left');   // 左面-紫色
+
+            // 添加光照
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(5, 5, 5);
+            scene.add(directionalLight);
+
+            // 添加坐标轴
+            const axesHelper = new THREE.AxesHelper(3);
+            cubeGroup.add(axesHelper);
+
+            // 添加坐标轴标签
+            addAxisLabel('X', 3.5, 0, 0);
+            addAxisLabel('Y', 0, 3.5, 0);
+            addAxisLabel('Z', 0, 0, 3.5);
+
+            // 事件监听
+            setupEventListeners();
+        }
+
+        function createFace(baseNumber, color, face) {
+            const positions = [];
+            const rotations = {};
+
+            // 生成位置和旋转参数
+            switch(face) {
+                case 'front':
+                    for(let x = -1; x <= 1; x++) {
+                        for(let y = 1; y >= -1; y--) {
+                            positions.push({x, y, z: 1});
+                        }
+                    }
+                    rotations.y = 0;
+                    break;
+                case 'back':
+                    for(let x = 1; x >= -1; x--) {
+                        for(let y = 1; y >= -1; y--) {
+                            positions.push({x, y, z: -1});
+                        }
+                    }
+                    rotations.y = Math.PI;
+                    break;
+                case 'right':
+                    for(let y = 1; y >= -1; y--) {
+                        for(let z = -1; z <= 1; z++) {
+                            positions.push({x: 1, y, z});
+                        }
+                    }
+                    rotations.y = Math.PI/2;
+                    break;
+                case 'left':
+                    for(let y = 1; y >= -1; y--) {
+                        for(let z = 1; z >= -1; z--) {
+                            positions.push({x: -1, y, z});
+                        }
+                    }
+                    rotations.y = -Math.PI/2;
+                    break;
+                case 'top':
+                    for(let z = 1; z >= -1; z--) {
+                        for(let x = -1; x <= 1; x++) {
+                            positions.push({x, y: 1, z});
+                        }
+                    }
+                    rotations.x = -Math.PI/2;
+                    break;
+                case 'bottom':
+                    for(let z = -1; z <= 1; z++) {
+                        for(let x = -1; x <= 1; x++) {
+                            positions.push({x, y: -1, z});
+                        }
+                    }
+                    rotations.x = Math.PI/2;
+                    break;
+            }
+
+            // 创建平面和标签
+            positions.forEach((pos, index) => {
+                const geometry = new THREE.PlaneGeometry(0.9, 0.9);
+                const material = new THREE.MeshPhongMaterial({
+                    color,
+                    specular: 0x111111,
+                    shininess: 100
+                });
+                const plane = new THREE.Mesh(geometry, material);
+                
+                plane.position.set(pos.x, pos.y, pos.z);
+                plane.rotation.set(rotations.x || 0, rotations.y || 0, 0);
+                cubeGroup.add(plane);
+
+                // 添加数字标签
+                const label = createLabel(baseNumber + index);
+                label.position.set(pos.x, pos.y, pos.z);
+                cubeGroup.add(label);
+            });
+        }
+
+        function createLabel(text) {
+            const labelDiv = document.createElement('div');
+            labelDiv.className = 'label';
+            labelDiv.textContent = text;
+            return new CSS2DObject(labelDiv);
+        }
+
+        function addAxisLabel(text, x, y, z) {
+            const label = createLabel(text);
+            label.position.set(x, y, z);
+            cubeGroup.add(label);
+        }
+
+        function setupEventListeners() {
+            // 窗口缩放
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                labelRenderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // 鼠标控制
+            document.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = {
+                    x: e.clientX,
+                    y: e.clientY
+                };
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging || autoRotate) return;
+
+                const deltaMove = {
+                    x: e.clientX - previousMousePosition.x,
+                    y: e.clientY - previousMousePosition.y
+                };
+
+                cubeGroup.rotation.y += deltaMove.x * 0.01;
+                cubeGroup.rotation.x += deltaMove.y * 0.01;
+
+                previousMousePosition = {
+                    x: e.clientX,
+                    y: e.clientY
+                };
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            // 按钮控制
+            document.getElementById('toggleRotate').addEventListener('click', () => {
+                autoRotate = !autoRotate;
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (autoRotate) {
+                cubeGroup.rotation.y += 0.005;
+                cubeGroup.rotation.x += 0.005;
+            }
+
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
