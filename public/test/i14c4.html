@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Three.js Cube with Numbers on Faces and Super Smooth Rotating Axes Labels</title>
+    <title>Three.js Rubik's Cube with Numbers on Faces and Super Smooth Rotating Axes Labels</title>
     <style>
         body {
             margin: 0;
@@ -29,7 +29,7 @@
 
         // 创建相机
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.z = 5;
+        camera.position.z = 10;
 
         // 创建渲染器
         const renderer = new THREE.WebGLRenderer();
@@ -49,48 +49,32 @@
 
         // 创建几何体
         const geometry = new THREE.BoxGeometry();
-        const cube = new THREE.Mesh(geometry, materials);
-        scene.add(cube);
+
+        // 创建魔方
+        const cubeSize = 1;
+        const cubeSpacing = 0.1;
+        const cubeGroup = new THREE.Group();
+        for (let x = -1; x <= 1; x++) {
+            for (let y = -1; y <= 1; y++) {
+                for (let z = -1; z <= 1; z++) {
+                    const cube = new THREE.Mesh(geometry, materials);
+                    cube.position.set(
+                        x * (cubeSize + cubeSpacing),
+                        y * (cubeSize + cubeSpacing),
+                        z * (cubeSize + cubeSpacing)
+                    );
+                    cubeGroup.add(cube);
+                }
+            }
+        }
 
         // 添加坐标轴
         const axesHelper = new THREE.AxesHelper(5); // 5 是坐标轴的长度
-        cube.add(axesHelper);
+        cubeGroup.add(axesHelper);
 
         // 创建用于绘制文本的材质和字体加载器
         const loader = new THREE.FontLoader();
         loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
-            // 定义每个面的数字
-            const numbers = ['1', '2', '3', '4', '5', '6'];
-            const positions = [
-                new THREE.Vector3(0, 0, 0.5),    // 前面
-                new THREE.Vector3(0, 0, -0.5),   // 后面
-                new THREE.Vector3(0.5, 0, 0),    // 右面
-                new THREE.Vector3(-0.5, 0, 0),   // 左面
-                new THREE.Vector3(0, 0.5, 0),    // 上面
-                new THREE.Vector3(0, -0.5, 0)    // 下面
-            ];
-            const rotations = [
-                new THREE.Euler(0, 0, 0),
-                new THREE.Euler(0, Math.PI, 0),
-                new THREE.Euler(0, -Math.PI / 2, 0),
-                new THREE.Euler(0, Math.PI / 2, 0),
-                new THREE.Euler(-Math.PI / 2, 0, 0),
-                new THREE.Euler(Math.PI / 2, 0, 0)
-            ];
-
-            numbers.forEach((number, index) => {
-                const textGeometry = new THREE.TextGeometry(number, {
-                    font: font,
-                    size: 0.2,
-                    height: 0.01
-                });
-                const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-                textMesh.position.copy(positions[index]);
-                textMesh.rotation.copy(rotations[index]);
-                cube.add(textMesh);
-            });
-
             // 轴标签
             const axisLabels = ['X', 'Y', 'Z'];
             const axisPositions = [
@@ -108,9 +92,11 @@
                 const textMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
                 const textMesh = new THREE.Mesh(textGeometry, textMaterial);
                 textMesh.position.copy(axisPositions[index]);
-                cube.add(textMesh);
+                cubeGroup.add(textMesh);
             });
         });
+
+        scene.add(cubeGroup);
 
         // 定义旋转目标
         const targetRotation = {
@@ -120,7 +106,7 @@
         };
 
         // 创建 Tween 动画
-        const tween = new TWEEN.Tween(cube.rotation)
+        const tween = new TWEEN.Tween(cubeGroup.rotation)
            .to(targetRotation, 8000) // 增加动画时间到 8000 毫秒，让旋转更慢更平滑
            .easing(TWEEN.Easing.Cubic.InOut) // 更换缓动函数为 Cubic.InOut
            .repeat(Infinity)
@@ -147,3 +133,19 @@
 
 </html>
     
+ <!--
+升级这个程序，
+6个面分别标上记号， 
+前面（红色）：11-19
+
+右面（绿色）：21-29
+
+顶部（蓝色）：31-39
+
+底部（黄色）：41-49
+
+左面（紫色）：51-59
+
+后面（青色）：61-69
+
+-->   
