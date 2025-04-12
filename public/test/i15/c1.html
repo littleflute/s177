@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Cube Window Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <script>
+        class MovableWindow {
+            constructor(title, width = 600, height = 400) {
+                // 确保样式只注入一次
+                if (!MovableWindow.styleInjected) {
+                    const style = document.createElement('style');
+                    style.textContent = `
+                        .window {
+                            position: absolute;
+                            border: 2px solid #444;
+                            background: #ddd;
+                            box-shadow: 5px 5px 10px rgba(0,0,0,0.3);
+                            width: ${width}px;
+                            height: ${height}px;
+                            left: 20px;
+                            top: 20px;
+                        }
+                        .title-bar {
+                            background: #666;
+                            color: white;
+                            padding: 5px;
+                            cursor: move;
+                        }
+                        .canvas-container {
+                            position: relative;
+                            overflow: hidden;
+                            width: 100%;
+                            height: calc(100% - 60px);
+                        }
+                        .toolbar {
+                            background: #aaa;
+                            padding: 5px;
+                            display: flex;
+                            gap: 5px;
+                            position: absolute;
+                            bottom: 0;
+                            width: 100%;
+                            box-sizing: border-box;
+                        }
+                        button {
+                            padding: 3px 8px;
+                            cursor: pointer;
+                        }
+                        .property-panel {
+                            padding: 10px;
+                        }
+                        .property-panel label {
+                            display: block;
+                            margin: 5px 0;
+                        }
+                    `;
+                    document.head.appendChild(style);
+                    MovableWindow.styleInjected = true;
+                }
+
+                this.isDragging = false;
+                this.offset = [0, 0];
+
+                // 创建窗口元素
+                this.element = document.createElement('div');
+                this.element.className = 'window';
+
+                // 标题栏
+                this.titleBar = document.createElement('div');
+                this.titleBar.className = 'title-bar';
+                this.titleBar.textContent = title;
+
+                // 画布容器
+                this.canvasContainer = document.createElement('div');
+                this.canvasContainer.className = 'canvas-container';
+                this.canvas = document.createElement('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.canvasContainer.appendChild(this.canvas);
+
+                // 工具条
+                this.toolbar = document.createElement('div');
+                this.toolbar.className = 'toolbar';
+
+                // 组装元素
+                this.element.append(this.titleBar, this.canvasContainer, this.toolbar);
+                document.body.appendChild(this.element);
+
+                // 事件绑定
+                this.titleBar.addEventListener('mousedown', e => this.startDrag(e));
+                document.addEventListener('mousemove', e => this.doDrag(e));
+                document.addEventListener('mouseup', () => this.stopDrag());
+                window.addEventListener('resize', () => this.resizeCanvas());
+                this.resizeCanvas();
+            }
+
+            startDrag(e) {
+                this.isDragging = true;
+                const rect = this.element.getBoundingClientRect();
+                this.offset = [e.clientX - rect.left, e.clientY - rect.top];
+            }
+
+            doDrag(e) {
+                if (!this.isDragging) return;
+                this.element.style.left = (e.clientX - this.offset[0]) + 'px';
+                this.element.style.top = (e.clientY - this.offset[1]) + 'px';
+            }
+
+            stopDrag() {
+                this.isDragging = false;
+            }
+
+            resizeCanvas() {
+                this.canvas.width = this.canvasContainer.clientWidth;
+                this.canvas.height = this.canvasContainer.clientHeight;
+            }
+
+            addButton(text, onClick) {
+                const btn = document.createElement('button');
+                btn.textContent = text;
+                btn.addEventListener('click', onClick);
+                this.toolbar.appendChild(btn);
+                return btn;
+            }
+        }
+
+        MovableWindow.styleInjected = false;
+
+        class CubeWindow extends MovableWindow {
+            constructor() {
+                super('3D Viewer');
+                this.angle = 0;
+                this.rotationEnabled = false;
+                this.scale = 1;
+                this.vertices = [
+                    [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+                    [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]
+                ];
+                this.edges = [
+                    [0, 1], [1, 2], [2, 3], [3, 0],
+                    [4, 5], [5, 6], [6, 7], [7, 4],
+                    [0, 4], [1, 5], [2, 6], [3, 7]
+                ];
+
+                this.initControls();
+                this.animate();
+            }
+
+            initControls() {
+                this.addButton('旋转', () => this.toggleRotation());
+                this.addButton('属性', () => this.showPropertyPanel());
+            }
+
+            toggleRotation() {
+                this.rotationEnabled = !this.rotationEnabled;
+            }
+
+            showPropertyPanel() {
+                if (this.propWindow) return;
+
+                this.propWindow = new MovableWindow('属性', 200, 150);
+                this.propWindow.element.style.left = '640px';
+
+                const panel = document.createElement('div');
+                panel.className = 'property-panel';
+                panel.innerHTML = `
+                    <label>
+                        缩放: 
+                        <input type="range" min="0.5" max="2" step="0.1" value="1">
+                    </label>
+                `;
+
+                panel.querySelector('input').addEventListener('input', e => {
+                    this.scale = parseFloat(e.target.value);
+                });
+
+                this.propWindow.element.appendChild(panel);
+            }
+
+            project(vertex) {
+                const fov = 300;
+                const scale = this.scale * 50;
+                return [
+                    vertex[0] * scale / (vertex[2] + fov) + this.canvas.width / 2,
+                    -vertex[1] * scale / (vertex[2] + fov) + this.canvas.height / 2
+                ];
+            }
+
+            rotate(vertex) {
+                const [x, y, z] = vertex;
+                const cosX = Math.cos(this.angle);
+                const sinX = Math.sin(this.angle);
+                const cosY = Math.cos(this.angle);
+                const sinY = Math.sin(this.angle);
+
+                // X轴旋转
+                const y1 = y * cosX - z * sinX;
+                const z1 = y * sinX + z * cosX;
+
+                // Y轴旋转
+                const x1 = x * cosY + z1 * sinY;
+                const z2 = -x * sinY + z1 * cosY;
+
+                return [x1, y1, z2];
+            }
+
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.drawAxes();
+                this.drawCube();
+            }
+
+            drawAxes() {
+                const axes = [
+                    { points: [[0, 0, 0], [2, 0, 0]], color: '#f00', label: 'X' },
+                    { points: [[0, 0, 0], [0, 2, 0]], color: '#0f0', label: 'Y' },
+                    { points: [[0, 0, 0], [0, 0, 2]], color: '#00f', label: 'Z' }
+                ];
+
+                axes.forEach(axis => {
+                    const start = this.project(this.rotate(axis.points[0]));
+                    const end = this.project(this.rotate(axis.points[1]));
+
+                    this.ctx.beginPath();
+                    this.ctx.strokeStyle = axis.color;
+                    this.ctx.moveTo(start[0], start[1]);
+                    this.ctx.lineTo(end[0], end[1]);
+                    this.ctx.stroke();
+
+                    this.ctx.fillStyle = '#000';
+                    this.ctx.font = '12px Arial';
+                    this.ctx.fillText(axis.label, end[0] + 5, end[1] + 5);
+                });
+            }
+
+            drawCube() {
+                this.ctx.beginPath();
+                this.ctx.strokeStyle = '#000';
+
+                this.edges.forEach(edge => {
+                    const v1 = this.rotate(this.vertices[edge[0]]);
+                    const v2 = this.rotate(this.vertices[edge[1]]);
+
+                    const p1 = this.project(v1);
+                    const p2 = this.project(v2);
+
+                    this.ctx.moveTo(p1[0], p1[1]);
+                    this.ctx.lineTo(p2[0], p2[1]);
+                });
+
+                this.ctx.stroke();
+            }
+
+            animate() {
+                if (this.rotationEnabled) this.angle += 0.03;
+                this.draw();
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        // 初始化3D窗口
+        new CubeWindow();
+    </script>
+</body>
+
+</html>
+    

@@ -3,36 +3,201 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Cube with Dynamic Axis Arrows</title>
+    <title>3D Cube with Controls</title>
     <style>
         canvas {
             border: 1px solid #2c3e50;
             background: #ecf0f1;
             border-radius: 5px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
         }
         body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             margin: 0;
             background: #bdc3c7;
+            overflow: hidden;
+        }
+        .toolbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #34495e;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .toolbar button {
+            padding: 8px 16px;
+            border: none;
+            background-color: #3498db;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .toolbar button:hover {
+            background-color: #2980b9;
+        }
+        .properties-panel {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            min-width: 250px;
+            z-index: 200;
+            display: none;
+        }
+        .panel-header {
+            padding: 12px;
+            background: #34495e;
+            color: white;
+            border-radius: 8px 8px 0 0;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-title {
+            font-weight: bold;
+        }
+        .panel-close {
+            cursor: pointer;
+            padding: 0 5px;
+            font-size: 1.2em;
+        }
+        .panel-content {
+            padding: 15px;
         }
     </style>
 </head>
 <body>
-    <canvas id="cubeCanvas" width="800" height="600"></canvas>
+    <div class="toolbar">
+        <button id="toggleRotation">开始旋转</button>
+        <button id="showProperties">属性窗口</button>
+    </div>
+    
+    <div class="properties-panel" id="propertiesPanel">
+        <div class="panel-header" id="panelHeader">
+            <span class="panel-title">属性设置</span>
+            <span class="panel-close" id="panelClose">×</span>
+        </div>
+        <div class="panel-content">
+            <div class="control-group">
+                <label>立方体尺寸:</label>
+                <input type="range" id="cubeSize" min="1" max="5" step="0.5" value="2">
+            </div>
+            <div class="control-group">
+                <label>旋转速度:</label>
+                <input type="range" id="rotationSpeed" min="0" max="0.02" step="0.001" value="0.005">
+            </div>
+        </div>
+    </div>
+
+    <canvas id="cubeCanvas"></canvas>
+    
     <script>
+        class PropertyPanel {
+            constructor(panelId, cubeInstance) {
+                this.panel = document.getElementById(panelId);
+                this.cube = cubeInstance;
+                this.isDragging = false;
+                this.initialX = 0;
+                this.initialY = 0;
+                this.xOffset = 0;
+                this.yOffset = 0;
+
+                const header = document.getElementById('panelHeader');
+                header.addEventListener('mousedown', (e) => this.dragStart(e));
+                document.addEventListener('mouseup', () => this.dragEnd());
+                document.addEventListener('mousemove', (e) => this.drag(e));
+
+                document.getElementById('panelClose').addEventListener('click', () => {
+                    this.panel.style.display = 'none';
+                });
+
+                // 绑定控件事件
+                document.getElementById('cubeSize').addEventListener('input', (e) => {
+                    this.cube.setCubeSize(parseFloat(e.target.value));
+                });
+
+                document.getElementById('rotationSpeed').addEventListener('input', (e) => {
+                    this.cube.rotationSpeed = parseFloat(e.target.value);
+                });
+            }
+
+            toggle() {
+                this.panel.style.display = this.panel.style.display === 'block' ? 'none' : 'block';
+            }
+
+            dragStart(e) {
+                this.initialX = e.clientX - this.panel.offsetLeft;
+                this.initialY = e.clientY - this.panel.offsetTop;
+                this.isDragging = true;
+            }
+
+            dragEnd() {
+                this.isDragging = false;
+            }
+
+            drag(e) {
+                if (this.isDragging) {
+                    e.preventDefault();
+                    const newX = e.clientX - this.initialX;
+                    const newY = e.clientY - this.initialY;
+                    
+                    this.panel.style.left = `${newX}px`;
+                    this.panel.style.top = `${newY}px`;
+                }
+            }
+        }
+
         class AdvancedCube {
             constructor(canvasId) {
                 this.canvas = document.getElementById(canvasId);
                 this.ctx = this.canvas.getContext('2d');
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
                 this.init();
+                
+                // 控制参数
+                this.isRotating = false;
+                this.rotationSpeed = 0.005;
+
+                // 初始化UI控件
+                this.toggleButton = document.getElementById('toggleRotation');
+                this.toggleButton.addEventListener('click', () => this.toggleRotation());
+                
+                this.propertyPanel = new PropertyPanel('propertiesPanel', this);
+                document.getElementById('showProperties').addEventListener('click', () => 
+                    this.propertyPanel.toggle()
+                );
+
                 this.animate();
             }
 
+            setCubeSize(size) {
+                this.cubeSize = size;
+                this.vertices = this.generateCubeVertices();
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                this.center = {
+                    x: this.canvas.width/2,
+                    y: this.canvas.height/2
+                };
+            }
+
             init() {
-                // 立方体参数
                 this.cubeSize = 2;
                 this.vertices = this.generateCubeVertices();
                 this.faces = [
@@ -40,11 +205,8 @@
                     [1,5,6,2], [2,6,7,3], [3,7,4,0]
                 ];
 
-                // 坐标系参数
                 this.axisLength = 3;
                 this.arrowSize = 0.4;
-                
-                // 视角参数
                 this.angle = { x: 0.2, y: 0.4, z: 0 };
                 this.scale = 150;
                 this.distance = 4;
@@ -65,17 +227,14 @@
             rotatePoint(point) {
                 let [x,y,z] = point;
                 
-                // X轴旋转
                 const cx = Math.cos(this.angle.x);
                 const sx = Math.sin(this.angle.x);
                 [y,z] = [y*cx - z*sx, y*sx + z*cx];
                 
-                // Y轴旋转
                 const cy = Math.cos(this.angle.y);
                 const sy = Math.sin(this.angle.y);
                 [x,z] = [x*cy - z*sy, x*sy + z*cy];
                 
-                // Z轴旋转
                 const cz = Math.cos(this.angle.z);
                 const sz = Math.sin(this.angle.z);
                 [x,y] = [x*cz - y*sz, x*sz + y*cz];
@@ -94,9 +253,9 @@
 
             drawAxis() {
                 const axes = [
-                    { color: '#e74c3c', vector: [this.axisLength,0,0], label: 'X' }, // X
-                    { color: '#2ecc71', vector: [0,this.axisLength,0], label: 'Y' }, // Y
-                    { color: '#3498db', vector: [0,0,this.axisLength], label: 'Z' }  // Z
+                    { color: '#e74c3c', vector: [this.axisLength,0,0], label: 'X' },
+                    { color: '#2ecc71', vector: [0,this.axisLength,0], label: 'Y' },
+                    { color: '#3498db', vector: [0,0,this.axisLength], label: 'Z' }
                 ];
 
                 axes.forEach(axis => {
@@ -104,7 +263,6 @@
                     const start = this.project([0,0,0]);
                     const end = this.project(rotated);
                     
-                    // 绘制轴线
                     this.ctx.beginPath();
                     this.ctx.strokeStyle = axis.color;
                     this.ctx.lineWidth = 2;
@@ -112,10 +270,8 @@
                     this.ctx.lineTo(end.x, end.y);
                     this.ctx.stroke();
 
-                    // 绘制3D箭头
                     this.draw3DArrow(end, rotated, axis.color);
 
-                    // 绘制坐标轴标签
                     this.ctx.font = '20px Arial';
                     this.ctx.fillStyle = axis.color;
                     this.ctx.fillText(axis.label, end.x + 5, end.y + 5);
@@ -123,16 +279,13 @@
             }
 
             draw3DArrow(tip, direction, color) {
-                // 计算归一化方向向量
                 const length = Math.sqrt(direction.reduce((s,v) => s + v*v, 0));
                 const normDir = direction.map(v => v/length);
                 
-                // 创建垂直向量
                 const perp = [normDir[1], -normDir[0], 0];
                 const perpLength = Math.sqrt(perp[0]**2 + perp[1]**2);
                 const scaledPerp = perp.map(v => v*this.arrowSize/perpLength);
                 
-                // 生成箭头顶点
                 const arrowPoints = [
                     [tip.x, tip.y],
                     this.project([
@@ -147,7 +300,6 @@
                     ])
                 ];
 
-                // 绘制箭头
                 this.ctx.fillStyle = color + 'dd';
                 this.ctx.beginPath();
                 arrowPoints.forEach((p,i) => 
@@ -158,18 +310,15 @@
             }
 
             drawCube() {
-                // 计算所有顶点的投影
                 const projected = this.vertices.map(v => 
                     this.project(this.rotatePoint(v))
                 );
 
-                // 深度排序面
                 const faces = this.faces.map(face => ({
                     indices: face,
                     depth: face.reduce((sum, i) => sum + projected[i].depth, 0)/4
                 })).sort((a,b) => b.depth - a.depth);
 
-                // 绘制每个面
                 faces.forEach(({indices}) => {
                     this.ctx.beginPath();
                     indices.forEach((i, idx) => {
@@ -185,8 +334,15 @@
             }
 
             update() {
-                this.angle.x += 0.005;
-                this.angle.y += 0.007;
+                if (this.isRotating) {
+                    this.angle.x += this.rotationSpeed;
+                    this.angle.y += this.rotationSpeed * 1.4;
+                }
+            }
+
+            toggleRotation() {
+                this.isRotating = !this.isRotating;
+                this.toggleButton.textContent = this.isRotating ? '停止旋转' : '开始旋转';
             }
 
             animate() {
@@ -198,7 +354,6 @@
             }
         }
 
-        // 初始化并启动
         new AdvancedCube('cubeCanvas');
     </script>
 </body>
@@ -207,5 +362,8 @@
     
 <!--
 升级：
-在坐标轴端头标上X，Y，Z
+   把所有dom的建立都放在代码里，style也放。
+
+   return all new code.
+   
 -->
