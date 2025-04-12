@@ -4,82 +4,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Cube Window Test</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <title>3D Rubik's Cube Window</title>
 </head>
 
 <body>
+    <button onclick="btnTest();">Toggle Cube</button>
     <script>
         class MovableWindow {
             constructor(title, width = 600, height = 400) {
-                // 确保样式只注入一次
-                if (!MovableWindow.styleInjected) {
-                    const style = document.createElement('style');
-                    style.textContent = `
-                        .window {
-                            position: absolute;
-                            border: 2px solid #444;
-                            background: #ddd;
-                            box-shadow: 5px 5px 10px rgba(0,0,0,0.3);
-                            width: ${width}px;
-                            height: ${height}px;
-                            left: 20px;
-                            top: 20px;
-                        }
-                        .title-bar {
-                            background: #666;
-                            color: white;
-                            padding: 5px;
-                            cursor: move;
-                        }
-                        .canvas-container {
-                            position: relative;
-                            overflow: hidden;
-                            width: 100%;
-                            height: calc(100% - 60px);
-                        }
-                        .toolbar {
-                            background: #aaa;
-                            padding: 5px;
-                            display: flex;
-                            gap: 5px;
-                            position: absolute;
-                            bottom: 0;
-                            width: 100%;
-                            box-sizing: border-box;
-                        }
-                        button {
-                            padding: 3px 8px;
-                            cursor: pointer;
-                        }
-                        .property-panel {
-                            padding: 10px;
-                        }
-                        .property-panel label {
-                            display: block;
-                            margin: 5px 0;
-                        }
-                    `;
-                    document.head.appendChild(style);
-                    MovableWindow.styleInjected = true;
-                }
-
                 this.isDragging = false;
                 this.offset = [0, 0];
 
                 // 创建窗口元素
                 this.element = document.createElement('div');
                 this.element.className = 'window';
+                this.element.style.width = `${width}px`;
+                this.element.style.height = `${height}px`;
+                this.element.style.position = 'absolute';
+                this.element.style.border = '2px solid #444';
+                this.element.style.background = '#ddd';
+                this.element.style.boxShadow = '5px 5px 10px rgba(0,0,0,0.3)';
+                this.element.style.left = '20px';
+                this.element.style.top = '20px';
+                this.element.style.zIndex = '2222';
 
                 // 标题栏
                 this.titleBar = document.createElement('div');
                 this.titleBar.className = 'title-bar';
                 this.titleBar.textContent = title;
+                this.titleBar.style.background = '#666';
+                this.titleBar.style.color = 'white';
+                this.titleBar.style.padding = '5px';
+                this.titleBar.style.cursor = 'move';
 
                 // 画布容器
                 this.canvasContainer = document.createElement('div');
                 this.canvasContainer.className = 'canvas-container';
+                this.canvasContainer.style.position = 'relative';
+                this.canvasContainer.style.overflow = 'hidden';
+                this.canvasContainer.style.width = '100%';
+                this.canvasContainer.style.height = 'calc(100% - 60px)';
                 this.canvas = document.createElement('canvas');
                 this.ctx = this.canvas.getContext('2d');
                 this.canvasContainer.appendChild(this.canvas);
@@ -87,8 +51,15 @@
                 // 工具条
                 this.toolbar = document.createElement('div');
                 this.toolbar.className = 'toolbar';
+                this.toolbar.style.background = '#aaa';
+                this.toolbar.style.padding = '5px';
+                this.toolbar.style.display = 'flex';
+                this.toolbar.style.gap = '5px';
+                this.toolbar.style.position = 'absolute';
+                this.toolbar.style.bottom = '0';
+                this.toolbar.style.width = '100%';
+                this.toolbar.style.boxSizing = 'border-box';
 
-                // 组装元素
                 this.element.append(this.titleBar, this.canvasContainer, this.toolbar);
                 document.body.appendChild(this.element);
 
@@ -130,22 +101,41 @@
             }
         }
 
-        MovableWindow.styleInjected = false;
-
         class CubeWindow extends MovableWindow {
             constructor() {
-                super('3D Viewer');
+                super('3D Rubik\'s Cube');
                 this.angle = 0;
                 this.rotationEnabled = false;
-                this.scale = 1;
-                this.vertices = [
-                    [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
-                    [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]
+                this.scale = 100;
+
+                // 生成27个小立方体的中心坐标
+                const positions = [-2/3, 0, 2/3];
+                this.cubeCenters = [];
+                for (let x of positions) {
+                    for (let y of positions) {
+                        for (let z of positions) {
+                            this.cubeCenters.push([x, y, z]);
+                        }
+                    }
+                }
+
+                // 小立方体局部顶点（边长为2/3）
+                this.localVertices = [
+                    [-1/3, -1/3, -1/3], [1/3, -1/3, -1/3],
+                    [1/3, 1/3, -1/3], [-1/3, 1/3, -1/3],
+                    [-1/3, -1/3, 1/3], [1/3, -1/3, 1/3],
+                    [1/3, 1/3, 1/3], [-1/3, 1/3, 1/3]
                 ];
-                this.edges = [
-                    [0, 1], [1, 2], [2, 3], [3, 0],
-                    [4, 5], [5, 6], [6, 7], [7, 4],
-                    [0, 4], [1, 5], [2, 6], [3, 7]
+
+                this.faces = [
+                    [0, 1, 2, 3], [1, 5, 6, 2],  // 前、右
+                    [5, 4, 7, 6], [4, 0, 3, 7],  // 后、左
+                    [3, 2, 6, 7], [4, 5, 1, 0]   // 上、下
+                ];
+
+                this.faceColors = [
+                    '#FF0000', '#00FF00', '#0000FF', 
+                    '#FFFF00', '#00FFFF', '#FF00FF'
                 ];
 
                 this.initControls();
@@ -162,25 +152,29 @@
             }
 
             showPropertyPanel() {
-                if (this.propWindow) return;
+                if (!this.propWindow) {
+                    const propWidth = 200;
+                    const propHeight = 100;
+                    this.propWindow = new MovableWindow('属性', propWidth, propHeight);
+                    this.propWindow.element.style.left = '640px';
 
-                this.propWindow = new MovableWindow('属性', 200, 150);
-                this.propWindow.element.style.left = '640px';
+                    const panel = document.createElement('div');
+                    panel.innerHTML = `
+                        <label>
+                            缩放: 
+                            <input type="range" min="50" max="200" step="10" value="100">
+                        </label>
+                    `;
 
-                const panel = document.createElement('div');
-                panel.className = 'property-panel';
-                panel.innerHTML = `
-                    <label>
-                        缩放: 
-                        <input type="range" min="0.5" max="2" step="0.1" value="1">
-                    </label>
-                `;
+                    panel.querySelector('input').addEventListener('input', e => {
+                        this.scale = parseFloat(e.target.value);
+                    });
 
-                panel.querySelector('input').addEventListener('input', e => {
-                    this.scale = parseFloat(e.target.value);
-                });
-
-                this.propWindow.element.appendChild(panel);
+                    this.propWindow.element.appendChild(panel);
+                } else {
+                    this.propWindow.element.style.display = 
+                        this.propWindow.element.style.display === 'none' ? 'block' : 'none';
+                }
             }
 
             project(vertex) {
@@ -240,21 +234,51 @@
             }
 
             drawCube() {
-                this.ctx.beginPath();
-                this.ctx.strokeStyle = '#000';
+                for (const center of this.cubeCenters) {
+                    const cubeVertices = this.localVertices.map(v => [
+                        center[0] + v[0],
+                        center[1] + v[1],
+                        center[2] + v[2]
+                    ]);
 
-                this.edges.forEach(edge => {
-                    const v1 = this.rotate(this.vertices[edge[0]]);
-                    const v2 = this.rotate(this.vertices[edge[1]]);
+                    const rotatedVertices = cubeVertices.map(v => this.rotate(v));
 
-                    const p1 = this.project(v1);
-                    const p2 = this.project(v2);
+                    const faceData = this.faces.map((face, index) => {
+                        const points = face.map(i => rotatedVertices[i]);
+                        const centerZ = points.reduce((sum, v) => sum + v[2], 0) / points.length;
+                        return { points, centerZ, color: this.faceColors[index] };
+                    });
 
-                    this.ctx.moveTo(p1[0], p1[1]);
-                    this.ctx.lineTo(p2[0], p2[1]);
-                });
+                    // 根据Z排序面
+                    faceData.sort((a, b) => b.centerZ - a.centerZ);
 
-                this.ctx.stroke();
+                    faceData.forEach(({ points, color }) => {
+                        const normal = this.calculateNormal(points);
+                        if (normal[2] < 0) return; // 背面剔除
+
+                        this.ctx.beginPath();
+                        points.forEach((v, i) => {
+                            const p = this.project(v);
+                            if (i === 0) this.ctx.moveTo(p[0], p[1]);
+                            else this.ctx.lineTo(p[0], p[1]);
+                        });
+                        this.ctx.closePath();
+                        this.ctx.fillStyle = color;
+                        this.ctx.fill();
+                        this.ctx.strokeStyle = '#000';
+                        this.ctx.stroke();
+                    });
+                }
+            }
+
+            calculateNormal(points) {
+                const v1 = [points[1][0] - points[0][0], points[1][1] - points[0][1], points[1][2] - points[0][2]];
+                const v2 = [points[2][0] - points[0][0], points[2][1] - points[0][1], points[2][2] - points[0][2]];
+                return [
+                    v1[1] * v2[2] - v1[2] * v2[1],
+                    v1[2] * v2[0] - v1[0] * v2[2],
+                    v1[0] * v2[1] - v1[1] * v2[0]
+                ];
             }
 
             animate() {
@@ -264,10 +288,23 @@
             }
         }
 
-        // 初始化3D窗口
-        new CubeWindow();
+        let cubeWindowInstance = null;
+        
+        function btnTest() {
+            if (!cubeWindowInstance) {
+                cubeWindowInstance = new CubeWindow();
+            } else {
+                cubeWindowInstance.element.style.display = 
+                    cubeWindowInstance.element.style.display === 'none' ? 'block' : 'none';
+            }
+        }
     </script>
 </body>
-
 </html>
     
+<!--
+ 用多个这样的小立方体组装模拟一个真实的三维魔方。
+return all new code
+-->
+    
+ 
