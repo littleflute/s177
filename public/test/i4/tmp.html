@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- 保持原有样式不变 -->
+  <style>
+    /* 新增样式 */
+    #editBeatBtn {
+      position: fixed;
+      top: 10px;
+      left: 100px;
+    }
+    .preview-beat {
+      opacity: 0.5;
+    }
+  </style>
+</head>
+<body>
+  <button id="settingsBtn">显示设置</button>
+  <button id="editBeatBtn">编辑节拍</button> <!-- 新增按钮 -->
+  <canvas id="jianpuCanvas"></canvas>
+
+  <script>
+    class C4Editor {
+      constructor(targetElementId, renderer) {
+          // ... 保持原有代码不变 ...
+          
+          // 新增事件绑定
+          this._bindInputEvents();
+      }
+
+      _bindInputEvents() {
+          // 当任何参数变化时更新预览
+          const inputs = ['notePitch', 'noteDuration', 'noteOctave', 'noteDotted'];
+          inputs.forEach(id => {
+              this.targetElement.querySelector(`#${id}`).addEventListener('input', () => {
+                  this._updatePreview();
+              });
+          });
+      }
+
+      _updatePreview() {
+          // 生成临时音符
+          const pitch = parseInt(this.targetElement.querySelector('#notePitch').value);
+          const duration = parseFloat(this.targetElement.querySelector('#noteDuration').value);
+          const octave = parseInt(this.targetElement.querySelector('#noteOctave').value);
+          const dotted = this.targetElement.querySelector('#noteDotted').checked;
+
+          const tempNote = new C4Note(
+              pitch,
+              duration,
+              { octave: octave, dotted: dotted }
+          );
+          
+          // 更新渲染器的预览内容
+          this.renderer.setPreviewContent([tempNote]);
+          this.renderer.render();
+      }
+
+      // ... 保持原有代码不变 ...
+    }
+
+    class JianpuRenderer {
+      constructor(canvasId, options = {}) {
+          // ... 保持原有代码不变 ...
+          
+          this.previewNotes = []; // 新增：存储预览内容
+          this.isEditing = false; // 新增：编辑状态标志
+      }
+
+      setPreviewContent(notes) {
+          this.previewNotes = notes;
+      }
+
+      clearPreview() {
+          this.previewNotes = [];
+      }
+
+      render() {
+          this.ctx.clearRect(0, 0, this.config.width, this.config.height);
+          
+          // 绘制常规内容
+          this._drawHeader();
+          this._drawNotes();
+          this._drawBars();
+
+          // 新增：绘制预览内容
+          if (this.isEditing) {
+              this._drawPreview();
+          }
+      }
+
+      _drawPreview() {
+          // 在画布底部显示预览
+          const previewX = 50;
+          const previewY = this.config.height - 100;
+          
+          this.ctx.save();
+          this.ctx.globalAlpha = 0.5;
+          
+          this.previewNotes.forEach(note => {
+              note.drawMe(this.ctx, previewX, previewY, this.config);
+          });
+          
+          this.ctx.restore();
+      }
+
+      // ... 保持其他方法不变 ...
+    }
+
+    // 初始化后新增事件绑定
+    const editBeatBtn = document.getElementById('editBeatBtn');
+    editBeatBtn.addEventListener('click', () => {
+        if (!renderer.selectedBar) {
+            alert('请先选择一个小节');
+            return;
+        }
+        
+        renderer.isEditing = !renderer.isEditing;
+        editBeatBtn.classList.toggle('active');
+        renderer.barEditor.targetElement.classList.toggle('hidden');
+        
+        if (!renderer.isEditing) {
+            renderer.clearPreview();
+        }
+        renderer.render();
+    });
+
+    // ... 保持其他初始化代码不变 ...
+  </script>
+</body>
+</html>
