@@ -78,12 +78,16 @@
   <script>
     class C4Editor {
       constructor(targetElementId, renderer) {
+          this.previewBeat = new C4Beat(); // 新增预览节拍
           this.targetElement = document.getElementById(targetElementId);
           this.renderer = renderer;
           this._injectStyles();
           this._createUI();
       }
-
+      _updatePreviewBeat() {
+          this.previewBeat = new C4Beat(...this.currentNotes);
+          this.renderer.renderPreview(this.previewBeat);
+      }
       _injectStyles() {
           const style = document.createElement('style');
           style.textContent = `
@@ -215,6 +219,7 @@
                   duration,
                   { octave: octave, dotted: dotted }
               ));
+              this._updatePreviewBeat(); // 新增预览更新
               
               this.targetElement.querySelector('#notePitch').value = 1;
               this.targetElement.querySelector('#noteDuration').value = 0.25;
@@ -237,6 +242,7 @@
               } else {
                   alert('请先选择一个小节');
               }
+              this.renderer.clearPreview(); // 新增清除预览
           });
       }
     }
@@ -453,6 +459,7 @@
 
     class JianpuRenderer {
       constructor(canvasId, options = {}) {
+        this.previewBeat = null; // 新增预览节拍状态
         this.deleteBarBtn = null;
         this.barToolbarElement = null; // 新增工具栏元素引用
         this.canvas = document.getElementById(canvasId);
@@ -516,6 +523,17 @@
           
           renderer.resetAllBars();
         });
+      }
+      // 新增预览渲染方法
+      renderPreview(beat) {
+                this.previewBeat = beat;
+                this.render();
+            }
+
+      // 新增清除预览方法
+      clearPreview() {
+          this.previewBeat = null;
+          this.render();
       }
 
       _injectStyles() {
@@ -1028,8 +1046,37 @@
         this.barList.forEach(bar => {
           bar.drawMe(this.ctx, bar.x, bar.y, this.config);
         });
+        if (this.previewBeat && this.selectedBar) {
+              this._drawPreviewBeat();
+          }
       }
+      // 新增预览绘制方法
+      _drawPreviewBeat() {
+          const bar = this.selectedBar;
+          const config = this.config;
+          
+          // 计算预览位置
+          let previewX = bar.x + 10;
+          const previewY = bar.y + 30;
+          
+          // 找到最后一个beat的结束位置
+          bar.beats.forEach(beat => {
+              previewX += beat.calculateWidth(config) + config.noteSpacing;
+          });
 
+          // 绘制半透明预览
+          this.ctx.globalAlpha = 0.5;
+          this.previewBeat.drawMe(this.ctx, previewX, previewY, config);
+          this.ctx.globalAlpha = 1.0;
+
+          // 绘制虚线边框
+          this.ctx.setLineDash([5, 3]);
+          this.ctx.strokeStyle = 'green';
+          const beatWidth = this.previewBeat.calculateWidth(config);
+          this.ctx.strokeRect(previewX - 2, previewY - 2, beatWidth + 4, 24);
+          this.ctx.setLineDash([]);
+          this.ctx.strokeStyle = 'black';
+      }
       _calculateBeatWidth(beat) {
         let totalWidth = 0;
         beat.notes.forEach(note => {
@@ -1251,6 +1298,6 @@
 <!--
 升级： 
    
-  id4BarEditor 添加一个画布，在节拍加入小节之前先预览这个新的节拍。
+  完成节拍之前，现在画布上课预览节拍
 
 -->
