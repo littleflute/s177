@@ -76,6 +76,171 @@
   <canvas id="jianpuCanvas"></canvas>
 
   <script>
+    class C4Editor {
+      constructor(targetElementId, renderer) {
+          this.targetElement = document.getElementById(targetElementId);
+          this.renderer = renderer;
+          this._injectStyles();
+          this._createUI();
+      }
+
+      _injectStyles() {
+          const style = document.createElement('style');
+          style.textContent = `
+              .c4-editor {
+                  padding: 10px;
+                  background: #f5f5f5;
+                  border-radius: 4px;
+                  margin-top: 10px;
+              }
+              
+              .c4-editor h3 {
+                  margin: 0 0 10px 0;
+                  font-size: 14px;
+                  color: #333;
+              }
+              
+              .c4-editor .editor-row {
+                  display: flex;
+                  gap: 8px;
+                  margin-bottom: 8px;
+                  align-items: center;
+              }
+              
+              .c4-editor label {
+                  min-width: 60px;
+                  font-size: 12px;
+              }
+              
+              .c4-editor input[type="number"] {
+                  width: 60px;
+                  padding: 4px;
+                  border: 1px solid #ccc;
+                  border-radius: 3px;
+              }
+              
+              .c4-editor input[type="checkbox"] {
+                  margin: 0;
+              }
+              
+              .c4-editor button {
+                  padding: 6px 12px;
+                  background: #28a745;
+                  color: white;
+                  border: none;
+                  border-radius: 3px;
+                  cursor: pointer;
+                  transition: background 0.2s;
+              }
+              
+              .c4-editor button:hover {
+                  background: #218838;
+              }
+              
+              .c4-editor .duration-presets {
+                  display: flex;
+                  gap: 5px;
+                  flex-wrap: wrap;
+              }
+              
+              .c4-editor .duration-btn {
+                  padding: 4px 8px;
+                  background: #007bff;
+                  color: white;
+                  border: none;
+                  border-radius: 2px;
+                  cursor: pointer;
+              }
+          `;
+          document.head.appendChild(style);
+      }
+
+      _createUI() {
+          this.targetElement.innerHTML = `
+              <div class="c4-editor">
+                  <h3>添加节拍</h3>
+                  <div class="editor-row">
+                      <label>音高(1-7):</label>
+                      <input type="number" id="notePitch" min="1" max="7" value="1">
+                  </div>
+                  <div class="editor-row">
+                      <label>时值:</label>
+                      <input type="number" id="noteDuration" step="0.125" value="0.25">
+                  </div>
+                  <div class="editor-row">
+                      <label>八度:</label>
+                      <input type="number" id="noteOctave" value="0">
+                  </div>
+                  <div class="editor-row">
+                      <label>附点:</label>
+                      <input type="checkbox" id="noteDotted">
+                  </div>
+                  <div class="editor-row">
+                      <div class="duration-presets">
+                          ${[1, 0.5, 0.25, 0.125, 0.0625].map(d => `
+                              <button class="duration-btn" data-duration="${d}">${d}</button>
+                          `).join('')}
+                      </div>
+                  </div>
+                  <div class="editor-row">
+                      <button id="addNoteBtn">添加音符</button>
+                      <button id="addBeatBtn">完成节拍</button>
+                  </div>
+              </div>
+          `;
+
+          this.currentNotes = [];
+          
+          // 绑定预设时值按钮
+          this.targetElement.querySelectorAll('.duration-btn').forEach(btn => {
+              btn.addEventListener('click', () => {
+                  this.targetElement.querySelector('#noteDuration').value = btn.dataset.duration;
+              });
+          });
+
+          // 添加音符按钮
+          this.targetElement.querySelector('#addNoteBtn').addEventListener('click', () => {
+              const pitch = parseInt(this.targetElement.querySelector('#notePitch').value);
+              const duration = parseFloat(this.targetElement.querySelector('#noteDuration').value);
+              const octave = parseInt(this.targetElement.querySelector('#noteOctave').value);
+              const dotted = this.targetElement.querySelector('#noteDotted').checked;
+
+              if (pitch < 1 || pitch > 7) {
+                  alert('音高必须在1-7之间');
+                  return;
+              }
+
+              this.currentNotes.push(new C4Note(
+                  pitch,
+                  duration,
+                  { octave: octave, dotted: dotted }
+              ));
+              
+              this.targetElement.querySelector('#notePitch').value = 1;
+              this.targetElement.querySelector('#noteDuration').value = 0.25;
+              this.targetElement.querySelector('#noteOctave').value = 0;
+              this.targetElement.querySelector('#noteDotted').checked = false;
+          });
+
+          // 完成节拍按钮
+          this.targetElement.querySelector('#addBeatBtn').addEventListener('click', () => {
+              if (this.currentNotes.length === 0) {
+                  alert('请至少添加一个音符');
+                  return;
+              }
+
+              if (this.renderer.selectedBar) {
+                  this.renderer.selectedBar.addBeat(...this.currentNotes);
+                  this.currentNotes = [];
+                  this.renderer.resetAllBars();
+                  this.renderer.render();
+              } else {
+                  alert('请先选择一个小节');
+              }
+          });
+      }
+    }
+
     class C4Bar {
       constructor(index) {
         this.index = index;
@@ -84,12 +249,28 @@
         this.x = 0;
         this.y = 0;
       }
+     
+      getWidth(config) {
+        let totalWidth = 0;
+        this.beats.forEach(beat => {
+          totalWidth += beat.calculateWidth(config);
+        });
+        if (this.beats.length > 0) {
+          totalWidth += (this.beats.length - 1) * config.noteSpacing;
+        }
+        return totalWidth + 20; // 左右边距各10px
+      }
+
       drawMe(ctx, x, y, config) {
         this.x = x;
         this.y = y;
-        const barWidth = config.barWidth;
+        const barWidth = this.getWidth(config);
         const barHeight = config.barHeight;
-        ctx.strokeRect(x, y, barWidth, barHeight); 
+
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, barWidth, barHeight);
+
         if (this.isSelected) {
           ctx.strokeStyle = 'red';
           ctx.lineWidth = 2;
@@ -97,22 +278,38 @@
           ctx.strokeStyle = 'black';
           ctx.lineWidth = 1;
         }
+
         ctx.fillText(this.index, x + 5, y + 20);
-        let currentY = y + 30;
+
+        let currentX = x + 10;
+        const beatY = y + 30;
         this.beats.forEach(beat => {
-          beat.drawMe(ctx, x + 10, currentY, config);
-          currentY += 30;
+          const beatWidth = beat.calculateWidth(config);
+          ctx.strokeStyle = 'blue';
+          ctx.strokeRect(currentX - 2, beatY - 2, beatWidth + 4, 24);
+          ctx.strokeStyle = 'black';
+          beat.drawMe(ctx, currentX, beatY, config);
+          currentX += beatWidth + config.noteSpacing;
         });
       }
+
+      
       addBeat(...notes) {
-        const oBeat = new C4Beat(...notes);
-        this.beats.push(oBeat);
+        this.beats.push(new C4Beat(...notes));
       }
+
     }
 
     class C4Beat {
       constructor(...notes) {
         this.notes = notes;
+      }
+      calculateWidth(config) {
+        let totalWidth = 0;
+        this.notes.forEach(note => {
+          totalWidth += this._calculateNoteWidth(note, config) + config.noteSpacing;
+        });
+        return totalWidth > 0 ? totalWidth - config.noteSpacing : 0; // 减去最后的间距
       }
       drawMe(ctx, x, y, config) {
         let currentX = x;
@@ -139,6 +336,8 @@
           currentX += noteWidth + config.noteSpacing;
         });
       }
+
+
       _calculateNoteWidth(note, config) {
         const lineCount = Math.floor(note.duration * 4);
         return lineCount * config.noteSpacing + config.fontSize;
@@ -295,6 +494,7 @@
         this._injectStyles();
         this._createSettingsWindow();
         this._positionSettingsWindowToTop();
+        this.barEditor = new C4Editor('id4BarEditor', this);
 
         this.canvas.addEventListener('mousedown', this._onMouseDown.bind(this));
         this.canvas.addEventListener('mousemove', this._onMouseMove.bind(this));
@@ -543,13 +743,14 @@
             <div id="barToolbar"></div> <!-- 工具栏移动到此处 -->
             <div class="bar-properties">
               <h4>选中小节属性</h4>
+              <div id="id4BarEditor"></div>
               <div class="property-row">
-                <span class="property-label">索引:</span>
-                <span class="property-value" id="barIndex">无</span>
+                  <span class="property-label">索引:</span>
+                  <span class="property-value" id="barIndex">无</span>
               </div>
               <div class="property-row">
-                <span class="property-label">位置:</span>
-                <span class="property-value" id="barPosition">无</span>
+                  <span class="property-label">位置:</span>
+                  <span class="property-value" id="barPosition">无</span>
               </div>
             </div>
           </div>
@@ -758,6 +959,9 @@
         this._updateBarToolbar(); // 确保及时更新按钮状态
         this.render();
         this._updateDeleteButtonState(); // 统一在此处更新按钮状态
+        if (this.barEditor) {
+            this.barEditor.currentNotes = []; // 重置当前正在编辑的音符
+        }
       }
 
       _positionSettingsWindowToTop() {
@@ -848,34 +1052,32 @@
       }
 
       _onMouseDown(e) {
-        // 重置所有小节的选中状态
-        this.barList.forEach(bar => {
-          bar.isSelected = false;
-        });
-        this.selectedBar = null;
         
-        this._updateBarToolbar(); // 新增代码：立即更新工具栏状态
-
+        this.barList.forEach(bar => bar.isSelected = false);
+        this.selectedBar = null;
+        this._updateBarToolbar();
+        
         const rect = this.canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
+        const mouseY = e.clientY - rect.top; 
 
         let hitBar = false;
         this.barList.forEach(bar => {
-          if (
-            mouseX >= bar.x &&
-            mouseX <= bar.x + 100 &&
-            mouseY >= bar.y &&
-            mouseY <= bar.y + 80
-          ) {
-            this._selectBar(bar); 
+          const barWidth = bar.getWidth(this.config);
+          const barHeight = this.config.barHeight;
+          
+          if (mouseX >= bar.x && 
+              mouseX <= bar.x + barWidth &&
+              mouseY >= bar.y && 
+              mouseY <= bar.y + barHeight) 
+          {
+            this._selectBar(bar);
             this.isDragging = true;
             this.offsetX = mouseX - bar.x;
             this.offsetY = mouseY - bar.y;
             hitBar = true;
-            return;
           }
-        }); 
+        });
         if (!hitBar) {
           this.selectedBar = null;
           const barIndexElement = this.settingsWnd.querySelector('#barIndex');
@@ -888,19 +1090,22 @@
         this.render();
         this._updateDeleteButtonState();
       }
+
+
       _onMouseMove(e) {
         if (this.isDragging && this.selectedBar) {
           const rect = this.canvas.getBoundingClientRect();
           const mouseX = e.clientX - rect.left;
           const mouseY = e.clientY - rect.top;
 
-          // 计算新的位置
-          this.selectedBar.x = mouseX - this.offsetX;
-          this.selectedBar.y = mouseY - this.offsetY;
+          const barWidth = this.selectedBar.getWidth(this.config);
+          const barHeight = this.config.barHeight;
 
-          // 防止小节被拖出画布范围
-          this.selectedBar.x = Math.max(0, Math.min(this.selectedBar.x, this.config.width - 100));
-          this.selectedBar.y = Math.max(0, Math.min(this.selectedBar.y, this.config.height - 80));
+          
+          this.selectedBar.x = Math.max(0, 
+            Math.min(mouseX - this.offsetX, this.config.width - barWidth));
+          this.selectedBar.y = Math.max(0, 
+            Math.min(mouseY - this.offsetY, this.config.height - barHeight));
 
           this.render();
           const barPositionElement = this.settingsWnd.querySelector('#barPosition');
@@ -915,23 +1120,19 @@
       }
 
       _onTouchStart(e) {
-        // 重置所有小节的选中状态
-        this.barList.forEach(bar => {
-          bar.isSelected = false;
-        });
-        this.selectedBar = null;
-
         const rect = this.canvas.getBoundingClientRect();
         const touchX = e.touches[0].clientX - rect.left;
-        const touchY = e.touches[0].clientY - rect.top;
+        const touchY = e.touches[0].clientY - rect.top; 
 
         this.barList.forEach(bar => {
-          if (
-            touchX >= bar.x &&
-            touchX <= bar.x + 100 &&
-            touchY >= bar.y &&
-            touchY <= bar.y + 80
-          ) {
+          const barWidth = bar.getWidth(this.config);
+          const barHeight = this.config.barHeight;
+          if (touchX >= bar.x && 
+            touchX <= bar.x + barWidth &&
+            touchY >= bar.y && 
+            touchY <= bar.y + barHeight
+          ) 
+          {
             this.selectedBar = bar;
             bar.isSelected = true;
             this.isDragging = true;
@@ -946,15 +1147,17 @@
 
       _onTouchMove(e) {
         if (this.isDragging && this.selectedBar) {
-          e.preventDefault(); // 阻止默认滚动行为
           const rect = this.canvas.getBoundingClientRect();
           const touchX = e.touches[0].clientX - rect.left;
           const touchY = e.touches[0].clientY - rect.top;
 
-          this.selectedBar.x = Math.max(0, 
-            Math.min(touchX - this.offsetX, this.config.width - this.config.barWidth));
+          const barWidth = this.selectedBar.getWidth(this.config);
+          const barHeight = this.config.barHeight;
+
+          this.selectedBar.x = Math.max(0,
+            Math.min(touchX - this.offsetX, this.config.width - barWidth));
           this.selectedBar.y = Math.max(0,
-            Math.min(touchY - this.offsetY, this.config.height - this.config.barHeight));
+            Math.min(touchY - this.offsetY, this.config.height - barHeight));
 
           this.render();
         }
@@ -965,20 +1168,35 @@
       }
 
       resetAllBars() {
-        const barWidth = this.config.barWidth;
         const barSpacing = this.isMobile ? 10 : 20;
-        const barsPerRow = Math.floor((this.config.width - 50) / (barWidth + barSpacing));
+        let currentX = 50;
+        let currentY = 50;
+        let maxBarHeight = 0;
 
-        this.barList.forEach((bar, index) => {
-          const row = Math.floor(index / barsPerRow);
-          const col = index % barsPerRow;
-          bar.x = 50 + col * (barWidth + barSpacing);
-          bar.y = 50 + row * (this.config.barHeight + 20);
+        this.barList.forEach(bar => {
+          const barWidth = bar.getWidth(this.config);
+          const barHeight = this.config.barHeight;
+
+          if (currentX + barWidth > this.config.width - 50) {
+            currentX = 50;
+            currentY += maxBarHeight + barSpacing;
+            maxBarHeight = 0;
+          }
+
+          bar.x = currentX;
+          bar.y = currentY;
+
+          if (barHeight > maxBarHeight) {
+            maxBarHeight = barHeight;
+          }
+
+          currentX += barWidth + barSpacing;
         });
 
         this.render();
-        this._updateBarToolbar(); // 添加工具栏更新
+        this._updateBarToolbar();
       }
+
     }
 
     // 使用示例
@@ -1033,7 +1251,6 @@
 <!--
 升级： 
    
-    小节管理tab底部添加 div 显示选择小节的属性,
-    相关css 通过代码添加
+  id4BarEditor 添加一个画布，在节拍加入小节之前先预览这个新的节拍。
 
 -->
