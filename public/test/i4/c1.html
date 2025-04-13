@@ -5,6 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Jianpu Renderer</title>
   <style>
+    /* 添加节拍按钮样式 */
+.delete-beat-btn {
+  background: #dc3545;
+  color: white;
+}
+
+/* 更新按钮样式 */
+#updateBeatBtn {
+  background: #ffc107;
+  color: black;
+}
     #barToolbar {
       display: flex;
       gap: 5px;
@@ -78,11 +89,35 @@
   <script>
     class C4Editor {
       constructor(targetElementId, renderer) {
-          this.previewBeat = new C4Beat(); // 新增预览节拍
-          this.targetElement = document.getElementById(targetElementId);
-          this.renderer = renderer;
-          this._injectStyles();
-          this._createUI();
+    this.previewBeat = new C4Beat(); // 新增预览节拍
+    this.targetElement = document.getElementById(targetElementId);
+    this.renderer = renderer;
+    this._injectStyles();
+    this._createUI(); // 调用_createUI生成包含按钮的HTML
+
+    // 获取按钮元素
+    this.updateBtn = this.targetElement.querySelector('#updateBeatBtn');
+    this.addBeatBtn = this.targetElement.querySelector('#addBeatBtn');
+
+    // 绑定事件监听器
+    this.updateBtn.addEventListener('click', () => {
+      if (this.editingBeat) {
+        this.editingBeat.notes = [...this.currentNotes];
+        this.renderer.resetAllBars();
+        this.renderer.render();
+        this.currentNotes = [];
+        this.editingBeat = null;
+        this.updateBtn.style.display = 'none';
+        this.addBeatBtn.style.display = 'inline';
+      }
+    });
+  }
+
+      loadBeat(beat) {
+        this.editingBeat = beat;
+        this.currentNotes = [...beat.notes];
+        this.addBeatBtn.style.display = 'none';
+        this.updateBtn.style.display = 'inline';
       }
       _updatePreviewBeat() {
           this.previewBeat = new C4Beat(...this.currentNotes);
@@ -189,6 +224,7 @@
                   <div class="editor-row">
                       <button id="addNoteBtn">添加音符</button>
                       <button id="addBeatBtn">完成节拍</button>
+                      <button id="updateBeatBtn" style="display:none;">更新节拍</button>
                   </div>
               </div>
           `;
@@ -290,8 +326,8 @@
         let currentX = x + 10;
         const beatY = y + 30;
         this.beats.forEach(beat => {
-          const beatWidth = beat.calculateWidth(config);
-          ctx.strokeStyle = 'blue';
+          const beatWidth = beat.calculateWidth(config); 
+          ctx.strokeStyle = beat.isSelected ? 'red' : 'blue';
           ctx.strokeRect(currentX - 2, beatY - 2, beatWidth + 4, 24);
           ctx.strokeStyle = 'black';
           beat.drawMe(ctx, currentX, beatY, config);
@@ -309,6 +345,7 @@
     class C4Beat {
       constructor(...notes) {
         this.notes = notes;
+        this.isSelected = false; // 新增选中状态
       }
       calculateWidth(config) {
         let totalWidth = 0;
@@ -784,6 +821,23 @@
             <button class="close-btn">应用并关闭</button>
           </div>
         `;
+        wnd.innerHTML += `
+          <div class="settings-row">
+            <button class="delete-beat-btn">删除选中节拍</button>
+          </div>
+        `;
+            // 绑定删除事件
+        this.deleteBeatBtn = wnd.querySelector('.delete-beat-btn');
+        this.deleteBeatBtn.addEventListener('click', () => {
+          if (this.selectedBar && this.selectedBeat) {
+            const index = this.selectedBar.beats.indexOf(this.selectedBeat);
+            if (index !== -1) {
+              this.selectedBar.beats.splice(index, 1);
+              this.resetAllBars();
+              this.render();
+            }
+          }
+        });
 
         this.deleteBarBtn = wnd.querySelector('.delete-bar-btn'); // 新增
         this.barToolbarElement = wnd.querySelector('#barToolbar');
@@ -1099,46 +1153,57 @@
       }
 
       _onMouseDown(e) {
-        
-        this.barList.forEach(bar => bar.isSelected = false);
+        // 清除所有选中状态
+        this.barList.forEach(bar => {
+          bar.isSelected = false;
+          bar.beats.forEach(beat => beat.isSelected = false);
+        });
         this.selectedBar = null;
-        this._updateBarToolbar();
-        
+        this.selectedBeat = null;
+
         const rect = this.canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top; 
+        const mouseY = e.clientY - rect.top;
 
         let hitBar = false;
         this.barList.forEach(bar => {
           const barWidth = bar.getWidth(this.config);
           const barHeight = this.config.barHeight;
-          
-          if (mouseX >= bar.x && 
-              mouseX <= bar.x + barWidth &&
-              mouseY >= bar.y && 
-              mouseY <= bar.y + barHeight) 
-          {
+
+          if (mouseX >= bar.x && mouseX <= bar.x + barWidth &&
+              mouseY >= bar.y && mouseY <= bar.y + barHeight) {
             this._selectBar(bar);
-            this.isDragging = true;
-            this.offsetX = mouseX - bar.x;
-            this.offsetY = mouseY - bar.y;
             hitBar = true;
+
+            // 检测节拍点击
+            let currentX = bar.x + 10;
+            const beatY = bar.y + 30;
+            bar.beats.forEach(beat => {
+              const beatWidth = beat.calculateWidth(this.config);
+              const beatRect = {
+                x: currentX - 2,
+                y: beatY - 2,
+                width: beatWidth + 4,
+                height: 24
+              };
+              
+              if (mouseX >= beatRect.x && mouseX <= beatRect.x + beatRect.width &&
+                  mouseY >= beatRect.y && mouseY <= beatRect.y + beatRect.height) {
+                beat.isSelected = true;
+                this.selectedBeat = beat;
+              }
+              currentX += beatWidth + this.config.noteSpacing;
+            });
           }
         });
-        if (!hitBar) {
-          this.selectedBar = null;
-          const barIndexElement = this.settingsWnd.querySelector('#barIndex');
-          const barPositionElement = this.settingsWnd.querySelector('#barPosition');
-          if (barIndexElement && barPositionElement) {
-            barIndexElement.textContent = '无';
-            barPositionElement.textContent = '无';
-          }
-        }
-        this.render();
+
+        // 更新UI状态
         this._updateDeleteButtonState();
+        this.render();
+        if (this.selectedBeat) {
+          this.barEditor.loadBeat(this.selectedBeat);
+        }
       }
-
-
       _onMouseMove(e) {
         if (this.isDragging && this.selectedBar) {
           const rect = this.canvas.getBoundingClientRect();
@@ -1298,6 +1363,5 @@
 <!--
 升级： 
    
-  完成节拍之前，现在画布上课预览节拍
 
 -->
