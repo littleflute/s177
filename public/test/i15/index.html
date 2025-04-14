@@ -1,415 +1,240 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Cube with Controls</title>
-    <style>
-        body {
-            margin: 0;
-            background: #bdc3c7;
-            overflow: hidden;
-        }
-    </style>
+    <title>OOP Rubik's Cube</title>
+    <style>body { margin: 0; }</style>
 </head>
 <body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        // 创建 toolbar
-        const toolbar = document.createElement('div');
-        toolbar.classList.add('toolbar');
-        toolbar.style.position = 'fixed';
-        toolbar.style.top = '0';
-        toolbar.style.left = '0';
-        toolbar.style.right = '0';
-        toolbar.style.background = '#34495e';
-        toolbar.style.padding = '10px';
-        toolbar.style.display = 'flex';
-        toolbar.style.gap = '10px';
-        toolbar.style.zIndex = '100';
-        toolbar.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+class Cubelet {
+    constructor(x, y, z) {
+        this.position = new THREE.Vector3(x, y, z);
+        this.mesh = this.createMesh(x, y, z);
+        this.targetRotation = new THREE.Euler();
+    }
 
-        const toggleRotationButton = document.createElement('button');
-        toggleRotationButton.id = 'toggleRotation';
-        toggleRotationButton.textContent = '开始旋转';
-        toggleRotationButton.style.padding = '8px 16px';
-        toggleRotationButton.style.border = 'none';
-        toggleRotationButton.style.backgroundColor = '#3498db';
-        toggleRotationButton.style.color = 'white';
-        toggleRotationButton.style.borderRadius = '4px';
-        toggleRotationButton.style.cursor = 'pointer';
-        toggleRotationButton.style.transition = 'background-color 0.3s ease';
-        toggleRotationButton.addEventListener('mouseover', () => toggleRotationButton.style.backgroundColor = '#2980b9');
-        toggleRotationButton.addEventListener('mouseout', () => toggleRotationButton.style.backgroundColor = '#3498db');
+    createMesh(x, y, z) {
+        const materials = Cubelet.COLORS.map((color, i) => 
+            new THREE.MeshPhongMaterial({
+                color: this.shouldPaintFace(x, y, z, i) ? color : 0x222222,
+                shininess: 100
+            })
+        );
+        
+        const mesh = new THREE.Mesh(
+            new THREE.BoxGeometry(0.95, 0.95, 0.95),
+            materials
+        );
+        mesh.position.copy(this.position);
+        return mesh;
+    }
 
-        const showPropertiesButton = document.createElement('button');
-        showPropertiesButton.id = 'showProperties';
-        showPropertiesButton.textContent = '属性窗口';
-        showPropertiesButton.style.padding = '8px 16px';
-        showPropertiesButton.style.border = 'none';
-        showPropertiesButton.style.backgroundColor = '#3498db';
-        showPropertiesButton.style.color = 'white';
-        showPropertiesButton.style.borderRadius = '4px';
-        showPropertiesButton.style.cursor = 'pointer';
-        showPropertiesButton.style.transition = 'background-color 0.3s ease';
-        showPropertiesButton.addEventListener('mouseover', () => showPropertiesButton.style.backgroundColor = '#2980b9');
-        showPropertiesButton.addEventListener('mouseout', () => showPropertiesButton.style.backgroundColor = '#3498db');
+    shouldPaintFace(x, y, z, faceIndex) {
+        const positions = {
+            0: x === 1,   // Right
+            1: x === -1,  // Left
+            2: y === 1,   // Up
+            3: y === -1,  // Down
+            4: z === 1,   // Front
+            5: z === -1   // Back
+        };
+        return positions[faceIndex];
+    }
 
-        toolbar.appendChild(toggleRotationButton);
-        toolbar.appendChild(showPropertiesButton);
-        document.body.appendChild(toolbar);
+    update(delta) {
+        this.mesh.rotation.x += (this.targetRotation.x - this.mesh.rotation.x) * 0.1;
+        this.mesh.rotation.y += (this.targetRotation.y - this.mesh.rotation.y) * 0.1;
+    }
+}
 
-        // 创建 properties-panel
-        const propertiesPanel = document.createElement('div');
-        propertiesPanel.id = 'propertiesPanel';
-        propertiesPanel.classList.add('properties-panel');
-        propertiesPanel.style.position = 'absolute';
-        propertiesPanel.style.top = '100px';
-        propertiesPanel.style.left = '20px';
-        propertiesPanel.style.background = 'white';
-        propertiesPanel.style.borderRadius = '8px';
-        propertiesPanel.style.boxShadow = '0 4px 10px rgba(0,0,0,0.2)';
-        propertiesPanel.style.minWidth = '250px';
-        propertiesPanel.style.zIndex = '200';
-        propertiesPanel.style.display = 'none';
+Cubelet.COLORS = [
+    new THREE.Color('red'),    // Right
+    new THREE.Color('orange'), // Left
+    new THREE.Color('white'),  // Up
+    new THREE.Color('yellow'), // Down
+    new THREE.Color('green'),  // Front
+    new THREE.Color('blue')    // Back
+];
 
-        const panelHeader = document.createElement('div');
-        panelHeader.id = 'panelHeader';
-        panelHeader.classList.add('panel-header');
-        panelHeader.style.padding = '12px';
-        panelHeader.style.background = '#34495e';
-        panelHeader.style.color = 'white';
-        panelHeader.style.borderRadius = '8px 8px 0 0';
-        panelHeader.style.cursor = 'move';
-        panelHeader.style.display = 'flex';
-        panelHeader.style.justifyContent = 'space-between';
-        panelHeader.style.alignItems = 'center';
+class RubiksCube {
+    constructor() {
+        this.cubelets = [];
+        this.rotationQueue = [];
+        this.isRotating = false;
+        this.initCube();
+    }
 
-        const panelTitle = document.createElement('span');
-        panelTitle.classList.add('panel-title');
-        panelTitle.textContent = '属性设置';
-
-        const panelClose = document.createElement('span');
-        panelClose.id = 'panelClose';
-        panelClose.classList.add('panel-close');
-        panelClose.textContent = '×';
-        panelClose.style.cursor = 'pointer';
-        panelClose.style.padding = '0 5px';
-        panelClose.style.fontSize = '1.2em';
-
-        panelHeader.appendChild(panelTitle);
-        panelHeader.appendChild(panelClose);
-
-        const panelContent = document.createElement('div');
-        panelContent.classList.add('panel-content');
-        panelContent.style.padding = '15px';
-
-        const cubeSizeGroup = document.createElement('div');
-        cubeSizeGroup.classList.add('control-group');
-        const cubeSizeLabel = document.createElement('label');
-        cubeSizeLabel.textContent = '立方体尺寸:';
-        const cubeSizeInput = document.createElement('input');
-        cubeSizeInput.type = 'range';
-        cubeSizeInput.id = 'cubeSize';
-        cubeSizeInput.min = '1';
-        cubeSizeInput.max = '5';
-        cubeSizeInput.step = '0.5';
-        cubeSizeInput.value = '2';
-        cubeSizeGroup.appendChild(cubeSizeLabel);
-        cubeSizeGroup.appendChild(cubeSizeInput);
-
-        const rotationSpeedGroup = document.createElement('div');
-        rotationSpeedGroup.classList.add('control-group');
-        const rotationSpeedLabel = document.createElement('label');
-        rotationSpeedLabel.textContent = '旋转速度:';
-        const rotationSpeedInput = document.createElement('input');
-        rotationSpeedInput.type = 'range';
-        rotationSpeedInput.id = 'rotationSpeed';
-        rotationSpeedInput.min = '0';
-        rotationSpeedInput.max = '0.02';
-        rotationSpeedInput.step = '0.001';
-        rotationSpeedInput.value = '0.005';
-        rotationSpeedGroup.appendChild(rotationSpeedLabel);
-        rotationSpeedGroup.appendChild(rotationSpeedInput);
-
-        panelContent.appendChild(cubeSizeGroup);
-        panelContent.appendChild(rotationSpeedGroup);
-
-        propertiesPanel.appendChild(panelHeader);
-        propertiesPanel.appendChild(panelContent);
-        document.body.appendChild(propertiesPanel);
-
-        // 创建 canvas
-        const canvas = document.createElement('canvas');
-        canvas.id = 'cubeCanvas';
-        canvas.style.border = '1px solid #2c3e50';
-        canvas.style.background = '#ecf0f1';
-        canvas.style.borderRadius = '5px';
-        canvas.style.position = 'absolute';
-        canvas.style.top = '0';
-        canvas.style.left = '0';
-        canvas.style.width = '100%';
-        canvas.style.height = '100%';
-        document.body.appendChild(canvas);
-
-        class PropertyPanel {
-            constructor(panelId, cubeInstance) {
-                this.panel = document.getElementById(panelId);
-                this.cube = cubeInstance;
-                this.isDragging = false;
-                this.initialX = 0;
-                this.initialY = 0;
-                this.xOffset = 0;
-                this.yOffset = 0;
-
-                const header = document.getElementById('panelHeader');
-                header.addEventListener('mousedown', (e) => this.dragStart(e));
-                document.addEventListener('mouseup', () => this.dragEnd());
-                document.addEventListener('mousemove', (e) => this.drag(e));
-
-                document.getElementById('panelClose').addEventListener('click', () => {
-                    this.panel.style.display = 'none';
-                });
-
-                // 绑定控件事件
-                document.getElementById('cubeSize').addEventListener('input', (e) => {
-                    this.cube.setCubeSize(parseFloat(e.target.value));
-                });
-
-                document.getElementById('rotationSpeed').addEventListener('input', (e) => {
-                    this.cube.rotationSpeed = parseFloat(e.target.value);
-                });
-            }
-
-            toggle() {
-                this.panel.style.display = this.panel.style.display === 'block' ? 'none' : 'block';
-            }
-
-            dragStart(e) {
-                this.initialX = e.clientX - this.panel.offsetLeft;
-                this.initialY = e.clientY - this.panel.offsetTop;
-                this.isDragging = true;
-            }
-
-            dragEnd() {
-                this.isDragging = false;
-            }
-
-            drag(e) {
-                if (this.isDragging) {
-                    e.preventDefault();
-                    const newX = e.clientX - this.initialX;
-                    const newY = e.clientY - this.initialY;
-
-                    this.panel.style.left = `${newX}px`;
-                    this.panel.style.top = `${newY}px`;
+    initCube() {
+        for(let x = -1; x <= 1; x++) {
+            for(let y = -1; y <= 1; y++) {
+                for(let z = -1; z <= 1; z++) {
+                    const cubelet = new Cubelet(x, y, z);
+                    this.cubelets.push(cubelet);
                 }
             }
         }
+    }
 
-        class AdvancedCube {
-            constructor(canvasId) {
-                this.canvas = document.getElementById(canvasId);
-                this.ctx = this.canvas.getContext('2d');
-                this.resizeCanvas();
-                window.addEventListener('resize', () => this.resizeCanvas());
-                this.init();
+    rotateLayer(axis, position, direction) {
+        this.rotationQueue.push({ axis, position, direction });
+        if (!this.isRotating) this.processRotationQueue();
+    }
 
-                // 控制参数
+    processRotationQueue() {
+        if (this.rotationQueue.length === 0) return;
+        
+        const { axis, position, direction } = this.rotationQueue.shift();
+        this.isRotating = true;
+        
+        const targetCubes = this.cubelets.filter(cube => 
+            cube.position[axis] === position
+        );
+
+        const startTime = Date.now();
+        const animate = () => {
+            const progress = (Date.now() - startTime) / 300;
+            const angle = Math.PI/2 * direction * Math.min(progress, 1);
+            
+            targetCubes.forEach(cube => {
+                cube.mesh.rotation[axis] = angle;
+            });
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                this.updatePositions(axis, position, direction);
                 this.isRotating = false;
-                this.rotationSpeed = 0.005;
-
-                // 初始化UI控件
-                this.toggleButton = document.getElementById('toggleRotation');
-                this.toggleButton.addEventListener('click', () => this.toggleRotation());
-
-                this.propertyPanel = new PropertyPanel('propertiesPanel', this);
-                document.getElementById('showProperties').addEventListener('click', () =>
-                    this.propertyPanel.toggle()
-                );
-
-                this.animate();
+                this.processRotationQueue();
             }
+        };
+        
+        animate();
+    }
 
-            setCubeSize(size) {
-                this.cubeSize = size;
-                this.vertices = this.generateCubeVertices();
+    updatePositions(axis, position, direction) {
+        this.cubelets.forEach(cube => {
+            if (cube.position[axis] !== position) return;
+            
+            let x = cube.position.x;
+            let y = cube.position.y;
+            let z = cube.position.z;
+            
+            switch(axis) {
+                case 'x':
+                    [y, z] = [-z*direction, y*direction];
+                    break;
+                case 'y':
+                    [x, z] = [z*direction, -x*direction];
+                    break;
+                case 'z':
+                    [x, y] = [-y*direction, x*direction];
+                    break;
             }
+            
+            cube.position.set(x, y, z);
+            cube.mesh.position.copy(cube.position);
+            cube.mesh.rotation[axis] = 0;
+        });
+    }
+}
 
-            resizeCanvas() {
-                this.canvas.width = window.innerWidth;
-                this.canvas.height = window.innerHeight;
-                this.center = {
-                    x: this.canvas.width / 2,
-                    y: this.canvas.height / 2
-                };
-            }
+class CameraController {
+    constructor(camera, renderer) {
+        this.camera = camera;
+        this.renderer = renderer;
+        this.targetRotation = { x: 0, y: 0 };
+        this.initControls();
+    }
 
-            init() {
-                this.cubeSize = 2;
-                this.vertices = this.generateCubeVertices();
-                this.faces = [
-                    [0, 1, 2, 3], [4, 5, 6, 7], [0, 4, 5, 1],
-                    [1, 5, 6, 2], [2, 6, 7, 3], [3, 7, 4, 0]
-                ];
+    initControls() {
+        this.mouseDown = false;
+        this.startX = 0;
+        this.startY = 0;
+        
+        this.renderer.domElement.addEventListener('mousedown', this.onMouseDown);
+        this.renderer.domElement.addEventListener('mousemove', this.onMouseMove);
+        this.renderer.domElement.addEventListener('mouseup', this.onMouseUp);
+        document.addEventListener('keydown', this.onKeyDown);
+    }
 
-                this.axisLength = 3;
-                this.arrowSize = 0.4;
-                this.angle = { x: 0.2, y: 0.4, z: 0 };
-                this.scale = 150;
-                this.distance = 4;
-                this.center = {
-                    x: this.canvas.width / 2,
-                    y: this.canvas.height / 2
-                };
-            }
+    onMouseDown = (e) => {
+        this.mouseDown = true;
+        this.startX = e.clientX;
+        this.startY = e.clientY;
+    }
 
-            generateCubeVertices() {
-                const s = this.cubeSize / 2;
-                return [
-                    [-s, -s, -s], [s, -s, -s], [s, s, -s], [-s, s, -s],
-                    [-s, -s, s], [s, -s, s], [s, s, s], [-s, s, s]
-                ];
-            }
+    onMouseMove = (e) => {
+        if (!this.mouseDown) return;
+        
+        this.targetRotation.y += (e.clientX - this.startX) * 0.005;
+        this.targetRotation.x += (e.clientY - this.startY) * 0.005;
+        
+        this.startX = e.clientX;
+        this.startY = e.clientY;
+    }
 
-            rotatePoint(point) {
-                let [x, y, z] = point;
+    onMouseUp = () => {
+        this.mouseDown = false;
+    }
 
-                const cx = Math.cos(this.angle.x);
-                const sx = Math.sin(this.angle.x);
-                [y, z] = [y * cx - z * sx, y * sx + z * cx];
+    onKeyDown = (e) => {
+        const key = e.key.toLowerCase();
+        const moves = {
+            'u': () => rubiksCube.rotateLayer('y', 1, 1),
+            'd': () => rubiksCube.rotateLayer('y', -1, 1),
+            'l': () => rubiksCube.rotateLayer('x', -1, 1),
+            'r': () => rubiksCube.rotateLayer('x', 1, 1),
+            'f': () => rubiksCube.rotateLayer('z', 1, 1),
+            'b': () => rubiksCube.rotateLayer('z', -1, 1)
+        };
+        
+        if (moves[key]) moves[key]();
+    }
 
-                const cy = Math.cos(this.angle.y);
-                const sy = Math.sin(this.angle.y);
-                [x, z] = [x * cy - z * sy, x * sy + z * cy];
+    update() {
+        this.camera.position.x += (5 * Math.sin(this.targetRotation.y) - this.camera.position.x) * 0.1;
+        this.camera.position.z += (5 * Math.cos(this.targetRotation.y) - this.camera.position.z) * 0.1;
+        this.camera.lookAt(0, 0, 0);
+    }
+}
 
-                const cz = Math.cos(this.angle.z);
-                const sz = Math.sin(this.angle.z);
-                [x, y] = [x * cz - y * sz, x * sz + y * cz];
+// 主程序
+let scene, renderer, rubiksCube, cameraController;
 
-                return [x, y, z];
-            }
+function init() {
+    scene = new THREE.Scene();
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
 
-            project(point) {
-                const depth = this.distance + point[2];
-                return {
-                    x: point[0] * this.scale / depth + this.center.x,
-                    y: -point[1] * this.scale / depth + this.center.y,
-                    depth: depth
-                };
-            }
+    // 灯光
+    const ambient = new THREE.AmbientLight(0x404040);
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(5, 5, 5);
+    scene.add(ambient, light);
 
-            drawAxis() {
-                const axes = [
-                    { color: '#e74c3c', vector: [this.axisLength, 0, 0], label: 'X' },
-                    { color: '#2ecc71', vector: [0, this.axisLength, 0], label: 'Y' },
-                    { color: '#3498db', vector: [0, 0, this.axisLength], label: 'Z' }
-                ];
+    // 创建魔方
+    rubiksCube = new RubiksCube();
+    rubiksCube.cubelets.forEach(cube => scene.add(cube.mesh));
 
-                axes.forEach(axis => {
-                    const rotated = this.rotatePoint(axis.vector);
-                    const start = this.project([0, 0, 0]);
-                    const end = this.project(rotated);
+    // 相机控制
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/innerHeight, 0.1, 1000);
+    camera.position.z = 6;
+    cameraController = new CameraController(camera, renderer);
 
-                    this.ctx.beginPath();
-                    this.ctx.strokeStyle = axis.color;
-                    this.ctx.lineWidth = 2;
-                    this.ctx.moveTo(start.x, start.y);
-                    this.ctx.lineTo(end.x, end.y);
-                    this.ctx.stroke();
+    animate();
+}
 
-                    this.draw3DArrow(end, rotated, axis.color);
+function animate() {
+    requestAnimationFrame(animate);
+    rubiksCube.cubelets.forEach(cube => cube.update());
+    cameraController.update();
+    renderer.render(scene, cameraController.camera);
+}
 
-                    this.ctx.font = '20px Arial';
-                    this.ctx.fillStyle = axis.color;
-                    this.ctx.fillText(axis.label, end.x + 5, end.y + 5);
-                });
-            }
-
-            draw3DArrow(tip, direction, color) {
-                const length = Math.sqrt(direction.reduce((s, v) => s + v * v, 0));
-                const normDir = direction.map(v => v / length);
-
-                const perp = [normDir[1], -normDir[0], 0];
-                const perpLength = Math.sqrt(perp[0] ** 2 + perp[1] ** 2);
-                const scaledPerp = perp.map(v => v * this.arrowSize / perpLength);
-
-                const arrowPoints = [
-                    [tip.x, tip.y],
-                    this.project([
-                        direction[0] * (1 - this.arrowSize) + scaledPerp[0],
-                        direction[1] * (1 - this.arrowSize) + scaledPerp[1],
-                        direction[2] * (1 - this.arrowSize)
-                    ]),
-                    this.project([
-                        direction[0] * (1 - this.arrowSize) - scaledPerp[0],
-                        direction[1] * (1 - this.arrowSize) - scaledPerp[1],
-                        direction[2] * (1 - this.arrowSize)
-                    ])
-                ];
-
-                this.ctx.fillStyle = color + 'dd';
-                this.ctx.beginPath();
-                arrowPoints.forEach((p, i) =>
-                    i === 0 ? this.ctx.moveTo(p.x, p.y) : this.ctx.lineTo(p.x, p.y)
-                );
-                this.ctx.closePath();
-                this.ctx.fill();
-            }
-
-            drawCube() {
-                const projected = this.vertices.map(v =>
-                    this.project(this.rotatePoint(v))
-                );
-
-                const faces = this.faces.map(face => ({
-                    indices: face,
-                    depth: face.reduce((sum, i) => sum + projected[i].depth, 0) / 4
-                })).sort((a, b) => b.depth - a.depth);
-
-                faces.forEach(({ indices }) => {
-                    this.ctx.beginPath();
-                    indices.forEach((i, idx) => {
-                        const p = projected[i];
-                        idx === 0 ? this.ctx.moveTo(p.x, p.y) : this.ctx.lineTo(p.x, p.y);
-                    });
-                    this.ctx.closePath();
-                    this.ctx.fillStyle = 'rgba(52, 73, 94, 0.3)';
-                    this.ctx.strokeStyle = '#2c3e50';
-                    this.ctx.fill();
-                    this.ctx.stroke();
-                });
-            }
-
-            update() {
-                if (this.isRotating) {
-                    this.angle.x += this.rotationSpeed;
-                    this.angle.y += this.rotationSpeed * 1.4;
-                }
-            }
-
-            toggleRotation() {
-                this.isRotating = !this.isRotating;
-                this.toggleButton.textContent = this.isRotating ? '停止旋转' : '开始旋转';
-            }
-
-            animate() {
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                this.update();
-                this.drawCube();
-                this.drawAxis();
-                requestAnimationFrame(() => this.animate());
-            }
-        }
-
-        new AdvancedCube('cubeCanvas');
+// 启动
+init();
     </script>
 </body>
 </html>
-    
-<!--
-升级：
-   把所有dom的建立都放在代码里，style也放。
-
-   return all new code.
-
--->
