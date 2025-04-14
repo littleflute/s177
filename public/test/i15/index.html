@@ -7,237 +7,269 @@
 <body>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-class Cubelet {
-    constructor(x, y, z) {
-        this.position = new THREE.Vector3(x, y, z);
-        this.mesh = this.createMesh(x, y, z);
-        this.targetRotation = new THREE.Euler();
-    }
+        class C4Cubelet {
+            constructor(x, y, z) {
+                this.position = new THREE.Vector3(x, y, z);
+                this.mesh = this.createMesh(x, y, z);
+                this.targetRotation = new THREE.Euler();
+            }
 
-    createMesh(x, y, z) {
-        const materials = Cubelet.COLORS.map((color, i) => 
-            new THREE.MeshPhongMaterial({
-                color: this.shouldPaintFace(x, y, z, i) ? color : 0x222222,
-                shininess: 100
-            })
-        );
-        
-        const mesh = new THREE.Mesh(
-            new THREE.BoxGeometry(0.95, 0.95, 0.95),
-            materials
-        );
-        mesh.position.copy(this.position);
-        return mesh;
-    }
+            createMesh(x, y, z) {
+                const materials = C4Cubelet.COLORS.map((color, i) => 
+                    new THREE.MeshPhongMaterial({
+                        color: this.shouldPaintFace(x, y, z, i) ? color : 0x222222,
+                        shininess: 100
+                    })
+                );
+                
+                const mesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.95, 0.95, 0.95),
+                    materials
+                );
+                mesh.position.copy(this.position);
+                return mesh;
+            }
 
-    shouldPaintFace(x, y, z, faceIndex) {
-        const positions = {
-            0: x === 1,   // Right
-            1: x === -1,  // Left
-            2: y === 1,   // Up
-            3: y === -1,  // Down
-            4: z === 1,   // Front
-            5: z === -1   // Back
-        };
-        return positions[faceIndex];
-    }
+            shouldPaintFace(x, y, z, faceIndex) {
+                const positions = {
+                    0: x === 1,   // Right
+                    1: x === -1,  // Left
+                    2: y === 1,   // Up
+                    3: y === -1,  // Down
+                    4: z === 1,   // Front
+                    5: z === -1   // Back
+                };
+                return positions[faceIndex];
+            }
 
-    update(delta) {
-        this.mesh.rotation.x += (this.targetRotation.x - this.mesh.rotation.x) * 0.1;
-        this.mesh.rotation.y += (this.targetRotation.y - this.mesh.rotation.y) * 0.1;
-    }
-}
-
-Cubelet.COLORS = [
-    new THREE.Color('red'),    // Right
-    new THREE.Color('orange'), // Left
-    new THREE.Color('white'),  // Up
-    new THREE.Color('yellow'), // Down
-    new THREE.Color('green'),  // Front
-    new THREE.Color('blue')    // Back
-];
-
-class RubiksCube {
-    constructor() {
-        this.cubelets = [];
-        this.rotationQueue = [];
-        this.isRotating = false;
-        this.initCube();
-    }
-
-    initCube() {
-        for(let x = -1; x <= 1; x++) {
-            for(let y = -1; y <= 1; y++) {
-                for(let z = -1; z <= 1; z++) {
-                    const cubelet = new Cubelet(x, y, z);
-                    this.cubelets.push(cubelet);
-                }
+            update(delta) {
+                this.mesh.rotation.x += (this.targetRotation.x - this.mesh.rotation.x) * 0.1;
+                this.mesh.rotation.y += (this.targetRotation.y - this.mesh.rotation.y) * 0.1;
             }
         }
-    }
 
-    rotateLayer(axis, position, direction) {
-        this.rotationQueue.push({ axis, position, direction });
-        if (!this.isRotating) this.processRotationQueue();
-    }
+        C4Cubelet.COLORS = [
+            new THREE.Color('red'),    // Right
+            new THREE.Color('orange'), // Left
+            new THREE.Color('white'),  // Up
+            new THREE.Color('yellow'), // Down
+            new THREE.Color('green'),  // Front
+            new THREE.Color('blue')    // Back
+        ];
 
-    processRotationQueue() {
-        if (this.rotationQueue.length === 0) return;
-        
-        const { axis, position, direction } = this.rotationQueue.shift();
-        this.isRotating = true;
-        
-        const targetCubes = this.cubelets.filter(cube => 
-            cube.position[axis] === position
-        );
-
-        const startTime = Date.now();
-        const animate = () => {
-            const progress = (Date.now() - startTime) / 300;
-            const angle = Math.PI/2 * direction * Math.min(progress, 1);
-            
-            targetCubes.forEach(cube => {
-                cube.mesh.rotation[axis] = angle;
-            });
-            
-            if (progress < 1) {
-                requestAnimationFrame(animate);
-            } else {
-                this.updatePositions(axis, position, direction);
+        class C4RubiksCube { 
+            constructor() {
+                this.cubelets = [];
+                this.rotationQueue = [];
                 this.isRotating = false;
-                this.processRotationQueue();
+                this.initCube();
             }
-        };
-        
-        animate();
-    }
 
-    updatePositions(axis, position, direction) {
-        this.cubelets.forEach(cube => {
-            if (cube.position[axis] !== position) return;
-            
-            let x = cube.position.x;
-            let y = cube.position.y;
-            let z = cube.position.z;
-            
-            switch(axis) {
-                case 'x':
-                    [y, z] = [-z*direction, y*direction];
-                    break;
-                case 'y':
-                    [x, z] = [z*direction, -x*direction];
-                    break;
-                case 'z':
-                    [x, y] = [-y*direction, x*direction];
-                    break;
+            initCube() {
+                for(let x = -1; x <= 1; x++) {
+                    for(let y = -1; y <= 1; y++) {
+                        for(let z = -1; z <= 1; z++) {
+                            const cubelet = new C4Cubelet(x, y, z);
+                            this.cubelets.push(cubelet);
+                        }
+                    }
+                }
             }
-            
-            cube.position.set(x, y, z);
-            cube.mesh.position.copy(cube.position);
-            cube.mesh.rotation[axis] = 0;
-        });
-    }
-}
 
-class CameraController {
-    constructor(camera, renderer) {
-        this.camera = camera;
-        this.renderer = renderer;
-        this.targetRotation = { x: 0, y: 0 };
-        this.initControls();
-    }
+            rotateLayer(axis, position, direction) {
+                this.rotationQueue.push({ axis, position, direction });
+                if (!this.isRotating) this.processRotationQueue();
+            }
 
-    initControls() {
-        this.mouseDown = false;
-        this.startX = 0;
-        this.startY = 0;
-        
-        this.renderer.domElement.addEventListener('mousedown', this.onMouseDown);
-        this.renderer.domElement.addEventListener('mousemove', this.onMouseMove);
-        this.renderer.domElement.addEventListener('mouseup', this.onMouseUp);
-        document.addEventListener('keydown', this.onKeyDown);
-    }
+            processRotationQueue() {
+                if (this.rotationQueue.length === 0) return;
+                
+                const { axis, position, direction } = this.rotationQueue.shift();
+                this.isRotating = true;
+                
+                const targetCubes = this.cubelets.filter(cube => 
+                    cube.position[axis] === position
+                );
 
-    onMouseDown = (e) => {
-        this.mouseDown = true;
-        this.startX = e.clientX;
-        this.startY = e.clientY;
-    }
+                const startTime = Date.now();
+                const animate = () => {
+                    const progress = (Date.now() - startTime) / 300;
+                    const angle = Math.PI/2 * direction * Math.min(progress, 1);
+                    
+                    targetCubes.forEach(cube => {
+                        cube.mesh.rotation[axis] = angle;
+                    });
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        this.updatePositions(axis, position, direction);
+                        this.isRotating = false;
+                        this.processRotationQueue();
+                    }
+                };
+                
+                animate();
+            }
 
-    onMouseMove = (e) => {
-        if (!this.mouseDown) return;
-        
-        this.targetRotation.y += (e.clientX - this.startX) * 0.005;
-        this.targetRotation.x += (e.clientY - this.startY) * 0.005;
-        
-        this.startX = e.clientX;
-        this.startY = e.clientY;
-    }
+            updatePositions(axis, position, direction) {
+                this.cubelets.forEach(cube => {
+                    if (cube.position[axis] !== position) return;
+                    
+                    let x = cube.position.x;
+                    let y = cube.position.y;
+                    let z = cube.position.z;
+                    
+                    switch(axis) {
+                        case 'x':
+                            [y, z] = [-z*direction, y*direction];
+                            break;
+                        case 'y':
+                            [x, z] = [z*direction, -x*direction];
+                            break;
+                        case 'z':
+                            [x, y] = [-y*direction, x*direction];
+                            break;
+                    }
+                    
+                    cube.position.set(x, y, z);
+                    cube.mesh.position.copy(cube.position);
+                    cube.mesh.rotation[axis] = 0;
+                });
+            }
+        }
 
-    onMouseUp = () => {
-        this.mouseDown = false;
-    }
+        class C4CameraController {
+            constructor(camera, renderer, o4RubiksCube) {
+                this.camera = camera;
+                this.renderer = renderer;
+                this.o4RubiksCube = o4RubiksCube;
+                this.targetRotation = { x: 0, y: 0 };
+                this.initControls();
+            }
 
-    onKeyDown = (e) => {
-        const key = e.key.toLowerCase();
-        const moves = {
-            'u': () => rubiksCube.rotateLayer('y', 1, 1),
-            'd': () => rubiksCube.rotateLayer('y', -1, 1),
-            'l': () => rubiksCube.rotateLayer('x', -1, 1),
-            'r': () => rubiksCube.rotateLayer('x', 1, 1),
-            'f': () => rubiksCube.rotateLayer('z', 1, 1),
-            'b': () => rubiksCube.rotateLayer('z', -1, 1)
-        };
-        
-        if (moves[key]) moves[key]();
-    }
+            initControls() {
+                this.mouseDown = false;
+                this.startX = 0;
+                this.startY = 0;
+                
+                this.renderer.domElement.addEventListener('mousedown', this.onMouseDown);
+                this.renderer.domElement.addEventListener('mousemove', this.onMouseMove);
+                this.renderer.domElement.addEventListener('mouseup', this.onMouseUp);
+                document.addEventListener('keydown', this.onKeyDown);
+            }
 
-    update() {
-        this.camera.position.x += (5 * Math.sin(this.targetRotation.y) - this.camera.position.x) * 0.1;
-        this.camera.position.z += (5 * Math.cos(this.targetRotation.y) - this.camera.position.z) * 0.1;
-        this.camera.lookAt(0, 0, 0);
-    }
-}
+            onMouseDown = (e) => {
+                this.mouseDown = true;
+                this.startX = e.clientX;
+                this.startY = e.clientY;
+            }
 
-// code11: 把主程序封装成一个类
-let scene, renderer, rubiksCube, cameraController;
+            onMouseMove = (e) => {
+                if (!this.mouseDown) return;
+                
+                this.targetRotation.y += (e.clientX - this.startX) * 0.005;
+                this.targetRotation.x += (e.clientY - this.startY) * 0.005;
+                
+                this.startX = e.clientX;
+                this.startY = e.clientY;
+            }
 
-function init() {
-    scene = new THREE.Scene();
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+            onMouseUp = () => {
+                this.mouseDown = false;
+            }
 
-    // 灯光
-    const ambient = new THREE.AmbientLight(0x404040);
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(5, 5, 5);
-    scene.add(ambient, light);
+            onKeyDown = (e) => {
+                const key = e.key.toLowerCase();
+                const moves = {
+                    'u': () => this.o4RubiksCube.rotateLayer('y', 1, 1),
+                    'd': () => this.o4RubiksCube.rotateLayer('y', -1, 1),
+                    'l': () => this.o4RubiksCube.rotateLayer('x', -1, 1),
+                    'r': () => this.o4RubiksCube.rotateLayer('x', 1, 1),
+                    'f': () => this.o4RubiksCube.rotateLayer('z', 1, 1),
+                    'b': () => this.o4RubiksCube.rotateLayer('z', -1, 1)
+                };
+                
+                if (moves[key]) moves[key]();
+            }
 
-    // 创建魔方
-    rubiksCube = new RubiksCube();
-    rubiksCube.cubelets.forEach(cube => scene.add(cube.mesh));
+            update() {
+                // 处理水平旋转
+                this.camera.position.x = 5 * Math.sin(this.targetRotation.y) * Math.cos(this.targetRotation.x);
+                this.camera.position.z = 5 * Math.cos(this.targetRotation.y) * Math.cos(this.targetRotation.x);
+                this.camera.position.y = 5 * Math.sin(this.targetRotation.x);
+                this.camera.lookAt(0, 0, 0);
+            }
+        }
 
-    // 相机控制
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/innerHeight, 0.1, 1000);
-    camera.position.z = 6;
-    cameraController = new CameraController(camera, renderer);
+        class C4RubiksCubeApp {
+            constructor() {
+                this.initThree();
+                this.initScene();
+                this.initCamera();
+                this.initRubiksCube();
+                this.initCameraController();
+                this.animate();
+            }
 
-    animate();
-}
+            initThree() {
+                this.scene = new THREE.Scene();
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                document.body.appendChild(this.renderer.domElement);
+            }
 
-function animate() {
-    requestAnimationFrame(animate);
-    rubiksCube.cubelets.forEach(cube => cube.update());
-    cameraController.update();
-    renderer.render(scene, cameraController.camera);
-}
+            initScene() {
+                const ambient = new THREE.AmbientLight(0x404040);
+                const light = new THREE.DirectionalLight(0xffffff, 1);
+                light.position.set(5, 5, 5);
+                this.scene.add(ambient, light);
+            }
 
-// 启动
-init();
+            initCamera() {
+                this.camera = new THREE.PerspectiveCamera(
+                    75,
+                    window.innerWidth / window.innerHeight,
+                    0.1,
+                    1000
+                );
+                this.camera.position.z = 6;
+            }
+
+            initRubiksCube() {
+                this.o4RubiksCube = new C4RubiksCube();
+                this.o4RubiksCube.cubelets.forEach(cube => this.scene.add(cube.mesh));
+            }
+
+            initCameraController() {
+                this.oCameraController = new C4CameraController(
+                    this.camera,
+                    this.renderer,
+                    this.o4RubiksCube
+                );
+                window.addEventListener('resize', () => this.onResize());
+            }
+
+            onResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                this.o4RubiksCube.cubelets.forEach(cube => cube.update());
+                this.oCameraController.update();
+                this.renderer.render(this.scene, this.oCameraController.camera);
+            }
+        }
+
+        // 启动应用
+        new C4RubiksCubeApp();
     </script>
 </body>
 </html>
+    
 <!--
- code11
+ code11 : 让鼠标在上下方向上也可以旋转
 -->
